@@ -31,28 +31,28 @@ async function exchangeClientCredentials(storeSlug: string): Promise<{ token: st
   const store = await prisma.store.findUnique({ where: { slug: storeSlug } });
   if (!store) throw new Error(`Store with slug "${storeSlug}" not found`);
 
-  // The Admin API access token (shpat_…) is stored at the `:secret` scope. Some setups
-  // have pasted it into the primary scope by mistake — accept both, prefer `:secret`.
-  const tokenCred = (await getCredential("SHOPIFY", `${storeSlug}:secret`)) ?? (await getCredential("SHOPIFY", storeSlug));
-  if (!tokenCred) throw new Error(`Shopify Access token not configured for ${storeSlug} · pégalo en Settings → ${store.shopifyDomain} → ② Access token`);
+  const idCred = await getCredential("SHOPIFY", storeSlug);
+  if (!idCred) throw new Error(`Shopify Client ID not configured for ${storeSlug} · pégalo en Settings → ① Client ID`);
+  const secretCred = await getCredential("SHOPIFY", `${storeSlug}:secret`);
+  if (!secretCred) throw new Error(`Shopify Client secret not configured for ${storeSlug} · pégalo en Settings → ② Client secret`);
 
-  // FAST PATH (standard "Develop apps" Custom Apps): the token is a permanent
-  // `shpat_…` value — use it directly with X-Shopify-Access-Token. No OAuth needed.
-  if (tokenCred.value.startsWith("shpat_") || tokenCred.value.startsWith("shpca_")) {
-    return { token: tokenCred.value, expiresAt: Date.now() + 3600 * 1000, shopifyDomain: store.shopifyDomain };
+  // Fast path: if either field actually holds a permanent Admin API access token
+  // (shpat_…), use it directly — saves a round-trip and works on Custom Apps that
+  // don't support the client_credentials grant.
+  for (const c of [idCred, secretCred]) {
+    if (c.value.startsWith("shpat_") || c.value.startsWith("shpca_")) {
+      return { token: c.value, expiresAt: Date.now() + 3600 * 1000, shopifyDomain: store.shopifyDomain };
+    }
   }
 
-  // OAUTH FALLBACK (org-level / Public Apps): exchange Client ID + Secret for a
-  // short-lived bearer via client_credentials. Rare in our setup, kept for safety.
-  const idCred = await getCredential("SHOPIFY", storeSlug);
-  if (!idCred) throw new Error(`Shopify Client ID not configured for ${storeSlug} and the access token doesn't look like an shpat_ value`);
-
+  // Shopify Plus Custom Apps support the client_credentials grant: POST the Client
+  // ID + Client secret to /admin/oauth/access_token and Shopify returns a bearer.
   const res = await fetch(`https://${store.shopifyDomain}/admin/oauth/access_token`, {
     method: "POST",
     headers: { "Content-Type": "application/json", "Accept": "application/json" },
     body: JSON.stringify({
       client_id: idCred.value,
-      client_secret: tokenCred.value,
+      client_secret: secretCred.value,
       grant_type: "client_credentials",
     }),
   });
