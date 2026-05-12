@@ -129,6 +129,7 @@ model Store {
   products    Product[]
   costs       CostEntry[]
   discountCodes DiscountCode[]
+  forms       Form[]
 }
 
 // ── Sender identities (verified domains/emails in SES) ───────────────────────
@@ -740,4 +741,83 @@ model Suppression {
   reason    SuppressionReason
   source    String?           // "ses:bounce" | "ses:complaint" | "user:click-unsub"
   createdAt DateTime          @default(now())
+}
+
+// ── Forms (web sign-up / popup / embed) ───────────────────────────────────────
+// Build a form once, embed anywhere: Shopify storefront snippet, plain JS embed,
+// or hosted page. Submissions land as Customers with consentStatus=PENDING (or
+// SUBSCRIBED if double-opt-in is OFF) and trigger any wired Flow.
+
+enum FormKind {
+  EMBED        // <div id="sendify-form-..."> + script — paste in any page
+  POPUP        // exit-intent or time-delay popup
+  INLINE       // permanent inline section
+  HOSTED       // standalone hosted page at sendify.divain.space/forms/<slug>
+}
+
+enum FormStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Form {
+  id          String     @id @default(cuid())
+  storeId     String?    // null = available to all stores
+  slug        String     @unique          // URL-safe id used in embed snippet
+  name        String                       // internal label
+  kind        FormKind   @default(EMBED)
+  status      FormStatus @default(DRAFT)
+
+  // Field schema: array of { id, type, label, placeholder, required, options? }
+  // Types: "email" | "text" | "tel" | "select" | "checkbox" | "consent"
+  // The "consent" field is special — its checked state writes to Customer.acceptsMarketing.
+  fields      Json
+
+  // Visual config: { headline, subheadline, ctaLabel, theme, palette }
+  // theme: "minimal" | "lifestyle" (matches Klaviyo aesthetic with optional bg image)
+  design      Json
+
+  // Behavior: { successMessage, successRedirectUrl, doubleOptIn, popupTrigger? }
+  // popupTrigger: { kind: "exit-intent" | "delay" | "scroll", value?: number }
+  behavior    Json
+
+  // Audience routing — when this form converts, optionally tag the customer or
+  // add them to a segment so Flows can pick them up.
+  tagsOnSubmit String[]
+  segmentIds   String[]
+
+  // Stats (denormalized for fast dashboard)
+  impressions  Int       @default(0)
+  submissions  Int       @default(0)
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  publishedAt DateTime?
+  archivedAt  DateTime?
+
+  store        Store?           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  submissions_ FormSubmission[]
+
+  @@index([storeId, status])
+}
+
+// Every form submission — kept raw alongside the resulting Customer so we can
+// audit consent + replay if a Flow misses an event.
+model FormSubmission {
+  id          String   @id @default(cuid())
+  formId      String
+  storeId     String?
+  customerId  String?  // populated once the upsert resolves
+  email       String
+  fieldData   Json     // raw {fieldId: value} payload as received
+  source      String?  // referrer URL or "shopify:home"
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  form        Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+
+  @@index([formId, createdAt])
+  @@index([email])
 }
