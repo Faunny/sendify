@@ -7,12 +7,16 @@ locals {
     DIRECT_URL                  = "postgresql://${var.db_username}:${random_password.db.result}@${aws_db_instance.postgres.address}:5432/${var.db_name}?sslmode=require"
     REDIS_URL                   = "rediss://${aws_elasticache_replication_group.main.primary_endpoint_address}:6379"
     AWS_REGION                  = var.aws_region
-    NEXT_PUBLIC_APP_URL         = var.enable_dns ? "https://${var.root_domain}" : ""
+    # URL is the platform host (sendify.divain.space when DNS is enabled).
+    NEXT_PUBLIC_APP_URL         = var.enable_dns ? "https://sendify.${var.root_domain}" : ""
     SES_CONFIGURATION_SET       = "sendify-default"
     S3_BUCKET                   = aws_s3_bucket.assets.id
     S3_PUBLIC_BASE_URL          = "https://${aws_cloudfront_distribution.cdn.domain_name}"
     SES_RATE_PER_SECOND         = "14"
-    SENDIFY_FROM_EMAIL          = "noreply@${var.root_domain}"
+    # Platform notifications (magic-link login, approval alerts) come from the Europa SES sender.
+    # Emails NEVER originate on divain.space — that's only the dashboard URL. All outbound mail
+    # uses one of the 4 verified sociedad domains (divainparfums.com / .co.uk / .co / .mx).
+    SENDIFY_FROM_EMAIL          = "divain@divainparfums.com"
   })
 }
 
