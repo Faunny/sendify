@@ -95,17 +95,20 @@ export function EmailPreviewCard({ campaign, store, sender, language, market, pr
         </p>
       </div>
 
-      {/* Product grid (3 cells if products provided, else 3 placeholder squares) */}
-      <div className="px-3 pb-3 bg-white grid grid-cols-3 gap-1.5">
-        {Array.from({ length: 3 }).map((_, i) => {
-          const p = products[i];
-          return (
-            <div key={i} className="aspect-square bg-cover bg-center rounded-sm" style={{
-              background: p?.imageUrl ? `url(${p.imageUrl}) center/cover no-repeat, #F5F5F5` : "#F5F5F5",
-            }} />
-          );
-        })}
-      </div>
+      {/* Product grid — only renders when real products are provided (no stock placeholders) */}
+      {products.length > 0 && (
+        <div className="px-3 pb-3 bg-white grid grid-cols-3 gap-1.5">
+          {products.slice(0, 3).map((p, i) => (
+            <div
+              key={p.id ?? i}
+              className="aspect-square rounded-sm grid place-items-center text-[8px] text-black/30 uppercase tracking-wider"
+              style={{ background: p.imageUrl ? `url(${p.imageUrl}) center/cover no-repeat, #F5F5F5` : "#F5F5F5" }}
+            >
+              {!p.imageUrl && "no photo"}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Brand pillars bar */}
       <div className="grid grid-cols-4 bg-black" style={{ gap: "1px" }}>

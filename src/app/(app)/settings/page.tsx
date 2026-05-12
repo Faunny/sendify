@@ -244,26 +244,26 @@ X-Sendify-Signature: sha256=<hmac>
             <Integration
               name="Amazon SES"
               hint="eu-west-1 · 670k/day requested"
-              status="connected"
-              detail="Configuration set sendify-default · SNS topic configured for bounces and complaints"
+              status="action"
+              detail="Verifica los 4 dominios sender (divainparfums.com / .co.uk / .co / .mx) en AWS SES y configura el SNS topic para bounces/complaints"
             />
             <Integration
               name="Shopify Plus (×4)"
-              hint="GraphQL Admin API · webhooks installed"
-              status="connected"
-              detail="customers/update · orders/create · checkouts/update · products/update"
+              hint="GraphQL Admin API · webhooks pendientes"
+              status="action"
+              detail="Conecta cada tienda Shopify Plus para sincronizar customers/orders/products en tiempo real. Webhooks: customers/update · orders/create · checkouts/update · products/update"
             />
             <Integration
               name="DeepL Pro"
               hint="Translation engine"
-              status="connected"
-              detail="Glossary divain-brand attached · 186 entries"
+              status="action"
+              detail="Necesita DEEPL_API_KEY. Crea glossary divain-brand para que respete tus términos en los 22 idiomas."
             />
             <Integration
-              name="Google Gemini"
-              hint="2.5 Flash Image · Nano Banana"
-              status="connected"
-              detail="$0.04/image · brand palette injected"
+              name="Google Gemini 2.5 Flash Image"
+              hint="Aka Nano Banana — el motor de IA que genera los banners"
+              status="action"
+              detail="Saca tu API key gratis en aistudio.google.com/apikey y pégala como GEMINI_API_KEY en Vercel. $0.04 por imagen, paleta de marca inyectada automáticamente."
             />
             <Integration
               name="Google Ads"
@@ -273,15 +273,15 @@ X-Sendify-Signature: sha256=<hmac>
             />
             <Integration
               name="OpenAI"
-              hint="GPT-4 commercial copy review"
-              status="connected"
-              detail="Used for tone review on promotional language"
+              hint="GPT-4 commercial copy review (opcional)"
+              status="disconnected"
+              detail="Si añades OPENAI_API_KEY, GPT-4 revisa el copy comercial post-DeepL para ajustar tono y claims antes de enviar."
             />
             <Integration
               name="S3 + CloudFront"
               hint="Asset CDN"
-              status="connected"
-              detail="sendify-assets · cdn.divain.space"
+              status="action"
+              detail="Provisiona el bucket sendify-assets y el CloudFront distribution con Terraform (infra/storage.tf). Se sirve en cdn.divain.space."
             />
             <Integration
               name="Sentry"

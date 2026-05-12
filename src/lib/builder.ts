@@ -51,15 +51,18 @@ export const BUTTON_STYLES: Record<"gold" | "black" | "outlined", { bgColor: str
 };
 
 export const BLOCK_DEFAULTS: Record<BlockType, () => Block> = {
-  hero: () => ({ id: cuid(), type: "hero", props: { imageUrl: "https://d3k81ch9hvuctc.cloudfront.net/company/REVNSD/images/65d78707-8304-4824-91b2-b23657f4b8dd.jpeg", heading: "Para ella, lo que de verdad le emociona", subheading: "Selección Día de la Madre", bgColor: "#FFFFFF", textColor: "#1A1A1A" } }),
-  text: () => ({ id: cuid(), type: "text", props: { text: "Una selección de fragancias hechas para emocionar este Día de la Madre. Encuentra el regalo perfecto entre nuestras equivalencias premium.", align: "center", size: 15 } }),
-  image: () => ({ id: cuid(), type: "image", props: { imageUrl: "https://images.unsplash.com/photo-1523293182086-7651a899d37f?w=1200", align: "center", widthPct: 100 } }),
-  button: () => ({ id: cuid(), type: "button", props: { label: "ACHETER MAINTENANT", href: "https://divainparfums.com/collections/sale", style: "gold", align: "center" } }),
-  "product-card": () => ({ id: cuid(), type: "product-card", props: { productId: "pr_p1_st_1", cta: "Comprar", showPrice: true, market: "ES" } }),
-  "product-grid": () => ({ id: cuid(), type: "product-grid", props: { productIds: ["pr_p1_st_1", "pr_p2_st_1", "pr_p3_st_1"], columns: 3, market: "ES" } }),
-  "big-number": () => ({ id: cuid(), type: "big-number", props: { number: "55%", subtitle: "DE RÉDUCTION", tagline: "sur tous les parfums.", bgImageUrl: "https://d3k81ch9hvuctc.cloudfront.net/company/REVNSD/images/65d78707-8304-4824-91b2-b23657f4b8dd.jpeg", bgColor: "#FFBDCF", textColor: "#FFFFFF", ctaLabel: "ACHETER MAINTENANT", ctaHref: "https://divainparfums.com/collections/sale", ctaStyle: "gold" } }),
+  // All block defaults start without an image. The user picks one from the asset library
+  // (or generates one with Nano Banana). Until they do, the canvas renders a clear
+  // "pick an image" placeholder — never a stock photo we don't own.
+  hero: () => ({ id: cuid(), type: "hero", props: { imageUrl: "", heading: "Tu titular aquí", subheading: "", bgColor: "#FFFFFF", textColor: "#1A1A1A" } }),
+  text: () => ({ id: cuid(), type: "text", props: { text: "Tu texto aquí.", align: "center", size: 15 } }),
+  image: () => ({ id: cuid(), type: "image", props: { imageUrl: "", align: "center", widthPct: 100 } }),
+  button: () => ({ id: cuid(), type: "button", props: { label: "COMPRAR AHORA", href: "https://divainparfums.com", style: "gold", align: "center" } }),
+  "product-card": () => ({ id: cuid(), type: "product-card", props: { productId: "", cta: "Comprar", showPrice: true, market: "ES" } }),
+  "product-grid": () => ({ id: cuid(), type: "product-grid", props: { productIds: [], columns: 3, market: "ES" } }),
+  "big-number": () => ({ id: cuid(), type: "big-number", props: { number: "00%", subtitle: "TU SUBTÍTULO", tagline: "tagline opcional", bgImageUrl: "", bgColor: "#F0C95C", textColor: "#FFFFFF", ctaLabel: "COMPRAR AHORA", ctaHref: "https://divainparfums.com", ctaStyle: "black" } }),
   "brand-pillars": () => ({ id: cuid(), type: "brand-pillars", props: { pillarSlugs: ["parfums", "care", "home", "ritual"], bgColor: "#000000", textColor: "#FFFFFF" } }),
-  "app-promo": () => ({ id: cuid(), type: "app-promo", props: { imageUrl: "https://d3k81ch9hvuctc.cloudfront.net/company/REVNSD/images/3cb2b8b3-eafd-4121-ba02-afbaa01cf10e.jpeg", heading: "¿AÚN NO TIENES LA NUEVA APP?", body: "Beneficios exclusivos y ofertas que no verás en la web.", ctaLabel: "DESCARGAR AHORA", ctaHref: "https://onelink.to/43swmh" } }),
+  "app-promo": () => ({ id: cuid(), type: "app-promo", props: { imageUrl: "", heading: "¿AÚN NO TIENES LA NUEVA APP?", body: "Beneficios exclusivos y ofertas que no verás en la web.", ctaLabel: "DESCARGAR AHORA", ctaHref: "" } }),
   spacer: () => ({ id: cuid(), type: "spacer", props: { height: 24 } }),
   divider: () => ({ id: cuid(), type: "divider", props: { color: "#E5E0D6" } }),
   columns: () => ({ id: cuid(), type: "columns", props: { left: { text: "Envío gratis a partir de 30€" }, right: { text: "Devoluciones sin coste" } } }),

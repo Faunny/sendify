@@ -62,14 +62,13 @@ const BLOCK_ICONS: Record<BlockType, React.ComponentType<{ className?: string }>
   footer: ScrollText,
 };
 
-// Starts with a Divain-styled promo email — big-number hero + app promo + brand pillars + footer.
-// Matches the structure of the 55% / 11,99€ campaigns the user shared.
+// Starts with a clean divain-style skeleton: big-number hero + brand pillars + footer.
+// User picks images from their own asset library — never any stock photo defaults.
 const INITIAL_DOC: Document = {
   ...DEFAULT_DOCUMENT,
   blocks: [
     BLOCK_DEFAULTS["big-number"](),
     BLOCK_DEFAULTS["brand-pillars"](),
-    BLOCK_DEFAULTS["app-promo"](),
     BLOCK_DEFAULTS.footer(),
   ],
 };
