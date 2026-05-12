@@ -10,8 +10,28 @@
 
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { syncStoreCustomers } from "@/lib/sync/shopify-customers";
 import { syncStoreProducts } from "@/lib/sync/shopify-products";
+
+// Neon's free tier auto-suspends compute after ~5 min of inactivity. The first
+// query after a cold-start often fails before Prisma's default timeout. Retry
+// with exponential backoff so the user never sees a "can't reach database" error
+// when really Neon is just waking back up (typical wake time: 1-3 seconds).
+async function waitForDb(maxAttempts = 6): Promise<void> {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      return;
+    } catch {
+      const delay = Math.min(500 * 2 ** i, 4000);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+  // Final attempt — let the real error propagate to the response so the user
+  // sees a meaningful message instead of a silent stall.
+  await prisma.$queryRaw`SELECT 1`;
+}
 
 export const maxDuration = 60; // Hobby ceiling — we stop syncing internally at 45s.
 export const dynamic = "force-dynamic";
@@ -25,6 +45,17 @@ export async function POST(req: Request) {
 
   const { storeSlug, what = "both" } = await req.json().catch(() => ({} as { storeSlug?: string; what?: "customers" | "products" | "both" }));
   if (!storeSlug) return NextResponse.json({ ok: false, error: "missing storeSlug" }, { status: 400 });
+
+  // Wake Neon up front so the credential read inside the sync helpers doesn't
+  // race against a cold compute and explode with "Can't reach database server".
+  try {
+    await waitForDb();
+  } catch (e) {
+    return NextResponse.json({
+      ok: false,
+      error: `Database aún arrancando (Neon free tier). Vuelve a darle a "Sync now" en 5 segundos. Detalle: ${e instanceof Error ? e.message : "db unreachable"}`,
+    }, { status: 503 });
+  }
 
   const doCustomers = what === "customers" || what === "both";
   const doProducts  = what === "products"  || what === "both";
