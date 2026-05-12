@@ -1,41 +1,53 @@
-// Top-of-dashboard checklist of the steps needed to make Sendify actually send mail.
-// Each step shows green ✓ when done (detected via env vars / sample queries), or amber !
-// when pending with a one-click action. Disappears entirely once all 6 are done.
+// Setup checklist on the dashboard. Each item is green when the matching credential
+// (or DB state) exists, amber when pending. The whole card disappears once everything
+// is configured.
 
 import Link from "next/link";
 import { ArrowRight, Check, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { prisma } from "@/lib/db";
 
-// On the server (where env vars are available) decide which steps are complete.
-function getChecklistState() {
-  const dbConfigured =
-    !!process.env.DATABASE_URL &&
-    !process.env.DATABASE_URL.includes("placeholder");
-  const redisConfigured =
-    !!process.env.REDIS_URL &&
-    !process.env.REDIS_URL.includes("placeholder");
-  const awsConfigured = !!process.env.AWS_ACCESS_KEY_ID;
-  const deeplConfigured = !!process.env.DEEPL_API_KEY;
-  const geminiConfigured = !!process.env.GEMINI_API_KEY;
-  const shopifyConfigured = !!process.env.SHOPIFY_API_KEY;
+type Step = { id: string; label: string; hint: string; ok: boolean; action: { label: string; href: string }; blocking: boolean };
+
+async function getChecklistState(): Promise<Step[]> {
+  // DB itself — if we can count Sender rows, the connection works.
+  let dbOk = false;
+  let senderCount = 0, shopifyConnectedCount = 0;
+  const credCounts: Record<string, number> = {};
+  try {
+    senderCount = await prisma.sender.count();
+    dbOk = true;
+    shopifyConnectedCount = await prisma.providerCredential.count({ where: { provider: "SHOPIFY", active: true } });
+    const credRows = await prisma.providerCredential.findMany({
+      where: { active: true },
+      select: { provider: true, scope: true },
+    });
+    for (const r of credRows) credCounts[r.provider] = (credCounts[r.provider] ?? 0) + 1;
+  } catch { /* DB unreachable */ }
+
+  const hasAnyTranslation = (credCounts.TRANSLATION_DEEPSEEK ?? 0) > 0
+                         || (credCounts.TRANSLATION_OPENAI ?? 0) > 0
+                         || (credCounts.TRANSLATION_DEEPL ?? 0) > 0;
+  const hasAnyImage = (credCounts.IMAGE_GEMINI ?? 0) > 0
+                   || (credCounts.IMAGE_OPENAI ?? 0) > 0;
 
   return [
-    { id: "db",      label: "Database connected (Neon / RDS)",                ok: dbConfigured,      hint: "5 min · pega DATABASE_URL en Vercel",                                action: { label: "Configure", href: "/settings" }, blocking: true },
-    { id: "redis",   label: "Redis connected (BullMQ queue)",                  ok: redisConfigured,   hint: "Upstash free tier o ElastiCache",                                     action: { label: "Configure", href: "/settings" }, blocking: true },
-    { id: "ses",     label: "AWS SES credentials + 4 senders verified",        ok: awsConfigured,     hint: "DKIM/SPF/DMARC en los 4 dominios divain",                              action: { label: "Configure", href: "/settings" }, blocking: true },
-    { id: "shopify", label: "Shopify Plus tokens (4 tiendas) + webhooks",     ok: shopifyConfigured, hint: "Customers/orders/products vienen de aquí",                            action: { label: "Configure", href: "/settings" }, blocking: false },
-    { id: "deepl",   label: "DeepL Pro API key",                                ok: deeplConfigured,   hint: "Traducción a 22 idiomas con cache",                                   action: { label: "Configure", href: "/settings" }, blocking: false },
-    { id: "gemini",  label: "Gemini 2.5 Flash Image (Nano Banana) API key",   ok: geminiConfigured,  hint: "Generación de banners · $0.04 por imagen",                            action: { label: "Configure", href: "/settings" }, blocking: false },
+    { id: "db",          label: "Database connected (Neon)",          ok: dbOk,                          hint: "DATABASE_URL en Vercel · Postgres 16 con 20 tablas",                       action: { label: "Configure", href: "/settings" }, blocking: true },
+    { id: "shopify",     label: `Shopify Plus tokens (${shopifyConnectedCount}/4 conectadas)`, ok: shopifyConnectedCount >= 4, hint: "Una Custom App por tienda · scopes read_customers/orders/products",       action: { label: "Connect", href: "/settings" },   blocking: true },
+    { id: "ses",         label: "AWS SES + 4 senders verified",       ok: senderCount > 0 && shopifyConnectedCount === 4, /* placeholder until real SES verification check */ hint: "DKIM/SPF/DMARC en los 4 dominios divain",                                    action: { label: "Configure", href: "/settings" }, blocking: true },
+    { id: "translation", label: "Translation engine (DeepSeek o OpenAI)", ok: hasAnyTranslation,        hint: "Necesario para fan-out a 22 idiomas. DeepSeek = más barato",               action: { label: "Configure", href: "/settings" }, blocking: false },
+    { id: "image",       label: "AI image generation (Gemini o DALL-E)", ok: hasAnyImage,                hint: "Genera banners desde el builder con la paleta de marca",                  action: { label: "Configure", href: "/settings" }, blocking: false },
+    { id: "promo",       label: "Promotion webhook secret",           ok: (credCounts.PROMOTIONS_WEBHOOK_SECRET ?? 0) > 0, hint: "Comparte con tu proyecto externo de calendario para auto-drafts",          action: { label: "Configure", href: "/settings" }, blocking: false },
   ];
 }
 
-export function SetupChecklist() {
-  const steps = getChecklistState();
+export async function SetupChecklist() {
+  const steps = await getChecklistState();
   const remaining = steps.filter((s) => !s.ok);
   if (remaining.length === 0) return null;
-
   const blockers = remaining.filter((s) => s.blocking).length;
+
   return (
     <Card className="border-[color:var(--warning)]/30 bg-[color-mix(in_oklch,var(--warning)_4%,transparent)]">
       <CardContent className="p-5">
@@ -48,7 +60,7 @@ export function SetupChecklist() {
             </div>
             <p className="text-[12px] text-muted-foreground">
               Hasta completar las piezas bloqueantes, los botones de envío y aprobación no pueden persistir nada.
-              Todo lo demás de Sendify (builder, calendario, preview) ya funciona y se queda como está cuando conectes.
+              Todo lo demás de Sendify (builder, calendario, preview) ya funciona y se queda igual cuando conectes.
             </p>
           </div>
         </div>

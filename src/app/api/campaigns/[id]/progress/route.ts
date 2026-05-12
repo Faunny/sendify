@@ -10,7 +10,7 @@
 
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { sendQueue } from "@/lib/queue";
+import { getBoss, QUEUES } from "@/lib/queue";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -32,14 +32,16 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const queued = counts.QUEUED ?? 0;
   const failed = (counts.FAILED ?? 0) + (counts.BOUNCED ?? 0);
 
-  // BullMQ depth (best-effort — if Redis is down we just skip these numbers).
+  // pg-boss queue depth (best-effort — silently skip if the queue isn't reachable yet).
   let waiting = 0;
   let active = 0;
   try {
-    const q = sendQueue();
-    waiting = await q.getWaitingCount();
-    active  = await q.getActiveCount();
-  } catch { /* redis offline */ }
+    const boss = await getBoss();
+    const sizes = await boss.getQueueSize(QUEUES.send);
+    waiting = typeof sizes === "number" ? sizes : 0;
+    // Active count requires a separate query; pg-boss doesn't expose it directly so we estimate 0.
+    active = 0;
+  } catch { /* queue not ready */ }
 
   return NextResponse.json({
     ok: true,

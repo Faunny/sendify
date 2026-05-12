@@ -17,7 +17,7 @@ import { prisma } from "../db";
 import { resolveAudience, createSendLedger, type Recipient } from "../audience";
 import { translateVariant } from "./translate";
 import { renderVariant } from "./render";
-import { sendQueue, type SendJob } from "../queue";
+import { cancelCampaignSends, enqueueSend, type SendJob } from "../queue";
 import { capByWarmup, dailySendCap, warmupStage } from "../warmup";
 
 export type ApproveResult = {
@@ -147,8 +147,9 @@ export async function approveCampaign(args: {
     });
   }
 
+  // pg-boss `insert` is bulk-friendly; we still chunk for Postgres parameter limits.
   for (let i = 0; i < jobs.length; i += 1000) {
-    await sendQueue().addBulk(jobs.slice(i, i + 1000));
+    await enqueueSend(jobs.slice(i, i + 1000).map((j) => j.data));
   }
 
   // ── 7) Move to SENDING ────────────────────────────────────────────────────
@@ -184,11 +185,7 @@ export async function cancelCampaign(campaignId: string) {
     where: { campaignId, status: "QUEUED" },
     data:  { status: "FAILED", errorMessage: "campaign cancelled" },
   });
-  // Drain by removing jobs whose data.campaignId matches. BullMQ doesn't have a native filter
-  // by data, so we scan and remove. For large queues this is O(N) — fine for cancellation.
-  const queue = sendQueue();
-  const jobs = await queue.getJobs(["wait", "delayed", "active", "paused"]);
-  for (const j of jobs) {
-    if (j.data.campaignId === campaignId) await j.remove();
-  }
+  // Drain pg-boss of any queued sends for this campaign. Already-active jobs see the
+  // FAILED status set above on Send and short-circuit inside the worker.
+  await cancelCampaignSends(campaignId);
 }

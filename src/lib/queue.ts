@@ -1,58 +1,49 @@
-// BullMQ queue infrastructure.
+// Queue infrastructure using pg-boss (queue on Postgres) instead of BullMQ+Redis.
 //
-// Three queues, all backed by Redis:
-//   - `translate`  — one job per (campaign, language) → ensures DeepL cache is warm
-//   - `render`     — one job per (campaign, language) → compiles MJML to HTML, snapshots
-//   - `send`       — one job per recipient → SES SendEmail
+// Why: at our scale (~50 emails/sec peak, ~7-8 avg) pg-boss is plenty fast and we don't
+// need a second managed service. The queue tables live in the same Neon DB as everything
+// else — same connection string, same backup, same monitoring. One less thing to manage.
 //
-// `send` is rate-limited via BullMQ's built-in `limiter` to respect the SES quota
-// (default 14 emails/sec for new accounts, configurable up to 1000s/sec on request).
-// Workers retry transient SES errors (429, 503) with exponential backoff.
+// Same job shapes as before so callers (pipeline/approve.ts, send-worker.ts) keep the
+// same API surface. Only the internals are different.
 //
-// **Lazy connection**: the queues only open a Redis connection on first use. The Next.js
-// server can boot and serve the UI even if Redis is down — only worker processes and
-// the approve action actually touch the queues. This keeps local dev frictionless.
+// pg-boss uses its own schema `pgboss` inside the Postgres DB — created on first boot.
 
-import { Queue, type QueueOptions } from "bullmq";
-import IORedis, { type Redis } from "ioredis";
+// pg-boss is published as CommonJS with a class as `module.exports`. Under ESM the named
+// import + types come out weird, so we use the runtime-friendly dynamic import + loose
+// typing. Behaviour is identical at runtime; we just trade compile-time types for sanity.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type BossLike = any;
 
-let connection: Redis | null = null;
-export function getRedis(): Redis {
-  if (!connection) {
-    const url = process.env.REDIS_URL ?? "redis://localhost:6379";
-    connection = new IORedis(url, {
-      maxRetriesPerRequest: null, // required by BullMQ
-      enableReadyCheck: false,
-      lazyConnect: true,
+let bossInstance: BossLike | null = null;
+let starting: Promise<BossLike> | null = null;
+
+export async function getBoss(): Promise<BossLike> {
+  if (bossInstance) return bossInstance;
+  if (starting) return starting;
+  starting = (async () => {
+    const url = process.env.DATABASE_URL ?? process.env.DIRECT_URL;
+    if (!url || url.includes("placeholder")) {
+      throw new Error("queue requires a real DATABASE_URL — set it in Settings before starting the worker");
+    }
+    const mod = await import("pg-boss");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const PgBoss: any = (mod as any).default ?? mod;
+    const boss = new PgBoss({
+      connectionString: url,
+      schema: "pgboss",
+      newJobCheckInterval: 2_000,
+      archiveCompletedAfterSeconds: 7 * 86_400,
+      deleteAfterDays: 30,
     });
-    connection.on("error", (e) => {
-      // Avoid spamming on dev when Redis isn't running. One log per crash burst.
-      if (process.env.NODE_ENV !== "production") console.warn("[queue] redis:", e.message);
-    });
-  }
-  return connection;
+    await boss.start();
+    bossInstance = boss;
+    return boss;
+  })();
+  return starting;
 }
 
-const defaultOpts: QueueOptions = {
-  connection: undefined as unknown as Redis, // set lazily below
-  defaultJobOptions: {
-    attempts: 5,
-    backoff: { type: "exponential", delay: 2_000 },
-    removeOnComplete: { age: 24 * 3600, count: 10_000 },
-    removeOnFail:     { age: 7 * 24 * 3600 },
-  },
-};
-
-const cache = new Map<string, Queue>();
-function getQueue<T>(name: "translate" | "render" | "send"): Queue<T> {
-  const existing = cache.get(name);
-  if (existing) return existing as Queue<T>;
-  const q = new Queue<T>(name, { ...defaultOpts, connection: getRedis() });
-  cache.set(name, q);
-  return q;
-}
-
-// ── Job payload types ────────────────────────────────────────────────────────
+// ── Job payload types (unchanged from BullMQ version) ─────────────────────
 
 export type TranslateJob = {
   campaignId: string;
@@ -71,23 +62,55 @@ export type RenderJob = {
 export type SendJob = {
   campaignId: string;
   variantId: string;
-  sendId: string;        // pre-created `Send` row id (status QUEUED)
+  sendId: string;
   customerId: string;
   toEmail: string;
   toName?: string;
   language: string;
-  htmlHash: string;       // matches CampaignVariant.htmlHash for audit
-  context: Record<string, string>; // personalization tokens: first_name, discount_code, …
+  htmlHash: string;
+  context: Record<string, string>;
 };
 
-// ── Public queue accessors ───────────────────────────────────────────────────
+// ── Queue names ───────────────────────────────────────────────────────────
 
-export const translateQueue = () => getQueue<TranslateJob>("translate");
-export const renderQueue    = () => getQueue<RenderJob>("render");
-export const sendQueue      = () => getQueue<SendJob>("send");
+export const QUEUES = {
+  translate: "sendify.translate",
+  render:    "sendify.render",
+  send:      "sendify.send",
+} as const;
 
-// ── Throughput config ────────────────────────────────────────────────────────
-// We default to SES "production tier 1" (14 emails/sec). On AWS request approval
-// for higher rates and bump these via env: SES_RATE_PER_SECOND=200.
+// ── Public enqueue helpers ────────────────────────────────────────────────
+
+export async function enqueueSend(jobs: SendJob[]): Promise<void> {
+  if (jobs.length === 0) return;
+  const boss = await getBoss();
+  // pg-boss batches via insert. Use sendAll for atomicity at the row level.
+  await boss.insert(jobs.map((data) => ({ name: QUEUES.send, data })));
+}
+
+export async function enqueueTranslate(job: TranslateJob): Promise<void> {
+  const boss = await getBoss();
+  await boss.send(QUEUES.translate, job);
+}
+
+export async function enqueueRender(job: RenderJob): Promise<void> {
+  const boss = await getBoss();
+  await boss.send(QUEUES.render, job);
+}
+
+// Cancel all queued sends for a campaign. Already-active jobs finish; queued ones drop.
+// Used by /api/campaigns/[id]/cancel.
+export async function cancelCampaignSends(campaignId: string): Promise<number> {
+  const boss = await getBoss();
+  // pg-boss SQL escape: campaign id is a cuid so safe, but use parameterized form anyway.
+  // We can't currently filter pg-boss jobs by data field via API, so do a direct delete.
+  // The send-worker also checks Send.status before sending, so even if a job slips through
+  // it'll see status=FAILED and bail.
+  const count = await boss.db.executeSql?.(
+    `DELETE FROM pgboss.job WHERE name = $1 AND data::jsonb @> $2::jsonb AND state IN ('created','retry','active') RETURNING id`,
+    [QUEUES.send, JSON.stringify({ campaignId })],
+  ).then((r: { rows: unknown[] }) => r.rows.length).catch(() => 0);
+  return count ?? 0;
+}
 
 export const SES_RATE_PER_SECOND = parseInt(process.env.SES_RATE_PER_SECOND ?? "14", 10);

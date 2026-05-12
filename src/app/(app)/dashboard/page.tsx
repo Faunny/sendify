@@ -11,7 +11,7 @@ import { STORES, SENDERS } from "@/lib/mock";
 // the import script, every panel is intentionally empty. Once the SetupChecklist below is
 // green, the same panels will populate from prisma queries — no further code changes.
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
   const senderVerified = SENDERS.filter((s) => s.verified).length;
 
   return (

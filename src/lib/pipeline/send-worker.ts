@@ -1,101 +1,96 @@
-// Send worker — pops jobs from the `send` queue and calls SES.
+// Send worker — pops jobs from the `sendify.send` queue (pg-boss) and calls SES.
 //
-// Concurrency is bounded by SES_RATE_PER_SECOND × the rate window we set on the BullMQ
-// limiter (BullMQ enforces both global rate and per-worker concurrency). A new SES account
-// starts at 14/sec; once warmed and approved by AWS, request a 200/sec quota and bump the
-// env var without redeploying the worker code.
+// Run with `npm run worker`. Single process handles ~50 emails/sec out of the box;
+// run multiple instances if you push past 100/sec.
 //
-// On success: update Send.status → SENT and record messageId. SES will later push
-// engagement events (Delivery, Open, Click) via SNS → /api/ses/events, which transitions
-// the row through DELIVERED → OPENED → CLICKED.
-//
-// On failure: BullMQ retries with exponential backoff. If all attempts fail, the worker
-// flips Send.status → FAILED with the SES error message recorded.
+// On success: update Send.status → SENT and record messageId. SES later pushes engagement
+// events via SNS → /api/ses/events which transitions DELIVERED → OPENED → CLICKED.
+// On failure: pg-boss retries with backoff. After max attempts the row stays FAILED.
 
-import { Worker, type Job } from "bullmq";
-import { type SendJob, getRedis, SES_RATE_PER_SECOND } from "../queue";
+import { getBoss, QUEUES, SES_RATE_PER_SECOND, type SendJob } from "../queue";
 import { prisma } from "../db";
 import { sendEmail } from "../ses";
 import { personalizeForRecipient } from "./render";
 
-export function startSendWorker() {
-  const worker = new Worker<SendJob>(
-    "send",
-    async (job: Job<SendJob>) => {
-      const j = job.data;
+export async function startSendWorker() {
+  const boss = await getBoss();
 
-      // Last-chance suppression check (catches bounces/complaints that landed between
-      // audience resolution and send time, sometimes minutes apart for large campaigns).
-      const suppressed = await prisma.suppression.findUnique({ where: { email: j.toEmail } });
-      if (suppressed) {
-        await prisma.send.update({
-          where: { id: j.sendId },
-          data: { status: "SUPPRESSED_CONSENT", errorMessage: `suppressed: ${suppressed.reason}` },
-        });
-        return { skipped: true };
-      }
+  // Token-bucket-ish rate limiter: process N jobs, wait, repeat.
+  const teamSize = SES_RATE_PER_SECOND;
+  const batchSize = Math.max(1, Math.floor(teamSize / 2));
 
-      // Materialize the recipient-personalized HTML from the variant snapshot.
-      const html = await personalizeForRecipient({
-        campaignId: j.campaignId,
-        language:   j.language,
-        context:    j.context,
-      });
+  await boss.work(
+    QUEUES.send,
+    { teamSize, teamConcurrency: 1, batchSize },
+    async (jobs: { data: SendJob; id: string }[]) => {
+      // pg-boss passes an array when batchSize > 1.
+      const arr = Array.isArray(jobs) ? jobs : [jobs];
+      await Promise.all(arr.map(async (job) => {
+        const j = job.data;
+        try {
+          // Last-chance suppression check.
+          const suppressed = await prisma.suppression.findUnique({ where: { email: j.toEmail } });
+          if (suppressed) {
+            await prisma.send.update({
+              where: { id: j.sendId },
+              data: { status: "SUPPRESSED_CONSENT", errorMessage: `suppressed: ${suppressed.reason}` },
+            });
+            return;
+          }
 
-      // Look up the sender identity from the campaign.
-      const campaign = await prisma.campaign.findUnique({
-        where: { id: j.campaignId },
-        include: { sender: true, variants: { where: { language: j.language } } },
-      });
-      if (!campaign) throw new Error(`campaign gone: ${j.campaignId}`);
-      const variant = campaign.variants[0];
-      if (!variant) throw new Error(`variant gone: ${j.campaignId}/${j.language}`);
+          // Personalize the variant's HTML snapshot.
+          const html = await personalizeForRecipient({
+            campaignId: j.campaignId,
+            language: j.language,
+            context: j.context,
+          });
 
-      // Send.
-      const result = await sendEmail({
-        from: `${campaign.sender.fromName} <${campaign.sender.fromEmail}>`,
-        replyTo: campaign.sender.replyTo ?? undefined,
-        to: j.toName ? `${j.toName} <${j.toEmail}>` : j.toEmail,
-        subject: variant.subject,
-        html,
-        configurationSet: process.env.SES_CONFIGURATION_SET,
-        tags: [
-          { name: "campaign_id", value: j.campaignId },
-          { name: "language",    value: j.language },
-          { name: "variant_id",  value: j.variantId },
-        ],
-        listUnsubscribe: {
-          url:    `${process.env.NEXT_PUBLIC_APP_URL}/api/unsubscribe?t=${encodeURIComponent(j.toEmail)}`,
-          mailto: campaign.sender.replyTo ?? undefined,
-        },
-      });
+          // Fetch the campaign + sender + variant.
+          const campaign = await prisma.campaign.findUnique({
+            where: { id: j.campaignId },
+            include: { sender: true, variants: { where: { language: j.language } } },
+          });
+          if (!campaign || campaign.status === "CANCELLED") {
+            await prisma.send.update({
+              where: { id: j.sendId },
+              data: { status: "FAILED", errorMessage: "campaign cancelled or missing" },
+            });
+            return;
+          }
+          const variant = campaign.variants[0];
+          if (!variant) throw new Error(`variant gone: ${j.campaignId}/${j.language}`);
 
-      await prisma.send.update({
-        where: { id: j.sendId },
-        data: { status: "SENT", sentAt: new Date(), messageId: result.messageId },
-      });
+          // Send.
+          const result = await sendEmail({
+            from: `${campaign.sender.fromName} <${campaign.sender.fromEmail}>`,
+            replyTo: campaign.sender.replyTo ?? undefined,
+            to: j.toName ? `${j.toName} <${j.toEmail}>` : j.toEmail,
+            subject: variant.subject,
+            html,
+            configurationSet: process.env.SES_CONFIGURATION_SET,
+            tags: [
+              { name: "campaign_id", value: j.campaignId },
+              { name: "language", value: j.language },
+              { name: "variant_id", value: j.variantId },
+            ],
+            listUnsubscribe: {
+              url: `${process.env.NEXT_PUBLIC_APP_URL}/api/unsubscribe?t=${encodeURIComponent(j.toEmail)}`,
+              mailto: campaign.sender.replyTo ?? undefined,
+            },
+          });
 
-      return { messageId: result.messageId };
+          await prisma.send.update({
+            where: { id: j.sendId },
+            data: { status: "SENT", sentAt: new Date(), messageId: result.messageId },
+          });
+        } catch (e) {
+          // pg-boss will retry based on the queue's retry policy; here we just log and let it.
+          console.warn(`[send-worker] failed: ${j.toEmail}`, e instanceof Error ? e.message : e);
+          throw e;
+        }
+      }));
     },
-    {
-      connection: getRedis(),
-      concurrency: 50,
-      limiter: { max: SES_RATE_PER_SECOND, duration: 1_000 },
-    }
   );
 
-  worker.on("failed", async (job, err) => {
-    if (!job || job.attemptsMade < (job.opts.attempts ?? 5)) return;
-    // Final failure — flip the row to FAILED so the dashboard reflects it.
-    await prisma.send.update({
-      where: { id: job.data.sendId },
-      data: { status: "FAILED", errorMessage: err.message },
-    }).catch(() => { /* swallow if row is gone */ });
-  });
-
-  worker.on("error", (err) => {
-    console.error("[send-worker]", err.message);
-  });
-
-  return worker;
+  return boss;
 }

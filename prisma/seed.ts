@@ -1,142 +1,142 @@
 /**
  * Sendify seed.
  *
- * Boots a development DB with the 4 Divain stores, their senders, the 22 enabled languages,
- * the brand glossary skeleton, the promotional calendar, a handful of segments,
- * and a few sample campaigns in different statuses so the UI is alive on first run.
+ * Boots the DB with the 4 real divain Shopify Plus stores + their 4 SES sender identities
+ * + the 22 enabled languages glossary skeleton + the 4 product pillars. Nothing else is
+ * seeded — campaigns/customers/products come from real Shopify webhooks + Klaviyo import.
  *
- * Run: `npm run db:seed`
+ * Run: `npm run db:seed` (or `tsx prisma/seed.ts` with DATABASE_URL pointing at Neon).
+ * Idempotent: safe to re-run, upserts on slug/email/name.
  */
 import { PrismaClient } from "@prisma/client";
 import { LANGUAGES } from "../src/lib/languages";
-import { STORES, SENDERS, SEGMENTS, PROMOTIONS, CAMPAIGNS } from "../src/lib/mock";
+import { STORES, SENDERS } from "../src/lib/mock";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("→ Seeding admin user");
+  console.log("▶ Seeding Sendify production data");
+
+  console.log("→ Admin user (Faun)");
   const admin = await prisma.user.upsert({
-    where: { email: "faun@divainparfums.com" },
-    update: {},
+    where: { email: "faun.de@divainteam.com" },
+    update: { name: "Faun", role: "ADMIN" },
     create: {
-      email: "faun@divainparfums.com",
+      email: "faun.de@divainteam.com",
       name: "Faun",
       role: "ADMIN",
     },
   });
 
-  console.log("→ Seeding stores");
+  console.log("→ 4 Shopify Plus stores (divain · Europa, UK, USA+CA, México)");
+  const storeIds = new Map<string, string>(); // slug → real DB id
   for (const s of STORES) {
-    await prisma.store.upsert({
+    const row = await prisma.store.upsert({
       where: { slug: s.slug },
-      update: {},
+      update: {
+        name: s.name,
+        shopifyDomain: s.shopifyDomain,
+        storefrontUrl: s.storefrontUrl,
+        countryCode: s.countryCode,
+        defaultLanguage: s.defaultLanguage,
+        currency: s.currency,
+        markets: s.markets,
+        legalName: s.legal.legalName,
+        vatNumber: s.legal.vatNumber,
+        legalAddress: s.legal.address,
+        legalPostalCode: s.legal.postalCode,
+        legalCity: s.legal.city,
+        legalCountry: s.legal.country,
+        supportEmail: s.legal.supportEmail,
+        supportPhone: s.legal.supportPhone,
+        privacyUrl: s.legal.privacyUrl,
+        termsUrl: s.legal.termsUrl,
+        cookiesUrl: s.legal.cookiesUrl,
+        brandPalette: s.brand.palette,
+        brandFontHeading: s.brand.fontHeading,
+        brandFontBody: s.brand.fontBody,
+      },
       create: {
         slug: s.slug,
         name: s.name,
         shopifyDomain: s.shopifyDomain,
         shopifyAccessToken: "REPLACE_ME",
+        storefrontUrl: s.storefrontUrl,
         countryCode: s.countryCode,
         defaultLanguage: s.defaultLanguage,
         currency: s.currency,
-        productCount: s.productCount,
+        markets: s.markets,
+        legalName: s.legal.legalName,
+        vatNumber: s.legal.vatNumber,
+        legalAddress: s.legal.address,
+        legalPostalCode: s.legal.postalCode,
+        legalCity: s.legal.city,
+        legalCountry: s.legal.country,
+        supportEmail: s.legal.supportEmail,
+        supportPhone: s.legal.supportPhone,
+        privacyUrl: s.legal.privacyUrl,
+        termsUrl: s.legal.termsUrl,
+        cookiesUrl: s.legal.cookiesUrl,
+        brandPalette: s.brand.palette,
+        brandFontHeading: s.brand.fontHeading,
+        brandFontBody: s.brand.fontBody,
       },
     });
+    storeIds.set(s.id, row.id);
+    console.log(`   ✓ ${row.name}  →  ${row.legalName}`);
   }
 
-  console.log("→ Seeding senders");
+  console.log("→ 4 SES sender identities");
   for (const sn of SENDERS) {
-    const store = await prisma.store.findUnique({ where: { slug: STORES.find((s) => s.id === sn.storeId)!.slug } });
-    if (!store) continue;
+    const storeRealId = storeIds.get(sn.storeId);
+    if (!storeRealId) continue;
     await prisma.sender.upsert({
       where: { fromEmail: sn.fromEmail },
-      update: {},
+      update: {
+        storeId: storeRealId,
+        name: `${sn.fromName} <${sn.fromEmail}>`,
+        fromName: sn.fromName,
+        provider: sn.provider,
+        dailyCap: sn.dailyCap,
+        warmupTargetPerDay: sn.warmupTargetPerDay,
+      },
       create: {
-        storeId: store.id,
+        storeId: storeRealId,
         name: `${sn.fromName} <${sn.fromEmail}>`,
         fromEmail: sn.fromEmail,
         fromName: sn.fromName,
         provider: sn.provider,
         dailyCap: sn.dailyCap,
-        verified: sn.verified,
-        dkimVerified: sn.verified,
-        spfVerified: sn.verified,
-        dmarcVerified: sn.verified,
+        warmupTargetPerDay: sn.warmupTargetPerDay,
+        verified: false, // user verifies DKIM/SPF/DMARC in AWS SES
       },
     });
+    console.log(`   ✓ ${sn.fromName}  →  ${sn.fromEmail}`);
   }
 
-  console.log("→ Seeding glossary");
+  console.log("→ Brand glossary skeleton (empty pairs, to be filled per-language)");
   await prisma.glossary.upsert({
     where: { name: "divain-brand" },
     update: {},
     create: {
       name: "divain-brand",
       pairs: {
-        doNotTranslate: ["Divain", "Divain Parfums", "Divain Care", "100ml", "EDP", "EDT"],
-        "es-ES": { fragrance: "fragancia", "long-lasting": "larga duración", "free shipping": "envío gratis" },
-        "fr-FR": { fragrance: "parfum", "long-lasting": "longue tenue", "free shipping": "livraison offerte" },
-        "de-DE": { fragrance: "Duft", "long-lasting": "lang anhaltend", "free shipping": "Gratisversand" },
-        "it-IT": { fragrance: "fragranza", "long-lasting": "lunga durata", "free shipping": "spedizione gratuita" },
-        "pt-PT": { fragrance: "perfume", "long-lasting": "longa duração", "free shipping": "envio gratuito" },
+        doNotTranslate: ["Divain", "divain.", "Divain Parfums", "100ml", "EDP", "EDT", "PARFUMS", "CARE", "HOME", "RITUAL"],
       },
     },
   });
+  console.log("   ✓ glossary divain-brand created (preserves brand terms across 22 languages)");
 
-  console.log("→ Seeding promotional calendar");
-  for (const p of PROMOTIONS) {
-    await prisma.promotion.create({
-      data: {
-        name: p.name,
-        kind: p.kind,
-        dateByCountry: p.dateByCountry,
-        active: true,
-      },
-    });
-  }
-
-  console.log("→ Seeding segments");
-  for (const s of SEGMENTS) {
-    const storeSlug = STORES.find((x) => x.id === s.storeId)!.slug;
-    const store = await prisma.store.findUnique({ where: { slug: storeSlug } });
-    if (!store) continue;
-    await prisma.segment.create({
-      data: {
-        storeId: store.id,
-        name: s.name,
-        description: s.description,
-        rules: { dummy: true },
-        estimatedSize: s.size,
-      },
-    });
-  }
-
-  console.log("→ Seeding sample campaigns");
-  for (const c of CAMPAIGNS) {
-    const storeSlug = STORES.find((x) => x.id === c.storeId)!.slug;
-    const store = await prisma.store.findUnique({ where: { slug: storeSlug } });
-    if (!store) continue;
-    const sender = await prisma.sender.findFirst({ where: { storeId: store.id } });
-    if (!sender) continue;
-
-    await prisma.campaign.create({
-      data: {
-        storeId: store.id,
-        senderId: sender.id,
-        name: c.name,
-        subject: c.subject,
-        status: c.status,
-        scheduledFor: new Date(c.scheduledFor),
-        segmentIds: [],
-        excludeAppRecent: true,
-        estimatedRecipients: c.audience,
-        estimatedCost: c.estimatedCost,
-        actualCost: c.openRate ? c.estimatedCost : 0,
-      },
-    });
-  }
-
-  console.log(`✓ Seed complete. Admin: ${admin.email}`);
-  console.log(`  ${LANGUAGES.length} languages, ${STORES.length} stores, ${SENDERS.length} senders, ${PROMOTIONS.length} promotions, ${SEGMENTS.length} segments, ${CAMPAIGNS.length} campaigns.`);
+  console.log(`\n✓ Seed complete`);
+  console.log(`  Admin:     ${admin.email}`);
+  console.log(`  Stores:    ${STORES.length}`);
+  console.log(`  Senders:   ${SENDERS.length}`);
+  console.log(`  Languages: ${LANGUAGES.length} (loaded from src/lib/languages.ts, not stored in DB)`);
+  console.log(`\nWhat's NOT seeded (real data only):`);
+  console.log(`  - Campaigns       → create from /campaigns/new`);
+  console.log(`  - Customers       → import from Klaviyo CSV (npm run import:klaviyo) or Shopify sync`);
+  console.log(`  - Products        → sync from Shopify webhooks`);
+  console.log(`  - Promotions      → push from your external calendar via webhook`);
 }
 
 main()

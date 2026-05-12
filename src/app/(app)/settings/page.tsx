@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Building2, Check, ChevronRight, ExternalLink, Key, Languages, Mail, Plug, Plus, ShieldCheck, Users, Webhook } from "lucide-react";
+import { CredentialCard } from "@/components/app/credential-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -112,6 +113,16 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
+                  <CredentialCard
+                    provider="SHOPIFY"
+                    scope={s.slug}
+                    title="Shopify Plus access token"
+                    hint={`Custom App → Admin API access token para ${s.shopifyDomain}`}
+                    detail="Scopes mínimos: read_customers, read_orders, read_products, read_checkouts, read_marketing_events. Crea una Custom App en Shopify Admin → Settings → Apps and sales channels → Develop apps."
+                    helpUrl={`https://${s.shopifyDomain}/admin/settings/apps/development`}
+                    helpUrlLabel="Crear Custom App en Shopify →"
+                  />
+
                   <div className="rounded-md border border-border bg-card/40 p-3 space-y-1.5">
                     <div className="flex items-center justify-between">
                       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Legal entity (footer)</div>
@@ -181,10 +192,101 @@ export default function SettingsPage() {
 
         {/* ─── Integrations ─── */}
         <TabsContent value="integrations">
-          <Card className="mb-3">
+          <div className="space-y-4">
+
+            {/* Translation engine: choose between DeepSeek (cheap, default), OpenAI, DeepL */}
+            <section>
+              <h2 className="text-[13px] font-medium mb-1">Traducción</h2>
+              <p className="text-[11px] text-muted-foreground mb-3">Sendify usa el primer engine configurado. Para cambiar, sube una credencial nueva o elimina la actual. La traducción se cachea, así que pagas por carácter sólo la primera vez.</p>
+              <div className="grid gap-3">
+                <CredentialCard
+                  provider="TRANSLATION_DEEPSEEK"
+                  title="DeepSeek"
+                  hint="Recomendado · ~$0.14/1M tokens input · LLM rápido para traducción comercial"
+                  detail="API compatible con OpenAI. Modelo por defecto: deepseek-chat."
+                  helpUrl="https://platform.deepseek.com/api_keys"
+                  helpUrlLabel="Conseguir API key →"
+                />
+                <CredentialCard
+                  provider="TRANSLATION_OPENAI"
+                  title="OpenAI"
+                  hint="Alternativa · gpt-4o-mini por defecto · más caro pero más fiable en idiomas raros"
+                  detail="Misma key vale para Image (DALL-E) y Review (GPT-4 commercial copy)."
+                  helpUrl="https://platform.openai.com/api-keys"
+                  helpUrlLabel="Conseguir API key →"
+                />
+                <CredentialCard
+                  provider="TRANSLATION_DEEPL"
+                  title="DeepL Pro"
+                  hint="Legacy · sólo si lo prefieres explícitamente"
+                  helpUrl="https://www.deepl.com/pro-api"
+                  helpUrlLabel="Cuenta DeepL Pro →"
+                />
+              </div>
+            </section>
+
+            {/* AI image generation */}
+            <section>
+              <h2 className="text-[13px] font-medium mb-1">Generación de imágenes AI</h2>
+              <p className="text-[11px] text-muted-foreground mb-3">Para crear banners y heros desde el builder. Gemini 2.5 Flash Image (Nano Banana) es la primera opción; DALL-E (vía OpenAI) como fallback.</p>
+              <div className="grid gap-3">
+                <CredentialCard
+                  provider="IMAGE_GEMINI"
+                  title="Google Gemini 2.5 Flash Image (Nano Banana)"
+                  hint="$0.04 por imagen · paleta de marca divain inyectada automáticamente"
+                  detail="Free tier disponible para empezar. Soporta 1:1, 3:2, 16:9, 9:16."
+                  helpUrl="https://aistudio.google.com/apikey"
+                  helpUrlLabel="Conseguir API key (gratis) →"
+                />
+                <CredentialCard
+                  provider="IMAGE_OPENAI"
+                  title="OpenAI · DALL-E"
+                  hint="Fallback · ~$0.04/image (DALL-E 3)"
+                  detail="Si ya pegaste OPENAI arriba, no hace falta repetirla aquí — es la misma."
+                  helpUrl="https://platform.openai.com/api-keys"
+                />
+              </div>
+            </section>
+
+            {/* Commercial copy review */}
+            <section>
+              <h2 className="text-[13px] font-medium mb-1">Revisión de copy comercial (opcional)</h2>
+              <p className="text-[11px] text-muted-foreground mb-3">Una pasada de GPT-4 sobre el texto traducido para ajustar tono y eliminar claims problemáticos antes de aprobar. Recomendado para campañas con descuentos fuertes.</p>
+              <div className="grid gap-3">
+                <CredentialCard
+                  provider="REVIEW_OPENAI"
+                  title="OpenAI GPT-4 · tone review"
+                  hint="Revisa el copy traducido antes de aprobar. Detecta claims y suaviza tono"
+                  helpUrl="https://platform.openai.com/api-keys"
+                />
+              </div>
+            </section>
+
+            {/* Compliance / webhook secrets */}
+            <section>
+              <h2 className="text-[13px] font-medium mb-1">Secretos de webhooks</h2>
+              <p className="text-[11px] text-muted-foreground mb-3">HMAC para firmar tráfico entrante de proyectos externos. Genera uno aleatorio y configúralo en ambos lados.</p>
+              <div className="grid gap-3">
+                <CredentialCard
+                  provider="PROMOTIONS_WEBHOOK_SECRET"
+                  title="Promotions webhook secret"
+                  hint="Tu proyecto externo de calendario firma cada POST /api/promotions/webhook con HMAC-SHA256 usando este secreto"
+                />
+                <CredentialCard
+                  provider="SNS_WEBHOOK_SECRET"
+                  title="SNS / SES events secret"
+                  hint="Validación de los eventos SES → SNS → /api/ses/events"
+                />
+              </div>
+            </section>
+
+          </div>
+
+          {/* ── Promotion source webhook details (legacy block, kept for reference) ── */}
+          <Card className="mt-6">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2"><Webhook className="h-3.5 w-3.5 text-[color:var(--accent)]" /> Promotion source</CardTitle>
-              <CardDescription>Your upstream calendar tool pushes promotion upserts here. Sendify mirrors them and auto-drafts a campaign N days before each date.</CardDescription>
+              <CardTitle className="flex items-center gap-2"><Webhook className="h-3.5 w-3.5 text-[color:var(--accent)]" /> Promotion source endpoint</CardTitle>
+              <CardDescription>Tu proyecto externo hace POST aquí para crear/actualizar promociones. Sendify las refleja y auto-drafta una campaña N días antes de cada fecha.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 pt-0">
               <div className="rounded-md border border-border bg-card/40 p-3">
@@ -240,56 +342,14 @@ X-Sendify-Signature: sha256=<hmac>
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <Integration
-              name="Amazon SES"
-              hint="eu-west-1 · 670k/day requested"
-              status="action"
-              detail="Verifica los 4 dominios sender (divainparfums.com / .co.uk / .co / .mx) en AWS SES y configura el SNS topic para bounces/complaints"
-            />
-            <Integration
-              name="Shopify Plus (×4)"
-              hint="GraphQL Admin API · webhooks pendientes"
-              status="action"
-              detail="Conecta cada tienda Shopify Plus para sincronizar customers/orders/products en tiempo real. Webhooks: customers/update · orders/create · checkouts/update · products/update"
-            />
-            <Integration
-              name="DeepL Pro"
-              hint="Translation engine"
-              status="action"
-              detail="Necesita DEEPL_API_KEY. Crea glossary divain-brand para que respete tus términos en los 22 idiomas."
-            />
-            <Integration
-              name="Google Gemini 2.5 Flash Image"
-              hint="Aka Nano Banana — el motor de IA que genera los banners"
-              status="action"
-              detail="Saca tu API key gratis en aistudio.google.com/apikey y pégala como GEMINI_API_KEY en Vercel. $0.04 por imagen, paleta de marca inyectada automáticamente."
-            />
-            <Integration
-              name="Google Ads"
-              hint="Customer Match · audience read/write"
-              status="action"
-              detail="Refresh token expires in 4 days. Reauthorize."
-            />
-            <Integration
-              name="OpenAI"
-              hint="GPT-4 commercial copy review (opcional)"
-              status="disconnected"
-              detail="Si añades OPENAI_API_KEY, GPT-4 revisa el copy comercial post-DeepL para ajustar tono y claims antes de enviar."
-            />
-            <Integration
-              name="S3 + CloudFront"
-              hint="Asset CDN"
-              status="action"
-              detail="Provisiona el bucket sendify-assets y el CloudFront distribution con Terraform (infra/storage.tf). Se sirve en cdn.divain.space."
-            />
-            <Integration
-              name="Sentry"
-              hint="Error monitoring"
-              status="disconnected"
-              detail="Optional but recommended"
-            />
-          </div>
+          {/* AWS / Shopify / Google Ads viven en sus propios tabs porque tienen UIs más
+              ricas: Shopify necesita pegar 4 tokens uno por tienda y disparar la sync inicial,
+              SES necesita registros DNS por dominio, Google Ads necesita OAuth. */}
+          <Card className="mt-4 bg-card/40">
+            <CardContent className="p-4 text-[11px] text-muted-foreground">
+              <strong className="text-foreground">¿Buscas Shopify, AWS SES o Google Ads?</strong>  Tienen su propio tab arriba — necesitan más que una API key (tokens por tienda, verificación DNS, OAuth).
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* ─── Team ─── */}

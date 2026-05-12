@@ -680,6 +680,51 @@ model DiscountCode {
   @@index([customerEmail])
 }
 
+// ── Provider credentials (API keys configurable from Settings, encrypted at rest) ──
+//
+// Every external API key (Gemini, OpenAI, DeepSeek, Shopify per-store, AWS SES, etc.)
+// lives here instead of in env vars. The Settings UI reads/writes these so the user
+// can swap providers without redeploying. Values are AES-256-GCM encrypted using
+// AUTH_SECRET as the key; `valueIv` and `valueTag` stored alongside `valueEnc`.
+//
+// The `scope` field lets the same provider live for multiple stores (e.g. one
+// Shopify token per store). When scope is NULL the credential is global.
+
+enum ProviderType {
+  TRANSLATION_DEEPSEEK
+  TRANSLATION_OPENAI
+  TRANSLATION_DEEPL          // legacy fallback
+  IMAGE_GEMINI               // banner generation (Nano Banana)
+  IMAGE_OPENAI               // DALL-E fallback
+  REVIEW_OPENAI              // GPT-4 commercial copy review
+  SHOPIFY                    // scoped per store
+  AWS_SES                    // global
+  SNS_WEBHOOK_SECRET         // global
+  PROMOTIONS_WEBHOOK_SECRET  // global
+  S3                         // global
+  GOOGLE_ADS                 // global
+}
+
+model ProviderCredential {
+  id            String       @id @default(cuid())
+  provider      ProviderType
+  scope         String?      // store slug for SHOPIFY, NULL for globals
+  label         String?      // user-set, e.g. "DeepSeek prod"
+  valueEnc      String       @db.Text
+  valueIv       String
+  valueTag      String
+  active        Boolean      @default(true)
+  meta          Json?        // small extra config (model name, region, endpoint)
+  lastTestedAt  DateTime?
+  lastTestOk    Boolean?
+  lastTestError String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([provider, scope])
+  @@index([provider, active])
+}
+
 // ── Suppression list (cross-store: a bounce on one store suppresses everywhere) ─
 
 enum SuppressionReason {
