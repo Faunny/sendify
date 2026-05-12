@@ -113,14 +113,37 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
+                  <div className="rounded-md border border-[color:var(--accent)]/30 bg-[color-mix(in_oklch,var(--accent)_4%,transparent)] p-3 text-[11px] mb-2">
+                    <div className="font-medium text-foreground mb-1">📘 Cómo crear las credenciales en Shopify (3 min)</div>
+                    <ol className="space-y-0.5 list-decimal pl-4 text-muted-foreground">
+                      <li>Abre <a href={`https://${s.shopifyDomain}/admin/settings/apps/development`} target="_blank" className="text-[color:var(--accent)] underline">Settings → Apps and sales channels → Develop apps</a></li>
+                      <li>Allow custom app development (si es la primera vez)</li>
+                      <li><strong className="text-foreground">Create an app</strong> · nombre: &quot;Sendify&quot;</li>
+                      <li>Tab <strong className="text-foreground">Configuration</strong> → Admin API scopes → enable: <code className="text-[10px] bg-muted px-1 rounded">read_customers, read_orders, read_products, read_checkouts, read_marketing_events</code></li>
+                      <li><strong className="text-foreground">Install app</strong> · al instalar te muestra los tokens una vez (cópialos YA, después no se ven más)</li>
+                      <li>Pega el <strong className="text-foreground">Admin API access token</strong> (empieza por <code className="text-[10px] bg-muted px-1 rounded">shpat_</code>) en la primera caja de abajo</li>
+                      <li>Pega el <strong className="text-foreground">API secret key</strong> (de la sección API credentials) en la segunda caja</li>
+                    </ol>
+                    <div className="mt-2 text-[10px] text-muted-foreground">⚠️ NO uses Client ID + Client secret · esos son para apps públicas con OAuth, no para Custom Apps</div>
+                  </div>
+
                   <CredentialCard
                     provider="SHOPIFY"
                     scope={s.slug}
-                    title="Shopify Plus access token"
-                    hint={`Custom App → Admin API access token para ${s.shopifyDomain}`}
-                    detail="Scopes mínimos: read_customers, read_orders, read_products, read_checkouts, read_marketing_events. Crea una Custom App en Shopify Admin → Settings → Apps and sales channels → Develop apps."
+                    title="① Admin API access token"
+                    hint={`Empieza por shpat_… · llama a la API de Shopify para sync de customers + products`}
+                    detail="Token único que aparece una sola vez tras instalar la Custom App. Si no lo guardaste hay que rotar la app desde Shopify."
                     helpUrl={`https://${s.shopifyDomain}/admin/settings/apps/development`}
-                    helpUrlLabel="Crear Custom App en Shopify →"
+                    helpUrlLabel="Crear / ver mi Custom App →"
+                  />
+
+                  <CredentialCard
+                    provider="SHOPIFY"
+                    scope={`${s.slug}:webhook-secret`}
+                    title="② API secret key (HMAC webhooks)"
+                    hint="Para validar que los webhooks vienen realmente de Shopify (firma HMAC-SHA256)"
+                    detail="En API credentials de tu Custom App, sección 'API key and API secret key' → el secret. Sin esto los webhooks llegan pero no se validan (configurable con SHOPIFY_WEBHOOK_REQUIRE_HMAC=true)."
+                    helpUrl={`https://${s.shopifyDomain}/admin/settings/apps/development`}
                   />
 
                   <div className="rounded-md border border-border bg-card/40 p-3 space-y-1.5">
@@ -193,6 +216,25 @@ export default function SettingsPage() {
         {/* ─── Integrations ─── */}
         <TabsContent value="integrations">
           <div className="space-y-4">
+
+            <div className="rounded-md border border-border bg-card/40 p-4 text-[12px] leading-relaxed">
+              <div className="flex items-start gap-2.5">
+                <ShieldCheck className="h-4 w-4 text-[color:var(--positive)] shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-medium text-foreground mb-1">Cómo se guardan estas API keys</div>
+                  <p className="text-muted-foreground">
+                    Cada key que pegues abajo viaja por HTTPS desde tu browser hasta una función serverless de Vercel,
+                    que la encripta con <strong className="text-foreground">AES-256-GCM</strong> (usando AUTH_SECRET como master key) ANTES de guardarla en Neon.
+                    En el disco de Neon vive sólo el ciphertext en base64 · sin AUTH_SECRET es matemáticamente imposible descifrarla.
+                  </p>
+                  <p className="text-muted-foreground mt-1.5">
+                    <strong className="text-foreground">Lo que no veo yo</strong>: lo que pegues en los campos de abajo · va directo del browser al server sin pasar por mí.
+                    <strong className="text-foreground"> Lo que sí veo</strong>: cualquier cosa que escribas en el chat con texto plano.
+                    Recomendación: pega las keys SOLO aquí en Settings, nunca en el chat.
+                  </p>
+                </div>
+              </div>
+            </div>
 
             {/* Translation engine: choose between DeepSeek (cheap, default), OpenAI, DeepL */}
             <section>
