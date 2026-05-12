@@ -1,18 +1,33 @@
 // Amazon SES adapter. Real implementation uses SESv2 SendEmail with a configuration set
-// that ships engagement events to SNS → our /api/ses/events webhook. For now this is a thin
-// scaffold that mirrors the production interface so the rest of the app can call it.
+// that ships engagement events to SNS → our /api/ses/events webhook.
+//
+// Credentials are loaded from the credential store (encrypted at rest) — Access Key ID
+// in `value`, secret + region in `meta`. Falls back to AWS_* env vars for local dev.
 
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
+import { getCredential } from "./credentials";
 
-let client: SESv2Client | null = null;
-function getClient() {
-  if (!client) {
-    client = new SESv2Client({
-      region: process.env.AWS_REGION ?? "eu-west-1",
-    });
-  }
+let cached: { client: SESv2Client; loadedAt: number } | null = null;
+const CLIENT_TTL_MS = 30_000;
+
+async function getClient(): Promise<SESv2Client> {
+  if (cached && Date.now() - cached.loadedAt < CLIENT_TTL_MS) return cached.client;
+
+  const cred = await getCredential("AWS_SES");
+  const accessKeyId     = cred?.value ?? process.env.AWS_ACCESS_KEY_ID;
+  const secretAccessKey = (cred?.meta?.secret as string | undefined) ?? process.env.AWS_SECRET_ACCESS_KEY;
+  const region          = (cred?.meta?.region as string | undefined) ?? process.env.AWS_REGION ?? "eu-west-1";
+
+  const client = new SESv2Client({
+    region,
+    credentials: accessKeyId && secretAccessKey ? { accessKeyId, secretAccessKey } : undefined,
+  });
+  cached = { client, loadedAt: Date.now() };
   return client;
 }
+
+// Reset cache when the user updates the credential — called from the API route.
+export function invalidateSesClient() { cached = null; }
 
 export type SendArgs = {
   from: string;
@@ -28,7 +43,8 @@ export type SendArgs = {
 };
 
 export async function sendEmail(args: SendArgs) {
-  if (!process.env.AWS_ACCESS_KEY_ID) {
+  const cred = await getCredential("AWS_SES");
+  if (!cred && !process.env.AWS_ACCESS_KEY_ID) {
     // dev mode: don't actually hit SES
     return { messageId: `dev-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` };
   }
@@ -45,7 +61,7 @@ export async function sendEmail(args: SendArgs) {
     FromEmailAddress: args.from,
     Destination: { ToAddresses: [args.to] },
     ReplyToAddresses: args.replyTo ? [args.replyTo] : undefined,
-    ConfigurationSetName: args.configurationSet ?? process.env.SES_CONFIGURATION_SET,
+    ConfigurationSetName: args.configurationSet ?? (cred?.meta?.configurationSet as string | undefined) ?? process.env.SES_CONFIGURATION_SET,
     EmailTags: args.tags?.map((t) => ({ Name: t.name, Value: t.value })),
     Content: {
       Simple: {
@@ -59,6 +75,7 @@ export async function sendEmail(args: SendArgs) {
     },
   });
 
-  const res = await getClient().send(command);
+  const client = await getClient();
+  const res = await client.send(command);
   return { messageId: res.MessageId ?? "" };
 }

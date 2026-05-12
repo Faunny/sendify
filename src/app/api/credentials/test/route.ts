@@ -56,6 +56,22 @@ export async function POST(req: Request) {
         if (!ok) detail = `${res.status}: ${(await res.text()).slice(0, 120)}`;
         break;
       }
+      case "AWS_SES": {
+        // GetSendQuota is the cheapest SES call — confirms creds + region + sandbox status.
+        const { SESv2Client, GetAccountCommand } = await import("@aws-sdk/client-sesv2");
+        const secret = (cred.meta?.secret as string | undefined);
+        const region = (cred.meta?.region as string | undefined) ?? "eu-west-1";
+        if (!secret) { detail = "Secret access key missing in meta"; break; }
+        const client = new SESv2Client({ region, credentials: { accessKeyId: cred.value, secretAccessKey: secret } });
+        try {
+          const r = await client.send(new GetAccountCommand({}));
+          ok = true;
+          detail = `Production: ${!r.ProductionAccessEnabled ? "sandbox" : "ENABLED"} · 24h quota ${r.SendQuota?.Max24HourSend} · rate ${r.SendQuota?.MaxSendRate}/s`;
+        } catch (e) {
+          detail = e instanceof Error ? `${e.name}: ${e.message.slice(0, 140)}` : "SES call failed";
+        }
+        break;
+      }
       case "SHOPIFY": {
         if (!scope) { detail = "scope (store slug) required"; break; }
         // Skip secret-scope rows — they're tested implicitly through the Client ID row.

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Building2, Check, ChevronRight, ExternalLink, Key, Languages, Mail, Plug, Plus, ShieldCheck, Users, Webhook } from "lucide-react";
 import { CredentialCard } from "@/components/app/credential-card";
+import { AwsSesCard } from "@/components/app/aws-ses-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -231,6 +232,13 @@ export default function SettingsPage() {
                 </div>
               </div>
             </div>
+
+            {/* Email sending: Amazon SES (the actual sender of the 20M emails/mo) */}
+            <section>
+              <h2 className="text-[13px] font-medium mb-1">Envío de email · Amazon SES</h2>
+              <p className="text-[11px] text-muted-foreground mb-3">El IAM user con permisos <code>ses:SendEmail</code>. Se usa para todos los envíos, tests y warmup. Sin esto Sendify funciona en dev-mode (no se envían emails de verdad).</p>
+              <AwsSesCard />
+            </section>
 
             {/* Translation engine: choose between DeepSeek (cheap, default), OpenAI, DeepL */}
             <section>
