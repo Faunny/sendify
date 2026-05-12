@@ -5,7 +5,8 @@
   "description": "Custom email marketing platform for the Divain brand group. Klaviyo replacement built on Amazon SES with multi-language translation, Shopify Plus integration, design approval workflows, and per-country promotional automation.",
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "postinstall": "prisma generate",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
