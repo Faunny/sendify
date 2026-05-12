@@ -114,35 +114,32 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="rounded-md border border-[color:var(--accent)]/30 bg-[color-mix(in_oklch,var(--accent)_4%,transparent)] p-3 text-[11px] mb-2">
-                    <div className="font-medium text-foreground mb-1">📘 Cómo crear las credenciales en Shopify (3 min)</div>
+                    <div className="font-medium text-foreground mb-1">📘 Dónde encontrar Client ID + Client secret en Shopify</div>
                     <ol className="space-y-0.5 list-decimal pl-4 text-muted-foreground">
                       <li>Abre <a href={`https://${s.shopifyDomain}/admin/settings/apps/development`} target="_blank" className="text-[color:var(--accent)] underline">Settings → Apps and sales channels → Develop apps</a></li>
-                      <li>Allow custom app development (si es la primera vez)</li>
-                      <li><strong className="text-foreground">Create an app</strong> · nombre: &quot;Sendify&quot;</li>
-                      <li>Tab <strong className="text-foreground">Configuration</strong> → Admin API scopes → enable: <code className="text-[10px] bg-muted px-1 rounded">read_customers, read_orders, read_products, read_checkouts, read_marketing_events</code></li>
-                      <li><strong className="text-foreground">Install app</strong> · al instalar te muestra los tokens una vez (cópialos YA, después no se ven más)</li>
-                      <li>Pega el <strong className="text-foreground">Admin API access token</strong> (empieza por <code className="text-[10px] bg-muted px-1 rounded">shpat_</code>) en la primera caja de abajo</li>
-                      <li>Pega el <strong className="text-foreground">API secret key</strong> (de la sección API credentials) en la segunda caja</li>
+                      <li>Si no tienes la app: <strong className="text-foreground">Create an app</strong> · nombre &quot;Sendify&quot; · Configuration → API scopes → enable <code className="text-[10px] bg-muted px-1 rounded">read_customers, read_orders, read_products, read_checkouts, read_marketing_events</code> · Install</li>
+                      <li>Tab <strong className="text-foreground">API credentials</strong> → copia <strong className="text-foreground">Client ID</strong> y <strong className="text-foreground">Client secret</strong></li>
+                      <li>Pégalos abajo</li>
                     </ol>
-                    <div className="mt-2 text-[10px] text-muted-foreground">⚠️ NO uses Client ID + Client secret · esos son para apps públicas con OAuth, no para Custom Apps</div>
+                    <div className="mt-2 text-[10px] text-muted-foreground">Sendify usa OAuth client_credentials grant para canjear ambos por un access token automáticamente, lo cachea por tienda, y lo refresca cuando caduca. No tienes que tocar nada más.</div>
                   </div>
 
                   <CredentialCard
                     provider="SHOPIFY"
                     scope={s.slug}
-                    title="① Admin API access token"
-                    hint={`Empieza por shpat_… · llama a la API de Shopify para sync de customers + products`}
-                    detail="Token único que aparece una sola vez tras instalar la Custom App. Si no lo guardaste hay que rotar la app desde Shopify."
+                    title="① Client ID"
+                    hint={`API credentials → Client ID de la Custom App en ${s.shopifyDomain}`}
+                    detail="Identificador público de la app. Va junto con el Client secret en cada exchange OAuth."
                     helpUrl={`https://${s.shopifyDomain}/admin/settings/apps/development`}
-                    helpUrlLabel="Crear / ver mi Custom App →"
+                    helpUrlLabel="Ver mi Custom App →"
                   />
 
                   <CredentialCard
                     provider="SHOPIFY"
-                    scope={`${s.slug}:webhook-secret`}
-                    title="② API secret key (HMAC webhooks)"
-                    hint="Para validar que los webhooks vienen realmente de Shopify (firma HMAC-SHA256)"
-                    detail="En API credentials de tu Custom App, sección 'API key and API secret key' → el secret. Sin esto los webhooks llegan pero no se validan (configurable con SHOPIFY_WEBHOOK_REQUIRE_HMAC=true)."
+                    scope={`${s.slug}:secret`}
+                    title="② Client secret"
+                    hint="API credentials → Client secret de la misma Custom App"
+                    detail="Usado para (a) intercambiar por un access token via OAuth client_credentials, y (b) validar HMAC-SHA256 de los webhooks entrantes de Shopify."
                     helpUrl={`https://${s.shopifyDomain}/admin/settings/apps/development`}
                   />
 

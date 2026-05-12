@@ -1,37 +1,93 @@
 // Shopify Admin GraphQL client — one per store.
 //
-// Loads the per-store access token from ProviderCredential (scope = store slug). All
-// requests go straight to Shopify Admin API · 2025-01 stable version. Returns parsed
-// JSON or throws with the rate-limit / auth detail so the caller can react.
+// Authentication uses OAuth client_credentials. The user pegs the Client ID (scope =
+// store slug) and Client secret (scope = `${slug}:secret`) in Settings. This module
+// exchanges them for a short-lived access token at /admin/oauth/access_token and
+// caches it in-memory. On 401 we clear the cache and re-exchange — handles secret
+// rotation / token revocation transparently.
 //
-// Pagination is handled with cursor-based bulk queries (Shopify's preferred mode for
-// >50k rows). We accept a callback so the caller can stream rows into Postgres without
-// holding the full result set in memory — important for divain · Europa's ~1M customers.
+// Pagination uses cursor-based queries (Shopify's preferred mode). For huge stores
+// (1M+ rows) we'll switch to the Bulk Operations API later — until then, 250-row
+// pages are simple and fast enough.
 
 import { getCredential } from "../credentials";
 import { prisma } from "../db";
 
 export const SHOPIFY_API_VERSION = "2025-01";
 
-async function getStoreContext(storeSlug: string): Promise<{ token: string; shopifyDomain: string }> {
+// ── Access token cache ────────────────────────────────────────────────────
+// Tokens issued by client_credentials are typically short-lived. We cache per-store
+// in-memory until ~60s before expiry, then re-exchange. Cache is per process; multiple
+// instances will each do their own exchange, which is fine — exchange is cheap.
+
+type TokenEntry = { token: string; expiresAt: number };
+const tokenCache = new Map<string, TokenEntry>();
+
+function invalidateToken(storeSlug: string) {
+  tokenCache.delete(storeSlug);
+}
+
+async function exchangeClientCredentials(storeSlug: string): Promise<{ token: string; expiresAt: number; shopifyDomain: string }> {
   const store = await prisma.store.findUnique({ where: { slug: storeSlug } });
   if (!store) throw new Error(`Store with slug "${storeSlug}" not found`);
 
-  const cred = await getCredential("SHOPIFY", storeSlug);
-  if (!cred) throw new Error(`Shopify token not configured for ${storeSlug} · add it in Settings → Stores`);
+  const idCred = await getCredential("SHOPIFY", storeSlug);
+  if (!idCred) throw new Error(`Shopify Client ID not configured for ${storeSlug} · add it in Settings → Stores`);
+  const secretCred = await getCredential("SHOPIFY", `${storeSlug}:secret`);
+  if (!secretCred) throw new Error(`Shopify Client secret not configured for ${storeSlug} · add it in Settings → Stores`);
 
-  return { token: cred.value, shopifyDomain: store.shopifyDomain };
+  const res = await fetch(`https://${store.shopifyDomain}/admin/oauth/access_token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Accept": "application/json" },
+    body: JSON.stringify({
+      client_id: idCred.value,
+      client_secret: secretCred.value,
+      grant_type: "client_credentials",
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Shopify OAuth ${res.status}: ${body.slice(0, 300)}`);
+  }
+  const json = await res.json() as { access_token?: string; expires_in?: number };
+  if (!json.access_token) throw new Error("Shopify OAuth: missing access_token in response");
+
+  const ttlSec = typeof json.expires_in === "number" ? json.expires_in : 3600;
+  // Refresh 60s early so callers never get a token that expires mid-flight.
+  const expiresAt = Date.now() + Math.max(ttlSec - 60, 60) * 1000;
+  return { token: json.access_token, expiresAt, shopifyDomain: store.shopifyDomain };
 }
 
-// Generic GraphQL call. Returns the data.{queryName} payload, throws on errors.
+// Public — used by the webhook handler for HMAC verification.
+export async function getShopifyClientSecret(storeSlug: string): Promise<string> {
+  const cred = await getCredential("SHOPIFY", `${storeSlug}:secret`);
+  if (!cred) throw new Error(`Shopify Client secret not configured for ${storeSlug}`);
+  return cred.value;
+}
+
+async function getStoreContext(storeSlug: string): Promise<{ token: string; shopifyDomain: string }> {
+  const cached = tokenCache.get(storeSlug);
+  if (cached && cached.expiresAt > Date.now()) {
+    const store = await prisma.store.findUnique({ where: { slug: storeSlug }, select: { shopifyDomain: true } });
+    if (!store) throw new Error(`Store with slug "${storeSlug}" not found`);
+    return { token: cached.token, shopifyDomain: store.shopifyDomain };
+  }
+  const fresh = await exchangeClientCredentials(storeSlug);
+  tokenCache.set(storeSlug, { token: fresh.token, expiresAt: fresh.expiresAt });
+  return { token: fresh.token, shopifyDomain: fresh.shopifyDomain };
+}
+
+// Generic GraphQL call. Returns the data payload, throws on errors.
+// On 401 we clear the cached token and retry once — covers secret rotation.
 export async function shopifyGraphql<T = unknown>(
   storeSlug: string,
   query: string,
   variables: Record<string, unknown> = {},
 ): Promise<T> {
-  const { token, shopifyDomain } = await getStoreContext(storeSlug);
+  let { token, shopifyDomain } = await getStoreContext(storeSlug);
 
-  const res = await fetch(`https://${shopifyDomain}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
+  const fire = async () => fetch(`https://${shopifyDomain}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -40,6 +96,13 @@ export async function shopifyGraphql<T = unknown>(
     },
     body: JSON.stringify({ query, variables }),
   });
+
+  let res = await fire();
+  if (res.status === 401) {
+    invalidateToken(storeSlug);
+    ({ token, shopifyDomain } = await getStoreContext(storeSlug));
+    res = await fire();
+  }
 
   if (!res.ok) {
     const body = await res.text();

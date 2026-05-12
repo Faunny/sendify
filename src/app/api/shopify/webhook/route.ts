@@ -13,7 +13,7 @@
 import { NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/db";
-import { getCredential } from "@/lib/credentials";
+import { getShopifyClientSecret } from "@/lib/providers/shopify";
 
 // Webhook topics we subscribe to. The handler below routes based on the
 // `X-Shopify-Topic` header.
@@ -30,15 +30,15 @@ type Topic =
 
 async function verifyHmac(rawBody: string, signature: string | null, storeSlug: string): Promise<boolean> {
   if (!signature) return false;
-  // The webhook signing secret is stored separately from the access token. For Shopify
-  // Custom Apps, the secret is the app's "API secret key". Stored as scope=storeSlug + label=secret.
-  const cred = await getCredential("SHOPIFY", `${storeSlug}:webhook-secret`);
-  if (!cred) {
-    // Fall back to the access token — for some Custom App configs they're the same value.
-    // In production set the dedicated webhook secret to avoid this fallback.
+  // Shopify signs webhooks with the app's Client secret (same value the user pegs in
+  // Settings as "Client secret" — stored at scope `${storeSlug}:secret`).
+  let secret: string;
+  try {
+    secret = await getShopifyClientSecret(storeSlug);
+  } catch {
     return false;
   }
-  const expected = createHmac("sha256", cred.value).update(rawBody).digest("base64");
+  const expected = createHmac("sha256", secret).update(rawBody).digest("base64");
   const a = Buffer.from(expected);
   const b = Buffer.from(signature);
   if (a.length !== b.length) return false;

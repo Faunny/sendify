@@ -58,13 +58,18 @@ export async function POST(req: Request) {
       }
       case "SHOPIFY": {
         if (!scope) { detail = "scope (store slug) required"; break; }
+        // Skip secret-scope rows — they're tested implicitly through the Client ID row.
+        if (scope.endsWith(":secret")) {
+          ok = true;
+          detail = "Client secret stored — verified via Client ID test";
+          break;
+        }
         const store = await prisma.store.findUnique({ where: { slug: scope } });
         if (!store) { detail = "store slug not found"; break; }
-        const res = await fetch(`https://${store.shopifyDomain}/admin/api/2025-01/shop.json`, {
-          headers: { "X-Shopify-Access-Token": cred.value },
-        });
-        ok = res.ok;
-        if (!ok) detail = `${res.status}: ${(await res.text()).slice(0, 120)}`;
+        const { testShopifyConnection } = await import("@/lib/providers/shopify");
+        const result = await testShopifyConnection(scope);
+        ok = result.ok;
+        if (!result.ok) detail = result.error;
         break;
       }
       default:
