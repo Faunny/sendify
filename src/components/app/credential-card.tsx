@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Download, Eye, EyeOff, Loader2, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +35,26 @@ export function CredentialCard(props: CredentialCardProps) {
   const [removing, setRemoving] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; detail?: string; latencyMs?: number } | null>(null);
   const [hasValue, setHasValue] = useState(!!props.initialValue);
+
+  // Settings is a client page that doesn't pre-fetch from the DB, so on every
+  // mount we have to ask the API whether this credential is already stored.
+  // Single lightweight call to /api/credentials/status — never returns the value.
+  useEffect(() => {
+    let cancelled = false;
+    const params = new URLSearchParams({ provider: props.provider });
+    if (props.scope) params.set("scope", props.scope);
+    fetch(`/api/credentials/status?${params.toString()}`)
+      .then((r) => r.json())
+      .then((j) => {
+        if (cancelled || !j?.ok) return;
+        if (j.exists) setHasValue(true);
+        if (typeof j.lastTestOk === "boolean") {
+          setTestResult({ ok: j.lastTestOk, detail: j.lastTestError ?? undefined });
+        }
+      })
+      .catch(() => { /* offline: leave state as-is */ });
+    return () => { cancelled = true; };
+  }, [props.provider, props.scope]);
 
   // Shopify-specific: once a token is saved, the card also offers a "Sync now" button
   // that triggers an initial bulk pull of customers + products for that store. Progress
