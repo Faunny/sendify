@@ -69,7 +69,7 @@ export const STORES: MockStore[] = [
     },
     brand: {
       logoUrl: "",
-      palette: { primary: "#000000", accent: "#D99425", bg: "#FFFFFF", text: "#1A1A1A" },
+      palette: { primary: "#000000", accent: "#000000", bg: "#FFFFFF", text: "#1A1A1A" },
       fontHeading: "Outfit", fontBody: "Inter",
     },
   },
@@ -90,7 +90,7 @@ export const STORES: MockStore[] = [
     },
     brand: {
       logoUrl: "",
-      palette: { primary: "#000000", accent: "#D99425", bg: "#FFFFFF", text: "#1A1A1A" },
+      palette: { primary: "#000000", accent: "#000000", bg: "#FFFFFF", text: "#1A1A1A" },
       fontHeading: "Outfit", fontBody: "Inter",
     },
   },
@@ -111,7 +111,7 @@ export const STORES: MockStore[] = [
     },
     brand: {
       logoUrl: "",
-      palette: { primary: "#000000", accent: "#D99425", bg: "#FFFFFF", text: "#1A1A1A" },
+      palette: { primary: "#000000", accent: "#000000", bg: "#FFFFFF", text: "#1A1A1A" },
       fontHeading: "Outfit", fontBody: "Inter",
     },
   },
@@ -132,7 +132,7 @@ export const STORES: MockStore[] = [
     },
     brand: {
       logoUrl: "",
-      palette: { primary: "#000000", accent: "#D99425", bg: "#FFFFFF", text: "#1A1A1A" },
+      palette: { primary: "#000000", accent: "#000000", bg: "#FFFFFF", text: "#1A1A1A" },
       fontHeading: "Outfit", fontBody: "Inter",
     },
   },
