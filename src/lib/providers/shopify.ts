@@ -32,9 +32,19 @@ async function exchangeClientCredentials(storeSlug: string): Promise<{ token: st
   if (!store) throw new Error(`Store with slug "${storeSlug}" not found`);
 
   const idCred = await getCredential("SHOPIFY", storeSlug);
-  if (!idCred) throw new Error(`Shopify Client ID not configured for ${storeSlug} · add it in Settings → Stores`);
+  if (!idCred) throw new Error(`Shopify credential not configured for ${storeSlug} · add it in Settings → Stores`);
+
+  // FAST PATH: standard "Develop apps" Custom Apps issue a permanent Admin API access
+  // token (starts with `shpat_`). Use it directly — no OAuth exchange needed. Long
+  // lifetime so we cache for an hour and re-read from DB if the user rotates it.
+  if (idCred.value.startsWith("shpat_") || idCred.value.startsWith("shpca_")) {
+    return { token: idCred.value, expiresAt: Date.now() + 3600 * 1000, shopifyDomain: store.shopifyDomain };
+  }
+
+  // OAUTH PATH: org-level Custom Apps + Public Apps issue Client ID/Secret. Exchange
+  // them for a short-lived bearer token via the client_credentials grant.
   const secretCred = await getCredential("SHOPIFY", `${storeSlug}:secret`);
-  if (!secretCred) throw new Error(`Shopify Client secret not configured for ${storeSlug} · add it in Settings → Stores`);
+  if (!secretCred) throw new Error(`Shopify Client secret not configured for ${storeSlug} (and value isn't an shpat_ access token) · add it in Settings → Stores`);
 
   const res = await fetch(`https://${store.shopifyDomain}/admin/oauth/access_token`, {
     method: "POST",
