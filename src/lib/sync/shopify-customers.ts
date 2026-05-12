@@ -87,17 +87,21 @@ function buildCustomerData(shop: ShopifyCustomer, storeId: string, storeDefaultL
 export async function syncStoreCustomers(
   storeSlug: string,
   onProgress?: (p: SyncProgress) => void,
-): Promise<SyncProgress> {
+  options?: { budgetMs?: number },
+): Promise<SyncProgress & { hasMore?: boolean }> {
   const store = await prisma.store.findUnique({ where: { slug: storeSlug } });
   if (!store) throw new Error(`Store ${storeSlug} not found`);
 
-  const progress: SyncProgress = {
+  const budgetMs = options?.budgetMs ?? Infinity;
+  const startedAt = Date.now();
+
+  const progress: SyncProgress & { hasMore?: boolean } = {
     storeSlug,
     fetched: 0,
     upserted: 0,
     skipped: 0,
     failed: 0,
-    startedAt: Date.now(),
+    startedAt,
   };
 
   for await (const batch of iterateShopifyCustomers(storeSlug, 250)) {
@@ -124,6 +128,12 @@ export async function syncStoreCustomers(
     }
 
     onProgress?.(progress);
+
+    // Stop early if we're running out of serverless budget; caller can resume.
+    if (Date.now() - startedAt > budgetMs) {
+      progress.hasMore = true;
+      return progress;
+    }
   }
 
   progress.finishedAt = Date.now();

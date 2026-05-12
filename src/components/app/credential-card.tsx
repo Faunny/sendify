@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Check, Download, Eye, EyeOff, Loader2, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,45 +47,36 @@ export function CredentialCard(props: CredentialCardProps) {
     products?:  { productsFetched: number; upserted: number; finishedAt?: number };
   } | null>(null);
 
+  // The sync endpoint runs SYNCHRONOUSLY now and returns final progress + a
+  // `hasMore` flag. Keep calling until hasMore goes false (auto-resume across
+  // 45 s budget windows).
   async function startSync() {
     if (!isShopify) return;
     setSyncing(true);
     setSyncProgress({});
+    setTestResult(null);
     try {
-      const res = await fetch("/api/shopify/sync", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeSlug: props.scope, what: "both" }),
-      });
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error ?? "sync failed to start");
+      while (true) {
+        const res = await fetch("/api/shopify/sync", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ storeSlug: props.scope, what: "both" }),
+        });
+        const json = await res.json();
+        if (!json.ok) {
+          throw new Error(json.error ?? "sync failed");
+        }
+        setSyncProgress({ customers: json.customers, products: json.products });
+        const customersMore = json.customers?.hasMore;
+        const productsMore  = json.products?.hasMore;
+        if (!customersMore && !productsMore) break;
+      }
     } catch (e) {
       setTestResult({ ok: false, detail: e instanceof Error ? e.message : "sync failed" });
+    } finally {
       setSyncing(false);
     }
   }
-
-  useEffect(() => {
-    if (!syncing || !isShopify) return;
-    let stopped = false;
-    const tick = async () => {
-      if (stopped) return;
-      try {
-        const res = await fetch(`/api/shopify/sync?storeSlug=${encodeURIComponent(props.scope!)}`);
-        const json = await res.json();
-        setSyncProgress({ customers: json.customers, products: json.products });
-        const cDone = !json.customers || json.customers.finishedAt;
-        const pDone = !json.products  || json.products.finishedAt;
-        if (cDone && pDone) {
-          setSyncing(false);
-          return;
-        }
-      } catch { /* ignore transient */ }
-      setTimeout(tick, 2_000);
-    };
-    tick();
-    return () => { stopped = true; };
-  }, [syncing, isShopify, props.scope]);
 
   async function save() {
     if (!value || value.length < 4) return;

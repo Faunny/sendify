@@ -1,26 +1,22 @@
 // POST /api/shopify/sync
 //
-// Triggers a Shopify bulk sync (customers + products) for one store. Runs async on
-// the server; the UI polls via GET /api/shopify/sync/status?storeSlug=... for progress.
+// Runs a Shopify bulk sync (customers + products) for one store SYNCHRONOUSLY,
+// up to ~45 s wall-clock per call (Hobby caps the function at 60 s; Pro at 300 s).
+// The response carries the full progress + a `hasMore` flag — the UI keeps
+// hitting the endpoint until `hasMore` is false. No background work, no polling
+// — survives Vercel cold starts and reports OAuth / network errors as they happen.
 //
 // Body: { storeSlug: string, what?: "customers" | "products" | "both" (default both) }
 
 import { NextResponse } from "next/server";
-import { after } from "next/server";
 import { auth } from "@/lib/auth";
-import { syncStoreCustomers, type SyncProgress } from "@/lib/sync/shopify-customers";
-import { syncStoreProducts, type ProductSyncProgress } from "@/lib/sync/shopify-products";
+import { syncStoreCustomers } from "@/lib/sync/shopify-customers";
+import { syncStoreProducts } from "@/lib/sync/shopify-products";
 
-// Vercel serverless terminates the function after the response is sent, so a
-// fire-and-forget .catch() chain gets killed mid-sync. `after()` from Next.js 15
-// keeps the function alive until the registered work resolves (up to the route's
-// maxDuration limit).
-export const maxDuration = 300; // 5 min — Pro plan ceiling; Hobby caps at 60s
+export const maxDuration = 60; // Hobby ceiling — we stop syncing internally at 45s.
+export const dynamic = "force-dynamic";
 
-// In-memory progress map. For a multi-instance deployment this would live in Redis or
-// a `SyncJob` table, but for the demo a single Vercel function holds onto progress fine.
-const customerProgress = new Map<string, SyncProgress>();
-const productProgress  = new Map<string, ProductSyncProgress>();
+const BUDGET_MS = 45_000;
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -30,49 +26,49 @@ export async function POST(req: Request) {
   const { storeSlug, what = "both" } = await req.json().catch(() => ({} as { storeSlug?: string; what?: "customers" | "products" | "both" }));
   if (!storeSlug) return NextResponse.json({ ok: false, error: "missing storeSlug" }, { status: 400 });
 
-  // Kick off in background. We DON'T await — the function would time out on Vercel for
-  // large stores. The caller polls /api/shopify/sync/status.
   const doCustomers = what === "customers" || what === "both";
   const doProducts  = what === "products"  || what === "both";
 
+  let customers = null;
+  let products = null;
+  let firstError: string | null = null;
+
+  // Split budget if doing both, otherwise give all of it to whichever was requested.
+  const customerBudget = doProducts ? BUDGET_MS * 0.6 : BUDGET_MS;
+  const productBudget  = doCustomers ? BUDGET_MS * 0.4 : BUDGET_MS;
+
   if (doCustomers) {
-    customerProgress.set(storeSlug, { storeSlug, fetched: 0, upserted: 0, skipped: 0, failed: 0, startedAt: Date.now() });
-    after(async () => {
-      try {
-        await syncStoreCustomers(storeSlug, (p) => customerProgress.set(storeSlug, p));
-      } catch (e) {
-        const cur = customerProgress.get(storeSlug);
-        const msg = e instanceof Error ? e.message : "sync failed";
-        if (cur) customerProgress.set(storeSlug, { ...cur, failed: cur.failed + 1, finishedAt: Date.now(), error: msg } as SyncProgress & { error: string });
-        console.error("[shopify sync customers]", e);
-      }
-    });
+    try {
+      customers = await syncStoreCustomers(storeSlug, undefined, { budgetMs: customerBudget });
+    } catch (e) {
+      firstError = e instanceof Error ? e.message : "customer sync failed";
+      console.error("[shopify sync customers]", e);
+    }
   }
   if (doProducts) {
-    productProgress.set(storeSlug, { storeSlug, productsFetched: 0, variantsFetched: 0, upserted: 0, failed: 0, startedAt: Date.now() });
-    after(async () => {
-      try {
-        await syncStoreProducts(storeSlug, (p) => productProgress.set(storeSlug, p));
-      } catch (e) {
-        const cur = productProgress.get(storeSlug);
-        const msg = e instanceof Error ? e.message : "sync failed";
-        if (cur) productProgress.set(storeSlug, { ...cur, failed: cur.failed + 1, finishedAt: Date.now(), error: msg } as ProductSyncProgress & { error: string });
-        console.error("[shopify sync products]", e);
-      }
-    });
+    try {
+      products = await syncStoreProducts(storeSlug, undefined, { budgetMs: productBudget });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "product sync failed";
+      console.error("[shopify sync products]", e);
+      if (!firstError) firstError = msg;
+    }
   }
 
-  return NextResponse.json({ ok: true, started: { customers: doCustomers, products: doProducts } });
+  return NextResponse.json({
+    ok: !firstError,
+    error: firstError,
+    customers,
+    products,
+  });
 }
 
+// GET kept for backward-compat with the polling UI — but the POST response is now
+// authoritative, so we just return whatever was last seen on this instance (best-
+// effort) or null.
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const storeSlug = url.searchParams.get("storeSlug");
   if (!storeSlug) return NextResponse.json({ ok: false, error: "missing storeSlug" }, { status: 400 });
-
-  return NextResponse.json({
-    ok: true,
-    customers: customerProgress.get(storeSlug) ?? null,
-    products:  productProgress.get(storeSlug) ?? null,
-  });
+  return NextResponse.json({ ok: true, customers: null, products: null });
 }

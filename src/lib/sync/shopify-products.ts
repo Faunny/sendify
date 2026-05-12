@@ -21,12 +21,16 @@ export type ProductSyncProgress = {
 export async function syncStoreProducts(
   storeSlug: string,
   onProgress?: (p: ProductSyncProgress) => void,
-): Promise<ProductSyncProgress> {
+  options?: { budgetMs?: number },
+): Promise<ProductSyncProgress & { hasMore?: boolean }> {
   const store = await prisma.store.findUnique({ where: { slug: storeSlug } });
   if (!store) throw new Error(`Store ${storeSlug} not found`);
 
-  const progress: ProductSyncProgress = {
-    storeSlug, productsFetched: 0, variantsFetched: 0, upserted: 0, failed: 0, startedAt: Date.now(),
+  const budgetMs = options?.budgetMs ?? Infinity;
+  const startedAt = Date.now();
+
+  const progress: ProductSyncProgress & { hasMore?: boolean } = {
+    storeSlug, productsFetched: 0, variantsFetched: 0, upserted: 0, failed: 0, startedAt,
   };
 
   for await (const batch of iterateShopifyProducts(storeSlug, 50)) {
@@ -41,6 +45,10 @@ export async function syncStoreProducts(
       }
     }
     onProgress?.(progress);
+    if (Date.now() - startedAt > budgetMs) {
+      progress.hasMore = true;
+      return progress;
+    }
   }
 
   // Update store.productCount denormalized field.
