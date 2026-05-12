@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/calendar/auto-plan",
+      "schedule": "0 6 * * *"
+    }
+  ]
+}
