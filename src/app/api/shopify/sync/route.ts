@@ -18,25 +18,27 @@ import { syncStoreProducts } from "@/lib/sync/shopify-products";
 // query after a cold-start often fails before Prisma's default timeout. Retry
 // with exponential backoff so the user never sees a "can't reach database" error
 // when really Neon is just waking back up (typical wake time: 1-3 seconds).
-async function waitForDb(maxAttempts = 6): Promise<void> {
+async function waitForDb(maxAttempts = 4): Promise<void> {
   for (let i = 0; i < maxAttempts; i++) {
     try {
       await prisma.$queryRaw`SELECT 1`;
       return;
     } catch {
-      const delay = Math.min(500 * 2 ** i, 4000);
+      // 500ms, 1s, 2s, 3s — capped at 3s so the cumulative wait is under 7s and
+      // leaves plenty of headroom under Vercel Hobby's 60s function ceiling.
+      const delay = Math.min(500 * 2 ** i, 3000);
       await new Promise((r) => setTimeout(r, delay));
     }
   }
-  // Final attempt — let the real error propagate to the response so the user
-  // sees a meaningful message instead of a silent stall.
   await prisma.$queryRaw`SELECT 1`;
 }
 
 export const maxDuration = 60; // Hobby ceiling — we stop syncing internally at 45s.
 export const dynamic = "force-dynamic";
 
-const BUDGET_MS = 45_000;
+// Hobby caps the function at 60s. After waitForDb (up to ~7s) + auth + response
+// serialization we have ~45s of sync budget. Be conservative.
+const BUDGET_MS = 40_000;
 
 export async function POST(req: Request) {
   const session = await auth();
