@@ -36,7 +36,7 @@ End-to-end checklist to get Sendify live in your AWS account (same one as your e
                                               │  └──────────────────┘                │
                                               └─────────────────────────────────────┘
 
-Assets: S3 sendify-assets-<account> → CloudFront (cdn.sendify.app)
+Assets: S3 sendify-assets-<account> → CloudFront (cdn.divain.space)
 Secrets: AWS Secrets Manager · ECS pulls at boot · Vercel pulls via CLI sync
 ```
 
@@ -143,7 +143,7 @@ TOPIC_ARN=$(aws sns list-topics --query "Topics[?contains(TopicArn,'sendify-ses-
 aws sns subscribe \
   --topic-arn $TOPIC_ARN \
   --protocol https \
-  --notification-endpoint "https://sendify.divainparfums.com/api/ses/events"
+  --notification-endpoint "https://sendify.divain.space/api/ses/events"
 
 # 3. Update your SES configuration set to publish to it
 #    AWS Console → SES → Configuration sets → sendify-default → Event publishing → Add destination
@@ -221,7 +221,7 @@ AWS_SECRET_ACCESS_KEY = (its secret)
 SES_CONFIGURATION_SET = sendify-default
 S3_BUCKET             = (terraform output s3_bucket)
 S3_PUBLIC_BASE_URL    = (terraform output cdn_url)
-NEXT_PUBLIC_APP_URL   = https://sendify.divainparfums.com
+NEXT_PUBLIC_APP_URL   = https://sendify.divain.space
 AUTH_SECRET           = (matching the value in Secrets Manager)
 DEEPL_API_KEY         = (paste)
 GEMINI_API_KEY        = (paste)
@@ -242,7 +242,7 @@ vercel --prod
 
 ### 4. Point your domain
 
-In Vercel → Project → Settings → Domains → add `sendify.divainparfums.com`. Vercel gives DNS records (CNAME or A). Add them in Route 53 or wherever your DNS lives.
+In Vercel → Project → Settings → Domains → add `sendify.divain.space`. Vercel gives DNS records (CNAME or A). Add them in Route 53 or wherever your DNS lives.
 
 ---
 
@@ -257,7 +257,7 @@ aws logs tail /ecs/sendify/worker --follow
 
 ### 2. App can read the DB
 
-Browse to `https://sendify.divainparfums.com/dashboard` → see your stores, segments, customers.
+Browse to `https://sendify.divain.space/dashboard` → see your stores, segments, customers.
 
 ### 3. End-to-end test send
 

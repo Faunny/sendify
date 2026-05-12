@@ -136,7 +136,7 @@ You already maintain a promotional calendar in another project. Sendify mirrors 
 ### Contract
 
 ```http
-POST https://sendify.app/api/promotions/webhook
+POST https://sendify.divain.space/api/promotions/webhook
 Content-Type: application/json
 X-Sendify-Signature: sha256=<hex(hmac_sha256(secret, raw_body))>
 
@@ -179,7 +179,7 @@ import { createHmac } from "node:crypto";
 const sig = "sha256=" + createHmac("sha256", process.env.SENDIFY_WEBHOOK_SECRET!)
   .update(rawBody)
   .digest("hex");
-fetch("https://sendify.app/api/promotions/webhook", {
+fetch("https://sendify.divain.space/api/promotions/webhook", {
   method: "POST",
   headers: { "Content-Type": "application/json", "X-Sendify-Signature": sig },
   body: rawBody,

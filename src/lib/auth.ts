@@ -13,7 +13,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       id: "magic-link",
       name: "Magic Link",
       type: "email",
-      from: process.env.SENDIFY_FROM_EMAIL ?? "noreply@sendify.local",
+      from: process.env.SENDIFY_FROM_EMAIL ?? "noreply@divain.space",
       maxAge: 60 * 60, // 1 hour
       sendVerificationRequest: async ({ identifier, url }: { identifier: string; url: string }) => {
         // In production: ses.sendEmail({ ... template with magic link ... })

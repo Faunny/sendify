@@ -22,5 +22,7 @@ worker_desired_count = 2
 deploy_ui_to_ecs = false
 
 # DNS — only if Sendify will own your DNS zone. If Vercel-only or external DNS, leave false.
+# The platform lives on sendify.divain.space (Vercel) — the apex `divain.space` zone can stay
+# wherever you have it now; you just add a CNAME `sendify → cname.vercel-dns.com`.
 enable_dns  = false
-root_domain = ""
+root_domain = "divain.space"

@@ -186,7 +186,7 @@ export default function SettingsPage() {
               <div className="rounded-md border border-border bg-card/40 p-3">
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Webhook URL</div>
                 <div className="font-mono text-[12px] flex items-center justify-between gap-2">
-                  <span className="truncate">https://sendify.app/api/promotions/webhook</span>
+                  <span className="truncate">https://sendify.divain.space/api/promotions/webhook</span>
                   <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]">Copy</Button>
                 </div>
               </div>
@@ -277,7 +277,7 @@ X-Sendify-Signature: sha256=<hmac>
               name="S3 + CloudFront"
               hint="Asset CDN"
               status="connected"
-              detail="sendify-assets · cdn.sendify.app"
+              detail="sendify-assets · cdn.divain.space"
             />
             <Integration
               name="Sentry"
@@ -341,7 +341,7 @@ X-Sendify-Signature: sha256=<hmac>
             <CardContent className="pt-0 space-y-3">
               <ComplianceRow label="One-click unsubscribe (RFC 8058)" ok body="List-Unsubscribe + List-Unsubscribe-Post headers injected on every send" />
               <ComplianceRow label="Suppression list (cross-store)" ok body="A bounce or complaint on one store suppresses the email across all 4" />
-              <ComplianceRow label="Preference center" ok body="https://sendify.app/p/{customerId}" />
+              <ComplianceRow label="Preference center" ok body="https://sendify.divain.space/p/{customerId}" />
               <ComplianceRow label="Data retention" ok body="Send rows kept 13 months, then archived to S3 Glacier" />
               <ComplianceRow label="Right to erasure" ok body="Tombstone replacement on Customer record, immediate PII purge" />
             </CardContent>
