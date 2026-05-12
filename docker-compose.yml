@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: sendify-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sendify
+      POSTGRES_PASSWORD: sendify
+      POSTGRES_DB: sendify
+    ports:
+      - "5432:5432"
+    volumes:
+      - sendify_pg:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: sendify-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - sendify_redis:/data
+
+volumes:
+  sendify_pg:
+  sendify_redis:

@@ -1,0 +1,26 @@
+// Copy to terraform.tfvars and edit. Never commit the real file.
+
+aws_region    = "eu-west-1"
+project       = "sendify"
+environment   = "prod"
+
+# Database sizing — adjust if 1.5M customers grows
+db_instance_class       = "db.m6g.large"
+db_allocated_storage_gb = 100
+db_max_storage_gb       = 500
+
+# Redis
+redis_node_type = "cache.t4g.medium"
+
+# Worker
+worker_cpu           = 1024
+worker_memory        = 2048
+worker_desired_count = 2
+
+# Set true if you want the Next.js UI on ECS instead of Vercel.
+# Default is Vercel for the UI, AWS for everything else (recommended).
+deploy_ui_to_ecs = false
+
+# DNS — only if Sendify will own your DNS zone. If Vercel-only or external DNS, leave false.
+enable_dns  = false
+root_domain = ""

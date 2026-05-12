@@ -1,0 +1,115 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  AWS_REGION: eu-west-1
+  ECR_WORKER_REPO: sendify-worker
+  ECR_APP_REPO: sendify-app
+  ECS_CLUSTER: sendify
+  WORKER_SERVICE: sendify-worker
+
+permissions:
+  id-token: write   # required for OIDC AssumeRole
+  contents: read
+
+jobs:
+  # ── Build + push both images in parallel ──
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.tag.outputs.tag }}
+    strategy:
+      matrix:
+        target:
+          - { name: app,    repo: sendify-app,    dockerfile: Dockerfile }
+          - { name: worker, repo: sendify-worker, dockerfile: Dockerfile.worker }
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute image tag
+        id: tag
+        run: echo "tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build + push ${{ matrix.target.name }} image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.target.dockerfile }}
+          push: true
+          cache-from: type=gha,scope=${{ matrix.target.name }}
+          cache-to:   type=gha,scope=${{ matrix.target.name }},mode=max
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ matrix.target.repo }}:latest
+            ${{ steps.login-ecr.outputs.registry }}/${{ matrix.target.repo }}:${{ steps.tag.outputs.tag }}
+
+  # ── Run DB migrations BEFORE rolling out new containers ──
+  migrate:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with: { node-version: "22", cache: "npm" }
+
+      - name: Install
+        run: npm ci
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Pull DIRECT_URL from Secrets Manager
+        id: secrets
+        run: |
+          DIRECT_URL=$(aws secretsmanager get-secret-value --secret-id sendify/app --query SecretString --output text | jq -r .DIRECT_URL)
+          echo "::add-mask::$DIRECT_URL"
+          echo "DIRECT_URL=$DIRECT_URL" >> "$GITHUB_ENV"
+
+      - name: Prisma migrate
+        run: npx prisma migrate deploy
+        env:
+          DATABASE_URL: ${{ env.DIRECT_URL }}
+          DIRECT_URL:   ${{ env.DIRECT_URL }}
+
+  # ── Roll out the worker (and optionally the app) ──
+  deploy-worker:
+    needs: [build, migrate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Force new deployment (worker)
+        run: |
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" \
+            --service "$WORKER_SERVICE" \
+            --force-new-deployment >/dev/null
+          echo "Waiting for worker rollout…"
+          aws ecs wait services-stable \
+            --cluster "$ECS_CLUSTER" \
+            --services "$WORKER_SERVICE"
+          echo "✓ Worker rolled out"

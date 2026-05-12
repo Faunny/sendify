@@ -1,0 +1,179 @@
+@import "tailwindcss";
+
+/* Outfit + Inter are loaded via <link> tags in src/app/layout.tsx (Tailwind v4 doesn't allow
+   plain @import-url after @import "tailwindcss"). In real outgoing emails MJML inlines the
+   @font-face and falls back to Helvetica when clients can't load web fonts. */
+
+/* ────────────────────────────────────────────────────────────────────────
+   Sendify theme — inspired by Divain's luxury-minimal aesthetic.
+   Stark monochrome surfaces with a warm gold accent for primary actions.
+   Dark mode is the default; light mode is available but secondary.
+   ──────────────────────────────────────────────────────────────────────── */
+
+@theme {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Inter", "Geist", sans-serif;
+  --font-display: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --color-gold-50:  #FBF5EB;
+  --color-gold-100: #F5E7CC;
+  --color-gold-200: #EBD3A1;
+  --color-gold-300: #DDB870;
+  --color-gold-400: #D4AF7A;
+  --color-gold-500: #B8924E;
+  --color-gold-600: #93722F;
+  --color-gold-700: #6E5523;
+  --color-gold-800: #4B3915;
+  --color-gold-900: #2A1F0A;
+}
+
+:root {
+  --bg:                 oklch(0.985 0 0);
+  --bg-elevated:        oklch(1 0 0);
+  --surface:            oklch(0.98 0 0);
+  --surface-2:          oklch(0.96 0 0);
+  --border:             oklch(0.92 0 0);
+  --border-strong:      oklch(0.88 0 0);
+  --fg:                 oklch(0.14 0 0);
+  --fg-muted:           oklch(0.45 0 0);
+  --fg-subtle:          oklch(0.58 0 0);
+  --accent:             oklch(0.72 0.10 70);
+  --accent-fg:          oklch(0.18 0.05 70);
+  --accent-soft:        oklch(0.95 0.04 75);
+  --ring:               oklch(0.72 0.10 70 / 0.35);
+  --positive:           oklch(0.72 0.16 152);
+  --warning:            oklch(0.79 0.14 75);
+  --danger:             oklch(0.62 0.21 25);
+  --chart-1:            oklch(0.72 0.10 70);
+  --chart-2:            oklch(0.62 0.12 230);
+  --chart-3:            oklch(0.72 0.16 152);
+  --chart-4:            oklch(0.62 0.21 25);
+  --chart-5:            oklch(0.58 0.18 305);
+  --radius:             0.625rem;
+}
+
+.dark {
+  --bg:                 oklch(0.14 0 0);
+  --bg-elevated:        oklch(0.17 0 0);
+  --surface:            oklch(0.18 0 0);
+  --surface-2:          oklch(0.22 0 0);
+  --border:             oklch(0.27 0 0);
+  --border-strong:      oklch(0.34 0 0);
+  --fg:                 oklch(0.98 0 0);
+  --fg-muted:           oklch(0.72 0 0);
+  --fg-subtle:          oklch(0.55 0 0);
+  --accent:             oklch(0.82 0.10 75);
+  --accent-fg:          oklch(0.16 0.04 75);
+  --accent-soft:        oklch(0.28 0.06 75);
+  --ring:               oklch(0.82 0.10 75 / 0.45);
+  --positive:           oklch(0.78 0.18 152);
+  --warning:            oklch(0.84 0.16 75);
+  --danger:             oklch(0.68 0.22 25);
+  --chart-1:            oklch(0.82 0.10 75);
+  --chart-2:            oklch(0.72 0.14 230);
+  --chart-3:            oklch(0.78 0.18 152);
+  --chart-4:            oklch(0.68 0.22 25);
+  --chart-5:            oklch(0.68 0.18 305);
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --color-card: var(--bg-elevated);
+  --color-card-foreground: var(--fg);
+  --color-popover: var(--bg-elevated);
+  --color-popover-foreground: var(--fg);
+  --color-primary: var(--accent);
+  --color-primary-foreground: var(--accent-fg);
+  --color-secondary: var(--surface);
+  --color-secondary-foreground: var(--fg);
+  --color-muted: var(--surface-2);
+  --color-muted-foreground: var(--fg-muted);
+  --color-accent: var(--accent-soft);
+  --color-accent-foreground: var(--accent);
+  --color-destructive: var(--danger);
+  --color-destructive-foreground: oklch(0.98 0 0);
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--ring);
+  --color-positive: var(--positive);
+  --color-warning: var(--warning);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+* { border-color: var(--color-border); }
+
+html { color-scheme: dark; }
+.dark { color-scheme: dark; }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-feature-settings: "ss01" on, "cv11" on;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Subtle premium grain on the app background */
+.bg-app {
+  background:
+    radial-gradient(1200px 600px at 50% -200px, color-mix(in oklch, var(--accent) 6%, transparent), transparent 60%),
+    var(--bg);
+}
+
+/* Brand wordmark style */
+.brand-wordmark {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+
+/* Scrollbar polish */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
+
+/* Focus ring */
+*:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Animations */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.shimmer {
+  background-image: linear-gradient(110deg, transparent 30%, color-mix(in oklch, var(--accent) 25%, transparent) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: shimmer 2.4s linear infinite;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade-in-up { animation: fadeInUp .3s ease-out both; }
+
+/* recharts integration */
+.recharts-default-tooltip {
+  background: var(--bg-elevated) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-md) !important;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.35);
+}
+.recharts-cartesian-axis-tick-value { fill: var(--fg-muted) !important; font-size: 11px; }
+.recharts-cartesian-grid line { stroke: var(--border) !important; }
+.recharts-tooltip-cursor { fill: color-mix(in oklch, var(--accent) 8%, transparent) !important; }
