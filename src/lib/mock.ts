@@ -56,7 +56,7 @@ export const STORES: MockStore[] = [
       vatNumber: "B-12345678",
       address: "Polígono Industrial Las Atalayas, Calle de la Innovación 24",
       postalCode: "03114", city: "Alicante", country: "Spain",
-      supportEmail: "atencionalcliente@divainparfums.com", supportPhone: "+34 965 12 34 56",
+      supportEmail: "divain@divainparfums.com", supportPhone: "+34 965 12 34 56",
       privacyUrl: "https://divainparfums.com/politica-privacidad",
       termsUrl: "https://divainparfums.com/condiciones-de-venta",
       cookiesUrl: "https://divainparfums.com/politica-cookies",
@@ -90,7 +90,7 @@ export const STORES: MockStore[] = [
   },
   {
     id: "st_3", slug: "divain-na", name: "divain · USA + Canada",
-    shopifyDomain: "divain-na.myshopify.com", storefrontUrl: "https://divainparfums.us",
+    shopifyDomain: "divain-na.myshopify.com", storefrontUrl: "https://divainparfums.co",
     countryCode: "US", defaultLanguage: "en-US", currency: "USD",
     markets: ["US", "CA"], productCount: 540, customers: 184_500, subscribed: 121_800,
     legal: {
@@ -98,10 +98,10 @@ export const STORES: MockStore[] = [
       vatNumber: "EIN 88-1234567",
       address: "1209 Orange Street",
       postalCode: "19801", city: "Wilmington, DE", country: "United States",
-      supportEmail: "hello@divainparfums.us", supportPhone: "+1 (305) 555 0142",
-      privacyUrl: "https://divainparfums.us/privacy",
-      termsUrl: "https://divainparfums.us/terms",
-      cookiesUrl: "https://divainparfums.us/cookies",
+      supportEmail: "help@divainparfums.co", supportPhone: "+1 (305) 555 0142",
+      privacyUrl: "https://divainparfums.co/privacy",
+      termsUrl: "https://divainparfums.co/terms",
+      cookiesUrl: "https://divainparfums.co/cookies",
     },
     brand: {
       logoUrl: "https://d3k81ch9hvuctc.cloudfront.net/company/REVNSD/images/166aac11-32b2-41f4-8239-0f0a5d5e6c2d.png",
@@ -165,9 +165,9 @@ export type MockSender = {
 };
 
 export const SENDERS: MockSender[] = [
-  { id: "sn_1", storeId: "st_1", fromName: "divain",            fromEmail: "hola@divainparfums.com",        provider: "SES",   verified: true,  dailyCap: 700_000, reputation: 0.97 },
+  { id: "sn_1", storeId: "st_1", fromName: "divain",            fromEmail: "divain@divainparfums.com",      provider: "SES",   verified: true,  dailyCap: 700_000, reputation: 0.97 },
   { id: "sn_2", storeId: "st_2", fromName: "divain UK",         fromEmail: "hello@divainparfums.co.uk",     provider: "SES",   verified: true,  dailyCap: 300_000, reputation: 0.95 },
-  { id: "sn_3", storeId: "st_3", fromName: "divain US",         fromEmail: "hello@divainparfums.us",        provider: "SES",   verified: true,  dailyCap: 400_000, reputation: 0.93 },
+  { id: "sn_3", storeId: "st_3", fromName: "divain US",         fromEmail: "help@divainparfums.co",         provider: "SES",   verified: true,  dailyCap: 400_000, reputation: 0.93 },
   { id: "sn_4", storeId: "st_4", fromName: "divain México",     fromEmail: "hola@divainparfums.mx",         provider: "SES",   verified: false, dailyCap: 200_000, reputation: 0.0 },
 ];
 
