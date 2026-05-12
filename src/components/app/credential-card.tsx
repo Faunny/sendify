@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Check, Eye, EyeOff, Loader2, Trash2, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, Download, Eye, EyeOff, Loader2, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +35,56 @@ export function CredentialCard(props: CredentialCardProps) {
   const [removing, setRemoving] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; detail?: string; latencyMs?: number } | null>(null);
   const [hasValue, setHasValue] = useState(!!props.initialValue);
+
+  // Shopify-specific: once a token is saved, the card also offers a "Sync now" button
+  // that triggers an initial bulk pull of customers + products for that store. Progress
+  // polled from /api/shopify/sync/status.
+  const isShopify = props.provider === "SHOPIFY" && props.scope;
+  const [syncing, setSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<{
+    customers?: { fetched: number; upserted: number; finishedAt?: number };
+    products?:  { productsFetched: number; upserted: number; finishedAt?: number };
+  } | null>(null);
+
+  async function startSync() {
+    if (!isShopify) return;
+    setSyncing(true);
+    setSyncProgress({});
+    try {
+      const res = await fetch("/api/shopify/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storeSlug: props.scope, what: "both" }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "sync failed to start");
+    } catch (e) {
+      setTestResult({ ok: false, detail: e instanceof Error ? e.message : "sync failed" });
+      setSyncing(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!syncing || !isShopify) return;
+    let stopped = false;
+    const tick = async () => {
+      if (stopped) return;
+      try {
+        const res = await fetch(`/api/shopify/sync?storeSlug=${encodeURIComponent(props.scope!)}`);
+        const json = await res.json();
+        setSyncProgress({ customers: json.customers, products: json.products });
+        const cDone = !json.customers || json.customers.finishedAt;
+        const pDone = !json.products  || json.products.finishedAt;
+        if (cDone && pDone) {
+          setSyncing(false);
+          return;
+        }
+      } catch { /* ignore transient */ }
+      setTimeout(tick, 2_000);
+    };
+    tick();
+    return () => { stopped = true; };
+  }, [syncing, isShopify, props.scope]);
 
   async function save() {
     if (!value || value.length < 4) return;
@@ -167,6 +217,42 @@ export function CredentialCard(props: CredentialCardProps) {
           ✓ Conexión verificada{testResult.latencyMs ? ` · ${testResult.latencyMs}ms` : ""}
         </div>
       )}
+
+      {isShopify && hasValue && (
+        <div className="border-t border-border pt-3 mt-1">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div>
+              <div className="text-[12px] font-medium">Sync inicial</div>
+              <div className="text-[10px] text-muted-foreground">Importa customers (con historial de compras) + productos · ~5min para 100k clientes</div>
+            </div>
+            <Button onClick={startSync} disabled={syncing} size="sm" variant={syncing ? "outline" : "default"}>
+              {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+              {syncing ? "Sincronizando…" : "Sync now"}
+            </Button>
+          </div>
+          {syncProgress && (
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <SyncTile label="Customers" fetched={syncProgress.customers?.fetched ?? 0} upserted={syncProgress.customers?.upserted ?? 0} done={!!syncProgress.customers?.finishedAt} />
+              <SyncTile label="Products"  fetched={syncProgress.products?.productsFetched ?? 0} upserted={syncProgress.products?.upserted ?? 0} done={!!syncProgress.products?.finishedAt} />
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SyncTile({ label, fetched, upserted, done }: { label: string; fetched: number; upserted: number; done: boolean }) {
+  return (
+    <div className="rounded-md border border-border bg-card/40 p-2 text-[11px]">
+      <div className="flex items-center justify-between">
+        <span className="text-muted-foreground uppercase tracking-wider text-[10px]">{label}</span>
+        {done && <Check className="h-3 w-3 text-[color:var(--positive)]" />}
+      </div>
+      <div className="mt-1 flex items-baseline gap-1.5">
+        <span className="font-medium tabular-nums">{upserted.toLocaleString()}</span>
+        <span className="text-muted-foreground text-[10px]">de {fetched.toLocaleString()}</span>
+      </div>
     </div>
   );
 }

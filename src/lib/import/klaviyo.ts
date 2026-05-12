@@ -1,21 +1,23 @@
 // Klaviyo → Sendify migration.
 //
-// Reads a Klaviyo profile export CSV (streaming, memory-safe for 1.5M+ rows), maps each
-// row to a Sendify Customer, and yields batches ready for `prisma.customer.createMany`.
+// Reads a Klaviyo profile export CSV (streaming, memory-safe for 1.5M+ rows) and
+// **merges by email** with whatever's already in the DB (typically from Shopify sync).
 //
-// Klaviyo's export columns are inconsistent across accounts. We auto-detect the most
-// common variants and fall back to a normalized lookup. The output schema is:
+// Merge semantics:
+//   - If a Customer with this email already exists in this store (from Shopify sync),
+//     we ENRICH it: add Klaviyo-only fields (subscription state, marketing properties,
+//     app push state, tags) WITHOUT overwriting Shopify-authoritative fields like
+//     totalSpent / ordersCount / country (Shopify is source of truth for purchases).
+//   - If no match, we CREATE a new Customer — typically a newsletter-only signup that
+//     never bought.
 //
-//   { email, firstName, lastName, country, language, consentStatus, hasApp,
-//     totalSpent, ordersCount, shopifyId?, tags[] }
-//
-// Cross-store dedup happens at the DB layer via `@@unique([storeId, shopifyId])` +
-// `createMany skipDuplicates`. Since one human can exist in multiple Shopify stores,
-// each store gets its own Customer row keyed on the per-store Shopify ID.
+// The CLI calls `upsertFromKlaviyoRow` for each row; this gives merge behaviour
+// instead of skip-duplicate. For huge imports without Shopify in the mix, use
+// `mapKlaviyoToCustomer` + `createMany skipDuplicates` (still exported for that path).
 
 import { parse as parseCsv } from "csv-parse";
 import { createReadStream } from "node:fs";
-import { ConsentStatus, type Prisma } from "@prisma/client";
+import { ConsentStatus, type Prisma, PrismaClient } from "@prisma/client";
 import { LANGUAGES } from "../languages";
 
 // ── Klaviyo CSV row (loose: column names vary, we map by lowercase) ─────────
@@ -211,4 +213,60 @@ export async function* streamKlaviyoCsv(
     opts.onProgress?.({ read, mapped, skipped });
   }
   return { read, mapped, skipped };
+}
+
+// ── Merge-by-email upsert ────────────────────────────────────────────────
+// Preferred path when Shopify has already synced. For each batch:
+//   1. Lookup existing customer rows for the emails in the batch (single SELECT)
+//   2. For matches: UPDATE only Klaviyo-authoritative fields (consent, tags, push state)
+//   3. For non-matches: CREATE new (newsletter-only contacts)
+
+export async function mergeKlaviyoBatch(
+  prisma: PrismaClient,
+  customers: MappedCustomer[],
+): Promise<{ updated: number; created: number; failed: number }> {
+  if (customers.length === 0) return { updated: 0, created: 0, failed: 0 };
+
+  const storeId = customers[0].storeId;
+  const emails = customers.map((c) => c.email);
+
+  const existing = await prisma.customer.findMany({
+    where: { storeId, email: { in: emails } },
+    select: { id: true, email: true, country: true, language: true, totalSpent: true, ordersCount: true },
+  });
+  const existingByEmail = new Map(existing.map((e) => [e.email, e]));
+
+  let updated = 0, created = 0, failed = 0;
+  for (const k of customers) {
+    try {
+      const found = existingByEmail.get(k.email);
+      if (found) {
+        // Enrich: only set fields Shopify doesn't own. Notably DO NOT overwrite
+        // totalSpent/ordersCount/country which Shopify owns authoritatively.
+        await prisma.customer.update({
+          where: { id: found.id },
+          data: {
+            firstName: k.firstName ?? undefined,
+            lastName: k.lastName ?? undefined,
+            phone: k.phone ?? undefined,
+            // Language: Klaviyo locale is usually more granular than Shopify, take it
+            language: k.language ?? found.language,
+            consentStatus: k.consentStatus,
+            acceptsMarketing: k.acceptsMarketing,
+            hasApp: k.hasApp,
+            lastPushAt: k.lastPushAt,
+            tags: k.tags ?? undefined,
+          },
+        });
+        updated++;
+      } else {
+        // No Shopify match — newsletter-only contact. Create.
+        await prisma.customer.create({ data: k as unknown as Prisma.CustomerUncheckedCreateInput });
+        created++;
+      }
+    } catch {
+      failed++;
+    }
+  }
+  return { updated, created, failed };
 }

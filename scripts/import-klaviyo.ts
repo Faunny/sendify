@@ -14,7 +14,7 @@
 // (bypassing RDS Proxy gives better throughput on bulk insert anyway).
 
 import { PrismaClient } from "@prisma/client";
-import { streamKlaviyoCsv } from "../src/lib/import/klaviyo";
+import { mergeKlaviyoBatch, streamKlaviyoCsv } from "../src/lib/import/klaviyo";
 import { performance } from "node:perf_hooks";
 import { parseArgs } from "node:util";
 
@@ -75,13 +75,10 @@ async function main() {
 
   for await (const batch of stream) {
     if (!values["dry-run"]) {
-      // createMany skipDuplicates: idempotent re-runs, ignores conflicts on
-      // (storeId, shopifyId) and (storeId, email) unique indexes.
-      const r = await prisma.customer.createMany({
-        data: batch,
-        skipDuplicates: true,
-      });
-      inserted += r.count;
+      // mergeKlaviyoBatch enriches existing Shopify customers (by email) instead of
+      // skipping them. Newsletter-only Klaviyo contacts get created fresh.
+      const r = await mergeKlaviyoBatch(prisma, batch);
+      inserted += r.updated + r.created;
     } else {
       inserted += batch.length;
     }
