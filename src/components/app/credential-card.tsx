@@ -63,8 +63,8 @@ export function CredentialCard(props: CredentialCardProps) {
   const isShopify = props.provider === "SHOPIFY" && !!props.scope && !props.scope.endsWith(":secret");
   const [syncing, setSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState<{
-    customers?: { fetched: number; upserted: number; finishedAt?: number };
-    products?:  { productsFetched: number; upserted: number; finishedAt?: number };
+    customers?: { fetched: number; upserted: number; failed?: number; firstError?: string; finishedAt?: number };
+    products?:  { productsFetched: number; upserted: number; failed?: number; firstError?: string; finishedAt?: number };
   } | null>(null);
 
   // The sync endpoint runs SYNCHRONOUSLY now and returns final progress + a
@@ -243,10 +243,17 @@ export function CredentialCard(props: CredentialCardProps) {
             </Button>
           </div>
           {syncProgress && (
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              <SyncTile label="Customers" fetched={syncProgress.customers?.fetched ?? 0} upserted={syncProgress.customers?.upserted ?? 0} done={!!syncProgress.customers?.finishedAt} />
-              <SyncTile label="Products"  fetched={syncProgress.products?.productsFetched ?? 0} upserted={syncProgress.products?.upserted ?? 0} done={!!syncProgress.products?.finishedAt} />
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <SyncTile label="Customers" fetched={syncProgress.customers?.fetched ?? 0} upserted={syncProgress.customers?.upserted ?? 0} failed={syncProgress.customers?.failed ?? 0} done={!!syncProgress.customers?.finishedAt} />
+                <SyncTile label="Products"  fetched={syncProgress.products?.productsFetched ?? 0} upserted={syncProgress.products?.upserted ?? 0} failed={syncProgress.products?.failed ?? 0} done={!!syncProgress.products?.finishedAt} />
+              </div>
+              {(syncProgress.customers?.firstError || syncProgress.products?.firstError) && (
+                <div className="mt-2 rounded-md border border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] p-2 text-[10px] text-[color:var(--danger)] break-all">
+                  {syncProgress.customers?.firstError ?? syncProgress.products?.firstError}
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
@@ -254,7 +261,7 @@ export function CredentialCard(props: CredentialCardProps) {
   );
 }
 
-function SyncTile({ label, fetched, upserted, done }: { label: string; fetched: number; upserted: number; done: boolean }) {
+function SyncTile({ label, fetched, upserted, failed, done }: { label: string; fetched: number; upserted: number; failed: number; done: boolean }) {
   return (
     <div className="rounded-md border border-border bg-card/40 p-2 text-[11px]">
       <div className="flex items-center justify-between">
@@ -263,8 +270,13 @@ function SyncTile({ label, fetched, upserted, done }: { label: string; fetched: 
       </div>
       <div className="mt-1 flex items-baseline gap-1.5">
         <span className="font-medium tabular-nums">{upserted.toLocaleString()}</span>
-        <span className="text-muted-foreground text-[10px]">de {fetched.toLocaleString()}</span>
+        <span className="text-muted-foreground text-[10px]">de {fetched.toLocaleString()} fetched</span>
       </div>
+      {failed > 0 && (
+        <div className="mt-0.5 text-[10px] text-[color:var(--danger)]">
+          {failed.toLocaleString()} failed
+        </div>
+      )}
     </div>
   );
 }

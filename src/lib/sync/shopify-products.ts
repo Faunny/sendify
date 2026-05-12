@@ -14,6 +14,7 @@ export type ProductSyncProgress = {
   variantsFetched: number;
   upserted: number;
   failed: number;
+  firstError?: string;
   startedAt: number;
   finishedAt?: number;
 };
@@ -40,8 +41,9 @@ export async function syncStoreProducts(
         await upsertProduct(p, store.id, store.countryCode, store.currency);
         progress.upserted++;
         progress.variantsFetched += p.variants.nodes.length;
-      } catch {
+      } catch (e) {
         progress.failed++;
+        if (!progress.firstError) progress.firstError = e instanceof Error ? e.message.slice(0, 200) : "upsert failed";
       }
     }
     onProgress?.(progress);

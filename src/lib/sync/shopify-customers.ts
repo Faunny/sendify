@@ -21,6 +21,7 @@ export type SyncProgress = {
   upserted: number;
   skipped: number;
   failed: number;
+  firstError?: string;
   startedAt: number;
   finishedAt?: number;
 };
@@ -107,8 +108,9 @@ export async function syncStoreCustomers(
   for await (const batch of iterateShopifyCustomers(storeSlug, 250)) {
     progress.fetched += batch.length;
 
-    // Process the batch in parallel chunks of 25 to keep DB connections sane.
-    const chunkSize = 25;
+    // Concurrency capped at 5 — Neon Free tier rejects past ~25 simultaneous
+    // connections, and Prisma's pool is shared across this route + others.
+    const chunkSize = 5;
     for (let i = 0; i < batch.length; i += chunkSize) {
       const chunk = batch.slice(i, i + chunkSize);
       await Promise.all(chunk.map(async (shopCustomer) => {
@@ -121,8 +123,9 @@ export async function syncStoreCustomers(
             update: data,
           });
           progress.upserted++;
-        } catch {
+        } catch (e) {
           progress.failed++;
+          if (!progress.firstError) progress.firstError = e instanceof Error ? e.message.slice(0, 200) : "upsert failed";
         }
       }));
     }
