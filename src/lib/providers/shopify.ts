@@ -152,7 +152,10 @@ export type ShopifyCustomer = {
   locale: string | null;
   state: string;                 // ENABLED, DISABLED, INVITED, DECLINED
   emailMarketingConsent: { marketingState: string; marketingOptInLevel: string | null; consentUpdatedAt: string | null } | null;
-  numberOfOrders: number;
+  // Shopify Admin API serializes UnsignedInt64 + Money as strings in JSON — the
+  // type reflects what actually comes over the wire, not what the GraphQL schema
+  // claims. Caller is responsible for coercing with Number().
+  numberOfOrders: string | number;
   amountSpent: { amount: string; currencyCode: string };
   defaultAddress: { country: string | null; countryCodeV2: string | null; province: string | null } | null;
   tags: string[];

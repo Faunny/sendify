@@ -60,7 +60,11 @@ function mapLanguage(shop: ShopifyCustomer, storeDefaultLang: string): string {
 // Returns the Unchecked variant — direct foreign-key form (storeId scalar) is the simplest
 // shape for upserts where we already hold the store id from the outer scope.
 function buildCustomerData(shop: ShopifyCustomer, storeId: string, storeDefaultLang: string): Prisma.CustomerUncheckedCreateInput {
-  const totalSpent = shop.amountSpent?.amount ? parseFloat(shop.amountSpent.amount) : 0;
+  // Shopify serializes Money + UnsignedInt64 as strings in JSON, so we must coerce
+  // them ourselves before Prisma sees them — passing a "5" where Prisma expects Int
+  // produces a generic "Invalid invocation" error with no helpful field name.
+  const totalSpent = shop.amountSpent?.amount ? Number(shop.amountSpent.amount) : 0;
+  const ordersCount = shop.numberOfOrders != null ? Number(shop.numberOfOrders) : 0;
   const lastPushIso = shop.appLastPushAt?.value;
   const lastPushAt = lastPushIso ? new Date(lastPushIso) : null;
   const hasApp = shop.appInstalled?.value === "true";
@@ -77,9 +81,9 @@ function buildCustomerData(shop: ShopifyCustomer, storeId: string, storeDefaultL
     acceptsMarketing: shop.emailMarketingConsent?.marketingState === "SUBSCRIBED",
     consentStatus: mapConsent(shop),
     hasApp,
-    lastPushAt,
-    totalSpent,
-    ordersCount: shop.numberOfOrders ?? 0,
+    lastPushAt: lastPushAt && !isNaN(lastPushAt.getTime()) ? lastPushAt : null,
+    totalSpent: isFinite(totalSpent) ? totalSpent : 0,
+    ordersCount: Number.isFinite(ordersCount) ? Math.floor(ordersCount) : 0,
     tags: [],
     shopifyTags: shop.tags ?? [],
   };
@@ -125,7 +129,13 @@ export async function syncStoreCustomers(
           progress.upserted++;
         } catch (e) {
           progress.failed++;
-          if (!progress.firstError) progress.firstError = e instanceof Error ? e.message.slice(0, 200) : "upsert failed";
+          if (!progress.firstError) {
+            const msg = e instanceof Error ? e.message : String(e);
+            // Capture the Prisma error fully — Prisma sticks the real cause near the
+            // end of the message (after the schema dump), so don't truncate from the
+            // front. Also tag the offending email so we can spot data-pattern bugs.
+            progress.firstError = `[${shopCustomer.email ?? "no-email"}] ${msg.slice(-1500)}`;
+          }
         }
       }));
     }
