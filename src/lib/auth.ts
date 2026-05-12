@@ -2,19 +2,17 @@ import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "./db";
+import { authConfig } from "./auth.config";
 
-// Bootstrap-friendly auth: a single admin login backed by env vars (ADMIN_EMAIL +
-// ADMIN_PASSWORD). Lets the owner sign in *before* SES is configured. After SES is
-// wired we can add the magic-link provider back alongside this one — both work
-// simultaneously.
+// Full auth config — Node runtime only (Prisma adapter not Edge-compatible).
+// Middleware uses the slim authConfig from ./auth.config.ts instead.
 //
-// Sessions are JWT-based (not DB-backed) so the Credentials provider works. We still
-// register the Prisma adapter so future OAuth/email providers can persist users.
+// Bootstrap login: ADMIN_EMAIL + ADMIN_PASSWORD env vars. Magic-link can be added
+// alongside once SES is configured; both providers can coexist.
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt" },
-  pages: { signIn: "/login" },
   providers: [
     Credentials({
       id: "admin-password",
@@ -33,6 +31,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
+    ...authConfig.callbacks,
     async jwt({ token, user }) {
       if (user) {
         token.id = (user as { id?: string }).id ?? "admin";

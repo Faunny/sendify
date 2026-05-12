@@ -1,44 +1,26 @@
-// Auth gate for the dashboard. Every non-public path is bounced to /login if
-// there's no session. The (app) route group + every /api/* route except the
-// public ones below is protected.
+// Auth gate. Uses the slim Edge-compatible config from src/lib/auth.config.ts
+// (no Prisma) so the middleware bundle stays under Vercel's 1 MB Edge cap.
 //
-// Public surfaces:
-//   /login, /api/auth/*, /api/shopify/webhook (Shopify needs to POST unauth'd),
-//   _next assets, favicon, robots.
+// The `authorized` callback decides whether the request proceeds; if it returns
+// false NextAuth emits a redirect to /login (configured in pages.signIn).
 
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { auth } from "@/lib/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "@/lib/auth.config";
 
-const PUBLIC_PREFIXES = [
-  "/login",
-  "/api/auth/",
-  "/api/shopify/webhook",
-  "/_next/",
-  "/favicon",
-  "/robots",
-];
-
-export async function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-  if (PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))) return NextResponse.next();
-
-  const session = await auth();
-  if (session?.user) return NextResponse.next();
-
-  // For API routes return 401 JSON; for pages bounce to /login with ?from.
-  if (pathname.startsWith("/api/")) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
-  }
-  const url = req.nextUrl.clone();
-  url.pathname = "/login";
-  url.searchParams.set("from", pathname);
-  return NextResponse.redirect(url);
-}
+export const { auth: middleware } = NextAuth(authConfig);
 
 export const config = {
-  matcher: [
-    // Skip Next.js internals and static assets — they don't need auth-checks.
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|robots.txt).*)"],
 };
+
+export default middleware((req) => {
+  // For API routes return 401 JSON instead of bouncing to /login HTML (cleaner
+  // for fetch() clients). Pages get the default NextAuth redirect to /login.
+  const { auth: session, nextUrl } = req;
+  if (nextUrl.pathname.startsWith("/api/") && !session?.user) {
+    return new Response(JSON.stringify({ ok: false, error: "unauthorized" }), {
+      status: 401,
+      headers: { "content-type": "application/json" },
+    });
+  }
+});
