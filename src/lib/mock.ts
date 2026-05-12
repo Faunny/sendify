@@ -53,7 +53,7 @@ export type MockStore = {
 export const STORES: MockStore[] = [
   {
     id: "st_1", slug: "divain-europa", name: "divain · Europa",
-    shopifyDomain: "divain-europa.myshopify.com", storefrontUrl: "https://divainparfums.com",
+    shopifyDomain: "divaines.myshopify.com", storefrontUrl: "https://divainparfums.com",
     countryCode: "ES", defaultLanguage: "es-ES", currency: "EUR",
     markets: ["ES", "PT", "AD", "FR", "BE", "NL", "DE", "AT", "IT", "IE", "LU", "CH", "PL", "SE", "DK", "FI", "NO", "CZ", "RO", "HU", "BG", "SK", "SI", "GR"],
     productCount: 0, customers: 0, subscribed: 0,
@@ -75,7 +75,7 @@ export const STORES: MockStore[] = [
   },
   {
     id: "st_2", slug: "divain-uk", name: "divain · UK",
-    shopifyDomain: "divain-uk.myshopify.com", storefrontUrl: "https://divainparfums.co.uk",
+    shopifyDomain: "divaingb.myshopify.com", storefrontUrl: "https://divainparfums.co.uk",
     countryCode: "GB", defaultLanguage: "en-GB", currency: "GBP",
     markets: ["GB", "IE"], productCount: 0, customers: 0, subscribed: 0,
     legal: {
@@ -96,7 +96,7 @@ export const STORES: MockStore[] = [
   },
   {
     id: "st_3", slug: "divain-na", name: "divain · USA + Canada",
-    shopifyDomain: "divain-na.myshopify.com", storefrontUrl: "https://divainparfums.co",
+    shopifyDomain: "divainusa.myshopify.com", storefrontUrl: "https://divainparfums.co",
     countryCode: "US", defaultLanguage: "en-US", currency: "USD",
     markets: ["US", "CA"], productCount: 0, customers: 0, subscribed: 0,
     legal: {
@@ -117,7 +117,7 @@ export const STORES: MockStore[] = [
   },
   {
     id: "st_4", slug: "divain-mx", name: "divain · México",
-    shopifyDomain: "divain-mx.myshopify.com", storefrontUrl: "https://divainparfums.mx",
+    shopifyDomain: "divainmx.myshopify.com", storefrontUrl: "https://divainparfums.mx",
     countryCode: "MX", defaultLanguage: "es-MX", currency: "MXN",
     markets: ["MX"], productCount: 0, customers: 0, subscribed: 0,
     legal: {
