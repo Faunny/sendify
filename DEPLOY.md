@@ -292,11 +292,55 @@ If anything goes wrong, check:
 
 ## Migrating off Klaviyo
 
-When you're ready to import 1.5M existing customers:
+### Step 1 — Export from Klaviyo
 
-1. Export from Klaviyo: Profiles → Export (CSV)
-2. Use the import endpoint `/api/customers/import` (bulk insert, deduped by email)
-3. Or run a one-off script in `scripts/import-klaviyo.ts` (template TBD)
-4. The translation cache stays empty until first send — first big campaign will incur higher DeepL cost; subsequent ones drop as the cache warms
+For **each Shopify store** (Europa / UK / USA+CA / México) run a separate export:
 
-The cleanest migration is to keep both Klaviyo + Sendify running for ~30 days, send the same campaigns through Sendify to a 10% audience, compare deliverability + revenue, then flip 100%.
+1. Klaviyo dashboard → **Profiles**
+2. Filter the list to that store's customers (use list memberships or the `$source` property)
+3. Recommended consent filter: `Email Consent = subscribed OR unsubscribed` (skip never-subscribed to keep the migration clean)
+4. Click **Export** → CSV → **All columns**
+5. Download the CSV. Klaviyo emails you a link when it's ready (~few minutes for 1.5M rows)
+
+### Step 2 — Import each CSV into Sendify
+
+```bash
+# Run from your laptop, DATABASE_URL pointing at the production RDS (use the DIRECT_URL
+# from Terraform output — bypassing RDS Proxy gives better throughput on bulk insert)
+
+export DATABASE_URL="postgresql://sendify:...@sendify-postgres.xxxx.eu-west-1.rds.amazonaws.com:5432/sendify?sslmode=require"
+
+# First, dry-run a small slice to validate column mapping + language inference:
+head -1001 klaviyo-europa.csv > /tmp/sample.csv
+npm run import:klaviyo -- --csv /tmp/sample.csv --store st_1 --dry-run
+
+# Then for real, the full file (one store at a time):
+npm run import:klaviyo -- --csv klaviyo-europa.csv --store st_1
+npm run import:klaviyo -- --csv klaviyo-uk.csv     --store st_2
+npm run import:klaviyo -- --csv klaviyo-na.csv     --store st_3
+npm run import:klaviyo -- --csv klaviyo-mx.csv     --store st_4
+```
+
+Expected throughput: ~3-5k customers/sec on `db.m6g.large` with batch size 5000. 1.5M rows imports in **5-8 minutes**.
+
+The CLI is idempotent (`skipDuplicates` on `(storeId, shopifyId)` + `(storeId, email)`), so a partial run is safe to resume — just re-run with the full CSV.
+
+### Step 3 — Validate the import
+
+```bash
+# Quick row counts per store + consent breakdown
+psql "$DATABASE_URL" -c "
+  SELECT s.name, c.\"consentStatus\", COUNT(*) FROM \"Customer\" c
+  JOIN \"Store\" s ON s.id = c.\"storeId\"
+  GROUP BY 1, 2 ORDER BY 1, 2;
+"
+```
+
+Expected: ~1.2-1.4M SUBSCRIBED, ~50-150k UNSUBSCRIBED, low-thousands BOUNCED/COMPLAINED. If the SUBSCRIBED count is way off, check the Klaviyo filter you applied.
+
+### Step 4 — Parallel run
+
+Keep both Klaviyo and Sendify running for **~30 days**:
+- Send the same campaign through Sendify to a 10% holdout audience
+- Compare deliverability (Postmaster Tools), open rate, attributed revenue
+- When confident, flip 100% of campaigns to Sendify and pause Klaviyo billing

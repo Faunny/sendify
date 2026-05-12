@@ -19,6 +19,7 @@ import {
   Palette,
   Ticket,
   ShieldOff,
+  Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "./logo";
@@ -48,6 +49,7 @@ const NAV: { group: string; items: { href: string; label: string; icon: React.Co
     items: [
       { href: "/customers", label: "Customers", icon: Users },
       { href: "/segments", label: "Segments", icon: Filter },
+      { href: "/import", label: "Import", icon: Upload },
     ],
   },
   {
