@@ -114,22 +114,21 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="rounded-md border border-[color:var(--accent)]/30 bg-[color-mix(in_oklch,var(--accent)_4%,transparent)] p-3 text-[11px] mb-2">
-                    <div className="font-medium text-foreground mb-1">📘 Dónde sacar las credenciales en Shopify</div>
+                    <div className="font-medium text-foreground mb-1">📘 Dónde sacar Client ID + Access token en Shopify</div>
                     <ol className="space-y-0.5 list-decimal pl-4 text-muted-foreground">
                       <li>Abre <a href={`https://${s.shopifyDomain}/admin/settings/apps/development`} target="_blank" className="text-[color:var(--accent)] underline">Settings → Apps and sales channels → Develop apps</a></li>
-                      <li>Crea el app &quot;Sendify&quot; → Configuration → marca los scopes: <code className="text-[10px] bg-muted px-1 rounded">read/write_customers, _orders, _products, _checkouts, _marketing_events, _discounts, _translations, _metaobjects</code> → <strong className="text-foreground">Install app</strong></li>
-                      <li>Tab <strong className="text-foreground">API credentials</strong> → copia el <strong className="text-foreground">Admin API access token</strong> (empieza por <code className="text-[10px] bg-muted px-1 rounded">shpat_</code>) y pégalo en <strong className="text-foreground">①</strong></li>
-                      <li>Copia también el <strong className="text-foreground">API secret key</strong> y pégalo en <strong className="text-foreground">②</strong> (para validar HMAC de webhooks)</li>
+                      <li>Crea el app &quot;Sendify&quot; → Configuration → marca scopes: <code className="text-[10px] bg-muted px-1 rounded">read/write_customers, _orders, _products, _checkouts, _marketing_events, _discounts, _translations, _metaobjects</code> → <strong className="text-foreground">Install app</strong></li>
+                      <li>Tab <strong className="text-foreground">API credentials</strong> → copia <strong className="text-foreground">Client ID</strong> y el <strong className="text-foreground">Admin API access token</strong> (empieza por <code className="text-[10px] bg-muted px-1 rounded">shpat_</code>) y pégalos abajo</li>
                     </ol>
-                    <div className="mt-2 text-[10px] text-muted-foreground">Sendify detecta automáticamente el formato: si pegas un <code>shpat_</code> lo usa directo; si pegas un Client ID lo intercambia por un token via OAuth.</div>
+                    <div className="mt-2 text-[10px] text-muted-foreground">El <strong>Access token</strong> es lo que Sendify usa para todas las llamadas al Admin API. El <strong>Client ID</strong> queda guardado para HMAC de webhooks y como referencia.</div>
                   </div>
 
                   <CredentialCard
                     provider="SHOPIFY"
                     scope={s.slug}
-                    title="① Admin API access token"
-                    hint={`Admin API access token de la Custom App en ${s.shopifyDomain} · empieza por shpat_`}
-                    detail="Token que usa Sendify para todas las llamadas al Admin API (read customers, products, orders, etc.). Permanente hasta que rotes el app."
+                    title="① Client ID"
+                    hint={`API credentials → Client ID de la Custom App en ${s.shopifyDomain}`}
+                    detail="Identificador público de la app. Guardado para referencia y para validación HMAC de webhooks."
                     helpUrl={`https://${s.shopifyDomain}/admin/settings/apps/development`}
                     helpUrlLabel="Ver mi Custom App →"
                   />
@@ -137,9 +136,9 @@ export default function SettingsPage() {
                   <CredentialCard
                     provider="SHOPIFY"
                     scope={`${s.slug}:secret`}
-                    title="② API secret key (para webhooks)"
-                    hint="API credentials → API secret key de la misma Custom App"
-                    detail="Validar HMAC-SHA256 de los webhooks entrantes de Shopify."
+                    title="② Access token"
+                    hint="API credentials → Admin API access token · empieza por shpat_"
+                    detail="Token que usa Sendify para todas las llamadas al Admin API (clientes, productos, pedidos). Permanente hasta que rotes el app."
                     helpUrl={`https://${s.shopifyDomain}/admin/settings/apps/development`}
                   />
 
