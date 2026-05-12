@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyState } from "@/components/app/empty-state";
+import { EmailPreviewCard } from "@/components/app/email-preview-card";
+import { LANGUAGES } from "@/lib/languages";
 import { prisma } from "@/lib/db";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
@@ -96,7 +98,7 @@ export default async function ApprovalsPage() {
                 </div>
                 <Badge variant="warning"><Clock className="h-3 w-3" /> Pending</Badge>
               </CardHeader>
-              <CardContent className="pt-0 space-y-3">
+              <CardContent className="pt-0 space-y-4">
                 {c.draftReason && (
                   <div className="rounded-md border border-[color:var(--accent)]/30 bg-[color-mix(in_oklch,var(--accent)_6%,transparent)] p-2.5 text-[11px] flex items-start gap-2">
                     <Sparkles className="h-3 w-3 shrink-0 mt-0.5 text-[color:var(--accent)]" />
@@ -104,26 +106,79 @@ export default async function ApprovalsPage() {
                   </div>
                 )}
 
-                <div className="rounded-md border border-border bg-card/40 p-3 text-[13px]">
-                  <span className="text-muted-foreground text-[10px] uppercase tracking-wider mr-2">Subject</span>
-                  {c.subject}
-                </div>
-
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-                  <Stat label="Audience"       value={formatNumber(c.estimatedRecipients)} />
-                  <Stat label="Languages"      value={`${c.variants.length}`} />
-                  <Stat label="Estimated cost" value={formatCurrency(Number(c.estimatedCost))} />
-                  <Stat label="Sender"         value={c.sender.fromEmail} small />
-                </div>
-
-                <div className="flex items-center justify-between border-t border-border pt-3">
-                  <Button variant="ghost" size="sm" asChild>
-                    <Link href={`/campaigns/${c.id}`}><Languages className="h-3.5 w-3.5" /> Open campaign · preview all languages</Link>
-                  </Button>
-                  <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm"><X className="h-3.5 w-3.5" /> Reject</Button>
-                    <Button size="sm"><Send className="h-3.5 w-3.5" /> Approve & schedule</Button>
+                <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-5">
+                  {/* Visual preview — what the customer actually sees in their inbox */}
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
+                      Email preview · {LANGUAGES.find((l) => l.code === c.store.defaultLanguage)?.nativeLabel ?? c.store.defaultLanguage}
+                    </div>
+                    <EmailPreviewCard
+                      campaign={{ subject: c.subject, name: c.name, estimatedRecipients: c.estimatedRecipients }}
+                      store={{
+                        defaultLanguage: c.store.defaultLanguage,
+                        countryCode: c.store.countryCode,
+                        legal: {
+                          legalName: c.store.legalName ?? c.store.name,
+                          vatNumber: c.store.vatNumber ?? "",
+                          address:   c.store.legalAddress ?? "",
+                          postalCode:c.store.legalPostalCode ?? "",
+                          city:      c.store.legalCity ?? "",
+                        },
+                      }}
+                      sender={c.sender}
+                      language={c.store.defaultLanguage}
+                      width={380}
+                    />
+                    <Button variant="ghost" size="sm" className="mt-2 -ml-2" asChild>
+                      <Link href={`/campaigns/${c.id}`}>
+                        <Languages className="h-3.5 w-3.5" /> Preview en los {c.variants.length || 1} idiomas
+                      </Link>
+                    </Button>
                   </div>
+
+                  {/* Metadata column */}
+                  <div className="space-y-3 min-w-0">
+                    <div className="rounded-md border border-border bg-card/40 p-3 text-[13px]">
+                      <span className="text-muted-foreground text-[10px] uppercase tracking-wider mr-2">Subject</span>
+                      {c.subject}
+                    </div>
+                    {c.preheader && (
+                      <div className="rounded-md border border-border bg-card/40 p-3 text-[12px]">
+                        <span className="text-muted-foreground text-[10px] uppercase tracking-wider mr-2">Preheader</span>
+                        {c.preheader}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <Stat label="Audience"       value={formatNumber(c.estimatedRecipients)} />
+                      <Stat label="Languages"      value={`${c.variants.length || 1}`} />
+                      <Stat label="Estimated cost" value={formatCurrency(Number(c.estimatedCost))} />
+                      <Stat label="Sender"         value={c.sender.fromEmail} small />
+                    </div>
+
+                    {c.variants.length > 0 && (
+                      <div>
+                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Variantes preparadas</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {c.variants.map((v) => {
+                            const lang = LANGUAGES.find((l) => l.code === v.language);
+                            return (
+                              <span key={v.language} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px]">
+                                <span>{lang?.flag ?? "🏳️"}</span>
+                                {lang?.label ?? v.language}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
+                  <Button variant="outline" size="sm"><X className="h-3.5 w-3.5" /> Reject</Button>
+                  <Button variant="outline" size="sm">Edit before approving</Button>
+                  <Button size="sm"><Send className="h-3.5 w-3.5" /> Approve & schedule</Button>
                 </div>
               </CardContent>
             </Card>
