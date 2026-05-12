@@ -38,8 +38,9 @@ export function CredentialCard(props: CredentialCardProps) {
 
   // Shopify-specific: once a token is saved, the card also offers a "Sync now" button
   // that triggers an initial bulk pull of customers + products for that store. Progress
-  // polled from /api/shopify/sync/status.
-  const isShopify = props.provider === "SHOPIFY" && props.scope;
+  // polled from /api/shopify/sync/status. Only the Client ID card carries the sync UI —
+  // the Client secret card (scope ":secret") is a passive value used for HMAC + OAuth.
+  const isShopify = props.provider === "SHOPIFY" && !!props.scope && !props.scope.endsWith(":secret");
   const [syncing, setSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState<{
     customers?: { fetched: number; upserted: number; finishedAt?: number };
