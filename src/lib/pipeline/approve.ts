@@ -18,6 +18,7 @@ import { resolveAudience, createSendLedger, type Recipient } from "../audience";
 import { translateVariant } from "./translate";
 import { renderVariant } from "./render";
 import { sendQueue, type SendJob } from "../queue";
+import { capByWarmup, dailySendCap, warmupStage } from "../warmup";
 
 export type ApproveResult = {
   campaignId: string;
@@ -26,6 +27,7 @@ export type ApproveResult = {
   byLanguage: Record<string, number>;
   dropped: { consent: number; suppressed: number; appRecent: number; duplicate: number };
   enqueued: number;
+  warmup: { stage: number | "warmed"; dailyCap: number; deferred: number };
   estimatedFinishAt: Date;
 };
 
@@ -84,10 +86,26 @@ export async function approveCampaign(args: {
     appSuppressionHours: campaign.appSuppressionHours,
   });
 
+  // ── 4.5) Apply sender warm-up cap ─────────────────────────────────────────
+  // If the sender is still ramping (warmupStartedAt set and within the 14-day window),
+  // cap the audience at today's warm-up budget. Deferred recipients stay in PENDING_APPROVAL
+  // for a follow-up send tomorrow when the next ramp stage opens more capacity.
+  const now = new Date();
+  const todaysCap = dailySendCap(campaign.sender, now);
+  const stage = warmupStage(campaign.sender, now);
+  const { allowed, deferred } = capByWarmup(audience.recipients, campaign.sender, now);
+  if (deferred.length > 0) {
+    console.warn(
+      `[approve] warm-up cap applied for ${campaign.sender.fromEmail}: ` +
+      `${allowed.length}/${audience.recipients.length} can send today (stage ${stage}, cap ${todaysCap}). ` +
+      `${deferred.length} deferred to tomorrow's ramp.`
+    );
+  }
+
   // ── 5) Ledger ─────────────────────────────────────────────────────────────
   const ledgerCount = await createSendLedger({
     campaignId,
-    recipients: audience.recipients,
+    recipients: allowed,
     htmlHashByLanguage,
   });
 
@@ -149,6 +167,7 @@ export async function approveCampaign(args: {
     byLanguage: audience.byLanguage,
     dropped: audience.dropped,
     enqueued: jobs.length,
+    warmup: { stage, dailyCap: todaysCap, deferred: deferred.length },
     estimatedFinishAt,
   };
 }

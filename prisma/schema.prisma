@@ -146,14 +146,22 @@ model Sender {
   fromName      String
   replyTo       String?
   provider      SenderProvider @default(SES)
-  dailyCap      Int            @default(700000) // anti-saturation per identity
-  warmupStage   Int            @default(0)      // 0 = warmed; 1..N = ramp
+  dailyCap      Int            @default(700000) // anti-saturation per identity, hard ceiling
   verified      Boolean        @default(false)
   dkimVerified  Boolean        @default(false)
   spfVerified   Boolean        @default(false)
   dmarcVerified Boolean        @default(false)
   active        Boolean        @default(true)
+
+  // ── Warm-up ──
+  // NULL warmupStartedAt = warmed (no ramp applied). Set this when you add a NEW sender domain
+  // and we'll cap daily sends per the curve until the domain is fully warmed (~14 days).
+  // Skip warm-up entirely on senders that have been sending for years from existing domains.
+  warmupStartedAt   DateTime?
+  warmupTargetPerDay Int      @default(670000)  // the daily volume we aim for once fully warmed
+
   createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   store     Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
   campaigns Campaign[]

@@ -162,13 +162,22 @@ export type MockSender = {
   verified: boolean;
   dailyCap: number;
   reputation: number; // 0..1
+  // Warm-up tracking. `warmupStartedAt: null` = legacy domain (already warmed elsewhere,
+  // skip ramp). For new domains, set to the date warm-up began; the curve auto-advances.
+  warmupStartedAt: Date | null;
+  warmupTargetPerDay: number;
 };
 
+// Sample warm-up states for the demo: Europa + UK are legacy (Klaviyo-warmed, skip ramp);
+// USA + México are new domains mid-ramp.
+const _today = new Date("2026-05-12T00:00:00Z");
+const _daysAgo = (d: number) => new Date(_today.getTime() - d * 86_400_000);
+
 export const SENDERS: MockSender[] = [
-  { id: "sn_1", storeId: "st_1", fromName: "divain",            fromEmail: "divain@divainparfums.com",      provider: "SES",   verified: true,  dailyCap: 700_000, reputation: 0.97 },
-  { id: "sn_2", storeId: "st_2", fromName: "divain UK",         fromEmail: "hello@divainparfums.co.uk",     provider: "SES",   verified: true,  dailyCap: 300_000, reputation: 0.95 },
-  { id: "sn_3", storeId: "st_3", fromName: "divain US",         fromEmail: "help@divainparfums.co",         provider: "SES",   verified: true,  dailyCap: 400_000, reputation: 0.93 },
-  { id: "sn_4", storeId: "st_4", fromName: "divain México",     fromEmail: "hola@divainparfums.mx",         provider: "SES",   verified: false, dailyCap: 200_000, reputation: 0.0 },
+  { id: "sn_1", storeId: "st_1", fromName: "divain",        fromEmail: "divain@divainparfums.com",  provider: "SES", verified: true,  dailyCap: 700_000, reputation: 0.97, warmupStartedAt: null,         warmupTargetPerDay: 670_000 },
+  { id: "sn_2", storeId: "st_2", fromName: "divain UK",     fromEmail: "hello@divainparfums.co.uk", provider: "SES", verified: true,  dailyCap: 300_000, reputation: 0.95, warmupStartedAt: null,         warmupTargetPerDay: 270_000 },
+  { id: "sn_3", storeId: "st_3", fromName: "divain US",     fromEmail: "help@divainparfums.co",     provider: "SES", verified: true,  dailyCap: 400_000, reputation: 0.74, warmupStartedAt: _daysAgo(7),  warmupTargetPerDay: 370_000 },
+  { id: "sn_4", storeId: "st_4", fromName: "divain México", fromEmail: "hola@divainparfums.mx",     provider: "SES", verified: false, dailyCap: 200_000, reputation: 0.0,  warmupStartedAt: _daysAgo(2),  warmupTargetPerDay: 180_000 },
 ];
 
 export type MockCampaign = {

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { PageHeader } from "@/components/app/page-header";
+import { WarmupProgress } from "@/components/app/warmup-progress";
 import { SENDERS, STORES } from "@/lib/mock";
 import { LANGUAGES } from "@/lib/languages";
 
@@ -39,28 +40,31 @@ export default function SettingsPage() {
               const store = STORES.find((x) => x.id === s.storeId)!;
               return (
                 <Card key={s.id}>
-                  <CardContent className="p-4 flex items-center gap-4">
-                    <div className="grid h-10 w-10 place-items-center rounded-md bg-secondary">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-[13px]">{s.fromEmail}</span>
-                        {s.verified ? <Badge variant="positive">Verified</Badge> : <Badge variant="danger">Unverified</Badge>}
-                        <Badge variant="muted">{s.provider}</Badge>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center gap-4">
+                      <div className="grid h-10 w-10 place-items-center rounded-md bg-secondary">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
                       </div>
-                      <div className="text-[11px] text-muted-foreground">{s.fromName} · {store.name}</div>
-                      <div className="mt-1.5 flex items-center gap-2 text-[10px] text-muted-foreground">
-                        <span className="inline-flex items-center gap-1"><Check className="h-2.5 w-2.5 text-[color:var(--positive)]" /> DKIM</span>
-                        <span className="inline-flex items-center gap-1"><Check className="h-2.5 w-2.5 text-[color:var(--positive)]" /> SPF</span>
-                        <span className="inline-flex items-center gap-1">{s.verified ? <Check className="h-2.5 w-2.5 text-[color:var(--positive)]" /> : <span className="h-2.5 w-2.5 rounded-full bg-[color:var(--danger)] inline-block" />} DMARC</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-[13px]">{s.fromEmail}</span>
+                          {s.verified ? <Badge variant="positive">Verified</Badge> : <Badge variant="danger">Unverified</Badge>}
+                          <Badge variant="muted">{s.provider}</Badge>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">{s.fromName} · {store.name}</div>
+                        <div className="mt-1.5 flex items-center gap-2 text-[10px] text-muted-foreground">
+                          <span className="inline-flex items-center gap-1"><Check className="h-2.5 w-2.5 text-[color:var(--positive)]" /> DKIM</span>
+                          <span className="inline-flex items-center gap-1"><Check className="h-2.5 w-2.5 text-[color:var(--positive)]" /> SPF</span>
+                          <span className="inline-flex items-center gap-1">{s.verified ? <Check className="h-2.5 w-2.5 text-[color:var(--positive)]" /> : <span className="h-2.5 w-2.5 rounded-full bg-[color:var(--danger)] inline-block" />} DMARC</span>
+                        </div>
                       </div>
+                      <div className="text-right">
+                        <div className="text-[11px] text-muted-foreground">Daily cap</div>
+                        <div className="text-[13px] tabular-nums">{s.dailyCap.toLocaleString()}</div>
+                      </div>
+                      <Button variant="outline" size="sm">Configure</Button>
                     </div>
-                    <div className="text-right">
-                      <div className="text-[11px] text-muted-foreground">Daily cap</div>
-                      <div className="text-[13px] tabular-nums">{s.dailyCap.toLocaleString()}</div>
-                    </div>
-                    <Button variant="outline" size="sm">Configure</Button>
+                    <WarmupProgress sender={s} />
                   </CardContent>
                 </Card>
               );

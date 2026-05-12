@@ -290,6 +290,58 @@ If anything goes wrong, check:
 
 ---
 
+## Sender warm-up protocol
+
+**Critical:** before sending anything from a brand-new SES domain, you need to ramp gradually. Mailbox providers (Gmail, Outlook, Yahoo, Apple) build trust from steady, predictable volume + low complaint rate. Blasting 1.5M emails from a fresh domain on day 1 → automatic spam folder for the whole IP range, hard to recover.
+
+Sendify handles this automatically via [src/lib/warmup.ts](src/lib/warmup.ts). The 14-day curve:
+
+| Day | Limit |
+|---|---|
+| 1 | 50 |
+| 2 | 100 |
+| 3 | 500 |
+| 4 | 1,000 |
+| 5 | 5,000 |
+| 6 | 10,000 |
+| 7 | 20,000 |
+| 8 | 40,000 |
+| 9 | 70,000 |
+| 10 | 100,000 |
+| 11 | 150,000 |
+| 12 | 250,000 |
+| 13 | 400,000 |
+| 14+ | full target (e.g. 670k/day for Europa) |
+
+### Which senders need warm-up
+
+| Sender | Status | Action |
+|---|---|---|
+| `divain@divainparfums.com` (Europa) | Legacy domain (was sending from Klaviyo) | **Skip warm-up.** `warmupStartedAt = null` |
+| `hello@divainparfums.co.uk` (UK) | Legacy | **Skip warm-up.** `warmupStartedAt = null` |
+| `help@divainparfums.co` (USA) | NEW domain | **Ramp 14 days** from first send |
+| `hola@divainparfums.mx` (MX) | NEW domain | **Ramp 14 days** from first send |
+
+For the legacy domains, even though SES is new, the *domain reputation* was built in Klaviyo. Mailbox providers track the domain, not the ESP. Sending the same volume you used to from Klaviyo is fine on day 1.
+
+For the NEW domains (`.co`, `.mx`), the domain itself has zero reputation and we MUST ramp.
+
+### How it works
+
+1. When you create a new Sender in `/settings`, set `warmupStartedAt = now()`.
+2. The audience resolver (`pipeline/approve.ts` step 4.5) calls `dailySendCap(sender)` before queuing.
+3. If today's audience exceeds today's cap, the extras are *deferred* — they stay in `PENDING_APPROVAL` and roll over to tomorrow's bigger cap automatically.
+4. After day 14, `dailySendCap` returns the hard `dailyCap` ceiling (anti-saturation) and the ramp is done.
+
+### Quality signals to watch during ramp
+
+Set CloudWatch alarms on the SES configuration set:
+- **Complaint rate > 0.1%** → pause sending, investigate
+- **Bounce rate > 5%**       → pause sending, audit your suppression list
+- **Reputation < 70**        → AWS will eventually suspend; act before they do
+
+Sendify's dashboard shows reputation per sender in real time. During warm-up, expect reputation to climb from 0 → 90+ over 2-3 weeks. If it stalls, slow the ramp.
+
 ## Migrating off Klaviyo
 
 ### Step 1 — Export from Klaviyo
