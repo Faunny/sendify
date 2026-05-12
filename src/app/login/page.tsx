@@ -1,15 +1,33 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, ArrowRight } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { signIn } from "next-auth/react";
+import { ArrowRight, Loader2, AlertTriangle, Lock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/app/logo";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const params = useSearchParams();
+  const next = params.get("from") || "/";
+
   const [email, setEmail] = useState("");
-  const [sent, setSent] = useState(false);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null); setBusy(true);
+    const res = await signIn("admin-password", { email, password, redirect: false });
+    setBusy(false);
+    if (res?.error) { setError("Email o contraseña inválidos."); return; }
+    router.push(next);
+    router.refresh();
+  }
 
   return (
     <div className="min-h-screen bg-app grid place-items-center px-6">
@@ -19,45 +37,57 @@ export default function LoginPage() {
           <div className="text-center">
             <h1 className="text-[20px] font-medium tracking-tight">Sign in to Sendify</h1>
             <p className="mt-1 text-[13px] text-muted-foreground">
-              Magic link · no password
+              Admin access · email + password
             </p>
           </div>
         </div>
 
         <Card>
           <CardContent className="p-5 space-y-4">
-            {sent ? (
-              <div className="text-center space-y-2">
-                <Mail className="h-6 w-6 text-[color:var(--accent)] mx-auto" />
-                <p className="text-[13px]">Check your inbox. We sent a sign-in link to <span className="font-medium">{email}</span>.</p>
-                <button onClick={() => setSent(false)} className="text-[11px] text-muted-foreground underline">
-                  Use a different email
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={(e) => { e.preventDefault(); setSent(true); }} className="space-y-3">
-                <label className="block">
-                  <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Email</span>
-                  <Input
-                    type="email"
-                    autoFocus
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@divainparfums.com"
-                    className="mt-1.5"
-                  />
-                </label>
-                <Button type="submit" className="w-full">
-                  Send magic link <ArrowRight className="h-3.5 w-3.5" />
-                </Button>
-              </form>
-            )}
+            <form onSubmit={submit} className="space-y-3">
+              <label className="block">
+                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Email</span>
+                <Input
+                  type="email"
+                  autoFocus
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@divainparfums.com"
+                  className="mt-1.5"
+                />
+              </label>
+              <label className="block">
+                <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Password</span>
+                <Input
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="mt-1.5"
+                />
+              </label>
+              {error && (
+                <div className="rounded-md border border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] p-2.5 text-[11px] text-[color:var(--danger)] flex items-start gap-2">
+                  <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+                  {error}
+                </div>
+              )}
+              <Button type="submit" className="w-full" disabled={busy}>
+                {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowRight className="h-3.5 w-3.5" />}
+                Sign in
+              </Button>
+            </form>
+            <div className="pt-2 border-t border-border text-[11px] text-muted-foreground flex items-start gap-2">
+              <Lock className="h-3 w-3 shrink-0 mt-0.5" />
+              <span>Credenciales se configuran en <code>ADMIN_EMAIL</code> + <code>ADMIN_PASSWORD</code> (Vercel env).</span>
+            </div>
           </CardContent>
         </Card>
 
         <p className="mt-6 text-center text-[11px] text-muted-foreground">
-          By signing in you agree to the Sendify terms. Sessions last 30 days.
+          Sessions last 30 days.
         </p>
       </div>
     </div>
