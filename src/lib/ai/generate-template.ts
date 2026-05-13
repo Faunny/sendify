@@ -301,8 +301,20 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
   const shouldGenBanner = input.generateBanner !== false && bannerPrompt.length > 10;
   if (shouldGenBanner) {
     try {
+      // Pass up to 3 real product image URLs as references — the image model
+      // will COMPOSE these actual bottles into the editorial scene instead of
+      // inventing generic perfumes. Skip references for premium-launch since
+      // that pattern has its own dedicated product showcase.
+      const referenceImageUrls = layoutPattern === "premium-launch" ? [] :
+        products
+          .filter((p) => !!p.imageUrl)
+          .slice(0, 3)
+          .map((p) => p.imageUrl!) as string[];
+
       const img = await generateBannerAny({
-        prompt: bannerPrompt,
+        prompt: referenceImageUrls.length > 0
+          ? `${bannerPrompt} The composition MUST feature the perfume bottles from the provided reference photos as the main subject — those are real divain products. Arrange them naturally in the scene.`
+          : bannerPrompt,
         aspectRatio: "3:2",
         brandHints: {
           palette: [palette.primary, palette.bg, palette.text].filter(Boolean),
@@ -311,6 +323,7 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
         },
         quality: input.imageQuality ?? "medium",
         preferredModel: input.imageModelOverride,
+        referenceImageUrls,
       });
       const bytes = Buffer.from(img.base64, "base64");
       const asset = await prisma.asset.create({

@@ -15,7 +15,10 @@ export type GenerateImageArgs = {
     avoidText?: boolean;
   };
   quality?: "low" | "medium" | "high";
-  modelOverride?: string;  // skips the gpt-image-2 → 1 fallback dance
+  modelOverride?: string;
+  referenceImageUrls?: string[];   // when set, hits /v1/images/edits so the
+                                   // model composes a new scene USING these
+                                   // real photos (the user's actual products)
 };
 
 // Map our aspect-ratio tokens to gpt-image-1's accepted size strings.
@@ -58,6 +61,14 @@ export async function generateImageWithOpenAI(args: GenerateImageArgs): Promise<
     }),
   });
 
+  // EDIT PATH — when reference images are provided, use /v1/images/edits so the
+  // model composes a new scene featuring the user's actual product photos
+  // (e.g. real DIVAIN bottles arranged on warm sand at golden hour instead of
+  // generic AI-invented bottles).
+  if (args.referenceImageUrls && args.referenceImageUrls.length > 0) {
+    return await runEditWithReferences(cred.value, requestedModel, prompt, args);
+  }
+
   let res = await callOpenAI(requestedModel);
   if (!res.ok) {
     const body = await res.text();
@@ -84,4 +95,62 @@ export async function generateImageWithOpenAI(args: GenerateImageArgs): Promise<
     return { base64: buf.toString("base64"), mimeType: imgRes.headers.get("content-type") ?? "image/png" };
   }
   throw new Error("OpenAI image returned no data");
+}
+
+// Download an image URL and return it as a Blob suitable for multipart upload.
+async function fetchAsBlob(url: string, filenameHint: string): Promise<{ blob: Blob; filename: string }> {
+  const r = await fetch(url, { redirect: "follow" });
+  if (!r.ok) throw new Error(`Failed to fetch reference image ${url}: ${r.status}`);
+  const ab = await r.arrayBuffer();
+  const ct = r.headers.get("content-type") ?? "image/jpeg";
+  const ext = ct.includes("png") ? "png" : ct.includes("webp") ? "webp" : "jpg";
+  return { blob: new Blob([ab], { type: ct }), filename: `${filenameHint}.${ext}` };
+}
+
+// Run /v1/images/edits with up to 4 product photos as references so the model
+// composes a brand-new editorial scene FEATURING those actual products (real
+// DIVAIN bottles arranged on warm sand, etc.) instead of inventing generic
+// perfume props.
+async function runEditWithReferences(
+  apiKey: string,
+  model: string,
+  prompt: string,
+  args: GenerateImageArgs,
+): Promise<{ base64: string; mimeType: string }> {
+  const refs = (args.referenceImageUrls ?? []).slice(0, 4); // OpenAI caps refs
+  if (refs.length === 0) throw new Error("runEditWithReferences called with no refs");
+
+  const form = new FormData();
+  form.append("model", model);
+  form.append("prompt", prompt);
+  form.append("size", sizeForAspect(args.aspectRatio));
+  form.append("quality", args.quality ?? "medium");
+  form.append("n", "1");
+
+  // Fetch all references in parallel and attach them to the form. The field
+  // name `image` repeated multiple times is how OpenAI expects multi-image
+  // edits per the gpt-image-1 docs.
+  const blobs = await Promise.all(refs.map((u, i) => fetchAsBlob(u, `ref-${i}`)));
+  for (const { blob, filename } of blobs) {
+    form.append("image", blob, filename);
+  }
+
+  const res = await fetch("https://api.openai.com/v1/images/edits", {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${apiKey}` },
+    body: form,
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`OpenAI image edit ${res.status}: ${body.slice(0, 280)}`);
+  }
+  const json = await res.json() as { data?: Array<{ b64_json?: string; url?: string }> };
+  const first = json.data?.[0];
+  if (first?.b64_json) return { base64: first.b64_json, mimeType: "image/png" };
+  if (first?.url) {
+    const imgRes = await fetch(first.url);
+    const buf = Buffer.from(await imgRes.arrayBuffer());
+    return { base64: buf.toString("base64"), mimeType: imgRes.headers.get("content-type") ?? "image/png" };
+  }
+  throw new Error("OpenAI image edit returned no data");
 }

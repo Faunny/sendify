@@ -17,7 +17,8 @@ export type BannerArgs = {
     avoidText?: boolean;
   };
   quality?: "low" | "medium" | "high";
-  preferredModel?: string;  // pin gpt-image-1 to skip the gpt-image-2 fallback dance
+  preferredModel?: string;          // pin gpt-image-1 to skip the gpt-image-2 fallback dance
+  referenceImageUrls?: string[];    // real product photos to compose into the scene
 };
 
 export type BannerResult = {
@@ -45,6 +46,7 @@ export async function generateBannerAny(args: BannerArgs): Promise<BannerResult>
         brandHints: args.brandHints,
         quality: args.quality ?? "medium",
         modelOverride: args.preferredModel,
+        referenceImageUrls: args.referenceImageUrls,
       });
       return { ...img, provider: "openai-image" };
     } catch (e) {
