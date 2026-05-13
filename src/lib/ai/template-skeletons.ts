@@ -163,19 +163,19 @@ function lifestyleHero(s: SkeletonSlots): string {
   // legibility against any background). Matches the divain campaign style
   // where the offer reads against the model photo.
   const heroSection = s.heroUrl
-    ? `<mj-section background-url="${s.heroUrl}" background-size="cover" background-position="center center" background-repeat="no-repeat" padding="180px 30px" css-class="sf-hero-section">
+    ? `<mj-section background-url="${s.heroUrl}" background-size="cover" background-position="center center" background-repeat="no-repeat" padding="130px 30px" css-class="sf-hero-section">
         <mj-column>
-          ${s.subhead ? `<mj-text align="center" color="#FFFFFF" font-size="13px" letter-spacing="5px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" css-class="sf-hero-text sf-hero-subhead" padding-bottom="14px">${escapeHtml(s.subhead)}</mj-text>` : ""}
+          ${s.subhead ? `<mj-text align="center" color="#FFFFFF" font-size="13px" letter-spacing="5px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" css-class="sf-hero-text sf-hero-subhead" padding-bottom="12px">${escapeHtml(s.subhead)}</mj-text>` : ""}
           <mj-text align="center" color="#FFFFFF" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="54px" font-weight="600" line-height="1.05" css-class="sf-hero-text sf-hero-headline">${headlineHtml}</mj-text>
-          <mj-spacer height="24px" />
+          <mj-spacer height="20px" />
           ${PILL_BUTTON(s.ctaLabel, s.bgColor, s.primaryColor, s.ctaUrl ?? "#")}
         </mj-column>
       </mj-section>`
-    : `<mj-section background-color="${s.primaryColor}" padding="180px 30px" css-class="sf-hero-section">
+    : `<mj-section background-color="${s.primaryColor}" padding="130px 30px" css-class="sf-hero-section">
         <mj-column>
-          ${s.subhead ? `<mj-text align="center" color="${s.bgColor}" font-size="13px" letter-spacing="5px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" css-class="sf-hero-subhead" padding-bottom="14px">${escapeHtml(s.subhead)}</mj-text>` : ""}
+          ${s.subhead ? `<mj-text align="center" color="${s.bgColor}" font-size="13px" letter-spacing="5px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" css-class="sf-hero-subhead" padding-bottom="12px">${escapeHtml(s.subhead)}</mj-text>` : ""}
           <mj-text align="center" color="${s.bgColor}" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="48px" font-weight="600" line-height="1.05" css-class="sf-hero-headline">${headlineHtml}</mj-text>
-          <mj-spacer height="24px" />
+          <mj-spacer height="20px" />
           ${PILL_BUTTON(s.ctaLabel, s.bgColor, s.primaryColor, s.ctaUrl ?? "#")}
         </mj-column>
       </mj-section>`;
@@ -227,9 +227,9 @@ function lifestyleHero(s: SkeletonSlots): string {
   // headline + subhead are now overlaid on the hero photo, so we just need
   // the supporting editorial copy here).
   const captionBlock = s.body ? `
-    <mj-section padding="44px 32px 16px" background-color="${s.bgColor}">
+    <mj-section padding="32px 32px 12px" background-color="${s.bgColor}">
       <mj-column>
-        <mj-text align="center" font-size="15px" line-height="1.7" color="${s.textColor}" opacity="0.88">${escapeHtml(s.body)}</mj-text>
+        <mj-text align="center" font-size="15px" line-height="1.6" color="${s.textColor}" opacity="0.88">${escapeHtml(s.body)}</mj-text>
       </mj-column>
     </mj-section>
   ` : "";
@@ -270,14 +270,14 @@ function bigNumberHero(s: SkeletonSlots): string {
   return render(`<mjml>${HEAD}<mj-body background-color="{{bgColor}}">
 {{preheader}}
 {{wordmark}}
-<mj-section padding="70px 24px 12px">
+<mj-section padding="44px 24px 8px">
   <mj-column>
     <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="118px" font-weight="700" line-height="1" color="{{primaryColor}}" css-class="sf-big-number">{{offerNumber}}</mj-text>
-    <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="15px" letter-spacing="6px" text-transform="uppercase" color="{{textColor}}" padding-top="22px" font-weight="500">{{offerLabel}}</mj-text>
-    <mj-text align="center" font-size="13px" color="{{textColor}}" padding-top="10px">{{body}}</mj-text>
+    <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="15px" letter-spacing="6px" text-transform="uppercase" color="{{textColor}}" padding-top="18px" font-weight="500">{{offerLabel}}</mj-text>
+    <mj-text align="center" font-size="13px" color="{{textColor}}" padding-top="8px">{{body}}</mj-text>
   </mj-column>
 </mj-section>
-<mj-section padding="24px 24px 70px"><mj-column>{{cta}}</mj-column></mj-section>
+<mj-section padding="18px 24px 24px"><mj-column>{{cta}}</mj-column></mj-section>
 {{heroSection}}
 {{brandBar}}
 </mj-body></mjml>`, slots);
@@ -320,15 +320,15 @@ function productGridEditorial(s: SkeletonSlots): string {
   return render(`<mjml>${HEAD}<mj-body background-color="{{bgColor}}">
 {{preheader}}
 {{wordmark}}
-<mj-section padding="50px 24px 10px">
+<mj-section padding="36px 24px 8px">
   <mj-column>
     <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="32px" font-weight="600" color="{{textColor}}" line-height="1.15">{{headline}}</mj-text>
     {{subhead}}
   </mj-column>
 </mj-section>
 {{bigHero}}
-<mj-section padding="30px 16px 30px">{{cols}}</mj-section>
-<mj-section padding="0 24px 60px"><mj-column>{{cta}}</mj-column></mj-section>
+<mj-section padding="24px 16px">{{cols}}</mj-section>
+<mj-section padding="0 24px 36px"><mj-column>{{cta}}</mj-column></mj-section>
 {{brandBar}}
 </mj-body></mjml>`, slots);
 }
@@ -354,12 +354,12 @@ function premiumLaunch(s: SkeletonSlots): string {
   return render(`<mjml>${HEAD}<mj-body background-color="{{bgColor}}">
 {{preheader}}
 {{wordmark}}
-<mj-section padding="80px 32px 30px"><mj-column>{{productImage}}</mj-column></mj-section>
-<mj-section padding="10px 32px"><mj-column>
+<mj-section padding="56px 32px 22px"><mj-column>{{productImage}}</mj-column></mj-section>
+<mj-section padding="8px 32px"><mj-column>
   <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="26px" font-weight="500" letter-spacing="0.5px" color="{{textColor}}">{{productName}}</mj-text>
-  <mj-text align="center" font-size="13px" letter-spacing="3px" text-transform="uppercase" color="{{textColor}}" opacity="0.6" padding-top="12px">{{productCopy}}</mj-text>
+  <mj-text align="center" font-size="13px" letter-spacing="3px" text-transform="uppercase" color="{{textColor}}" opacity="0.6" padding-top="10px">{{productCopy}}</mj-text>
 </mj-column></mj-section>
-<mj-section padding="40px 32px 110px"><mj-column>{{cta}}</mj-column></mj-section>
+<mj-section padding="28px 32px 60px"><mj-column>{{cta}}</mj-column></mj-section>
 </mj-body></mjml>`, slots);
 }
 
@@ -381,12 +381,12 @@ function countdownUrgency(s: SkeletonSlots): string {
   return render(`<mjml>${HEAD}<mj-body background-color="#000000">
 {{preheader}}
 {{wordmark}}
-<mj-section background-color="#000000" padding="70px 24px 30px"><mj-column>
+<mj-section background-color="#000000" padding="48px 24px 18px"><mj-column>
   <mj-text align="center" color="#FFFFFF" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="46px" font-weight="700" line-height="1.1" letter-spacing="-0.5px">{{headline}}</mj-text>
-  <mj-text align="center" color="#FFFFFF" font-size="14px" letter-spacing="5px" text-transform="uppercase" padding-top="22px" opacity="0.7">{{subhead}}</mj-text>
+  <mj-text align="center" color="#FFFFFF" font-size="14px" letter-spacing="5px" text-transform="uppercase" padding-top="18px" opacity="0.7">{{subhead}}</mj-text>
 </mj-column></mj-section>
-<mj-section background-color="#000000" padding="20px 24px 80px"><mj-column>
-  <mj-text align="center" color="#FFFFFF" font-size="14px" padding-bottom="32px" opacity="0.8">{{body}}</mj-text>
+<mj-section background-color="#000000" padding="14px 24px 48px"><mj-column>
+  <mj-text align="center" color="#FFFFFF" font-size="14px" padding-bottom="24px" opacity="0.8">{{body}}</mj-text>
   {{cta}}
 </mj-column></mj-section>
 </mj-body></mjml>`, slots);
@@ -410,12 +410,12 @@ function appPromoGradient(s: SkeletonSlots): string {
 <mj-section background-color="#FFBDCF" padding="32px 24px 0"><mj-column>
   <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="22px" font-weight="700" color="#1A1A1A">divain.</mj-text>
 </mj-column></mj-section>
-<mj-section background-color="#FFBDCF" padding="40px 24px 20px"><mj-column>
+<mj-section background-color="#FFBDCF" padding="28px 24px 14px"><mj-column>
   <mj-text align="center" color="#1A1A1A" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="40px" font-weight="600" line-height="1.1">{{headline}}</mj-text>
-  <mj-text align="center" color="#1A1A1A" font-size="14px" letter-spacing="2px" text-transform="uppercase" padding-top="18px">{{subhead}}</mj-text>
+  <mj-text align="center" color="#1A1A1A" font-size="14px" letter-spacing="2px" text-transform="uppercase" padding-top="14px">{{subhead}}</mj-text>
 </mj-column></mj-section>
-<mj-section background-color="#FFBDCF" padding="20px 24px 30px"><mj-column>{{heroImage}}</mj-column></mj-section>
-<mj-section background-color="#FFBDCF" padding="0 24px 70px"><mj-column>{{appStoreBtn}}</mj-column></mj-section>
+<mj-section background-color="#FFBDCF" padding="14px 24px 22px"><mj-column>{{heroImage}}</mj-column></mj-section>
+<mj-section background-color="#FFBDCF" padding="0 24px 44px"><mj-column>{{appStoreBtn}}</mj-column></mj-section>
 </mj-body></mjml>`, slots);
 }
 
@@ -485,15 +485,15 @@ function winbackEmpathic(s: SkeletonSlots): string {
   return render(`<mjml>${HEAD}<mj-body background-color="#F5F1EA">
 {{preheader}}
 {{wordmark}}
-<mj-section padding="50px 24px 20px"><mj-column>
+<mj-section padding="38px 24px 14px"><mj-column>
   <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="32px" font-weight="500" color="{{textColor}}" line-height="1.2">{{headline}}</mj-text>
   {{incentive}}
 </mj-column></mj-section>
 {{heroImage}}
-<mj-section padding="20px 36px"><mj-column>
-  <mj-text align="center" font-size="14px" line-height="1.7" color="{{textColor}}">{{body}}</mj-text>
+<mj-section padding="14px 36px"><mj-column>
+  <mj-text align="center" font-size="14px" line-height="1.65" color="{{textColor}}">{{body}}</mj-text>
 </mj-column></mj-section>
-<mj-section padding="30px 24px 70px"><mj-column>{{cta}}</mj-column></mj-section>
+<mj-section padding="22px 24px 44px"><mj-column>{{cta}}</mj-column></mj-section>
 </mj-body></mjml>`, slots);
 }
 

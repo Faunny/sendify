@@ -140,53 +140,53 @@ function tpl(body: string): string {
 // ── Reusable section helpers ─────────────────────────────────────────────────
 
 const heroCentered = (eyebrow: string, headline: string, sub: string, ctaLabel: string, ctaUrl: string) => `
-  <mj-section padding="80px 20px 40px">
+  <mj-section padding="48px 20px 24px">
     <mj-column>
       <mj-text align="center" css-class="sf-eyebrow">${eyebrow}</mj-text>
-      <mj-text align="center" css-class="sf-headline" padding-top="14px">${headline}</mj-text>
-      <mj-text align="center" css-class="sf-sub" padding-top="18px" padding-left="40px" padding-right="40px">${sub}</mj-text>
-      <mj-button href="${ctaUrl}" padding-top="34px">${ctaLabel}</mj-button>
+      <mj-text align="center" css-class="sf-headline" padding-top="12px">${headline}</mj-text>
+      <mj-text align="center" css-class="sf-sub" padding-top="14px" padding-left="36px" padding-right="36px">${sub}</mj-text>
+      <mj-button href="${ctaUrl}" padding-top="26px">${ctaLabel}</mj-button>
     </mj-column>
   </mj-section>
 `;
 
 const heroOffer = (eyebrow: string, offer: string, sub: string, ctaLabel: string, ctaUrl: string) => `
-  <mj-section padding="80px 20px 30px">
+  <mj-section padding="44px 20px 20px">
     <mj-column>
       <mj-text align="center" css-class="sf-eyebrow">${eyebrow}</mj-text>
-      <mj-text align="center" css-class="sf-offer-num" padding-top="20px">${offer}</mj-text>
-      <mj-text align="center" css-class="sf-sub" padding-top="14px" padding-left="40px" padding-right="40px">${sub}</mj-text>
-      <mj-button href="${ctaUrl}" padding-top="30px">${ctaLabel}</mj-button>
+      <mj-text align="center" css-class="sf-offer-num" padding-top="14px">${offer}</mj-text>
+      <mj-text align="center" css-class="sf-sub" padding-top="10px" padding-left="36px" padding-right="36px">${sub}</mj-text>
+      <mj-button href="${ctaUrl}" padding-top="22px">${ctaLabel}</mj-button>
     </mj-column>
   </mj-section>
 `;
 
 const heroDark = (eyebrow: string, headline: string, sub: string, ctaLabel: string, ctaUrl: string) => `
-  <mj-section background-color="#0E0E0E" padding="100px 20px 80px">
+  <mj-section background-color="#0E0E0E" padding="64px 20px 52px">
     <mj-column>
       <mj-text align="center" color="#D4AF7A" font-size="11px" letter-spacing="4px" text-transform="uppercase" font-weight="500">${eyebrow}</mj-text>
-      <mj-text align="center" color="#FFFFFF" font-size="42px" line-height="1.1" font-weight="300" letter-spacing="-0.5px" padding-top="14px">${headline}</mj-text>
-      <mj-text align="center" color="#CCCCCC" font-size="14.5px" line-height="1.65" padding-top="18px" padding-left="40px" padding-right="40px">${sub}</mj-text>
-      <mj-button background-color="#D4AF7A" color="#0E0E0E" href="${ctaUrl}" padding-top="30px" inner-padding="14px 36px" font-weight="500" font-size="13px" letter-spacing="2.5px" border-radius="0">${ctaLabel}</mj-button>
+      <mj-text align="center" color="#FFFFFF" font-size="42px" line-height="1.1" font-weight="300" letter-spacing="-0.5px" padding-top="12px">${headline}</mj-text>
+      <mj-text align="center" color="#CCCCCC" font-size="14.5px" line-height="1.55" padding-top="14px" padding-left="36px" padding-right="36px">${sub}</mj-text>
+      <mj-button background-color="#D4AF7A" color="#0E0E0E" href="${ctaUrl}" padding-top="22px" inner-padding="14px 36px" font-weight="500" font-size="13px" letter-spacing="2.5px" border-radius="0">${ctaLabel}</mj-button>
     </mj-column>
   </mj-section>
 `;
 
 const closer = (text: string) => `
-  <mj-section padding="0 20px 60px">
+  <mj-section padding="0 20px 36px">
     <mj-column>
-      <mj-text align="center" css-class="sf-tiny" padding-top="20px">${text}</mj-text>
+      <mj-text align="center" css-class="sf-tiny" padding-top="14px">${text}</mj-text>
     </mj-column>
   </mj-section>
 `;
 
 const incentiveLine = (code: string, copy: string) => `
-  <mj-section padding="0 20px 30px">
+  <mj-section padding="0 20px 22px">
     <mj-column>
       <mj-divider css-class="sf-divider" padding="0" />
-      <mj-text align="center" css-class="sf-tiny" padding-top="22px">${copy}</mj-text>
-      <mj-text align="center" font-size="22px" letter-spacing="6px" font-weight="500" padding-top="6px" color="{{store.primaryColor}}">${code}</mj-text>
-      <mj-divider css-class="sf-divider" padding-top="22px" />
+      <mj-text align="center" css-class="sf-tiny" padding-top="16px">${copy}</mj-text>
+      <mj-text align="center" font-size="22px" letter-spacing="6px" font-weight="500" padding-top="4px" color="{{store.primaryColor}}">${code}</mj-text>
+      <mj-divider css-class="sf-divider" padding-top="16px" />
     </mj-column>
   </mj-section>
 `;
