@@ -67,12 +67,10 @@ export async function POST(req: Request) {
         pillar: sample.pillar,
         storeSlug,
         tone: sample.tone,
-        // Previews prioritise SPEED over fidelity:
-        // - low quality (~6-10s/image vs 30-40s medium)
-        // - no product /edits round-trip (~3x faster)
-        // The auto-planner + manual generate-with-AI use full quality.
+        // Previews use low quality but KEEP the product reference path so the
+        // hero shows the real divain bottle with its actual label — the user
+        // needs to validate brand fidelity, not just layout. ~15-25s per image.
         imageQuality: "low",
-        skipProductReferences: true,
       });
       const compiled = renderMjml(generated.mjml);
       return {
