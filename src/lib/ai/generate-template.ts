@@ -76,15 +76,28 @@ async function loadProductHints(storeSlug: string | undefined, pillar: string | 
   };
 
   // Strategy: prefer products WITH an image AND matching the pillar, then with
-  // an image (regardless of pillar), then anything active. Always exclude the
-  // obvious non-perfume SKUs (gift card, bag, gominolas accessories).
-  const NON_PERFUME_HANDLES = ["bolsa-divain-store", "gominolas", "divain-gift-card"];
+  // an image (regardless of pillar), then anything active. Exclusion is by SKU
+  // (more reliable than handle for stores that rebuild SKUs but rename handles).
+  // Reads SENDIFY_AI_EXCLUDED_SKUS env var (comma-separated) — defaults to the
+  // known divain non-perfume SKUs spotted in the divain-europa catalog.
+  const DEFAULT_EXCLUDED_SKUS = ["BOLSAS DIVAIN STORE", "GOMINOLAS"];
+  const envExcluded = (process.env.SENDIFY_AI_EXCLUDED_SKUS ?? "")
+    .split(",").map((s) => s.trim()).filter(Boolean);
+  const excludedSkus = envExcluded.length > 0 ? envExcluded : DEFAULT_EXCLUDED_SKUS;
+
   const keywords = pillar && pillar !== "ALL" ? (PILLAR_KEYWORDS[pillar] ?? []) : [];
 
+  // Products whose ALL variants have an SKU in the excluded list are filtered
+  // out. Products with at least one non-excluded variant are kept (rare edge,
+  // but safer). Also exclude gift cards explicitly via productType.
   const baseWhere = {
     storeId: store.id,
     status: "active",
-    NOT: { handle: { in: NON_PERFUME_HANDLES } },
+    NOT: [
+      { variants: { every: { sku: { in: excludedSkus } } } },
+      { productType: { contains: "gift", mode: "insensitive" as const } },
+      { handle: { contains: "gift-card", mode: "insensitive" as const } },
+    ],
   } as const;
 
   // Tier 1: pillar match + has image
