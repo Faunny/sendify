@@ -9,7 +9,22 @@ import { getCredential } from "@/lib/credentials";
 import { prisma } from "@/lib/db";
 import type { ProviderType } from "@prisma/client";
 
+export const maxDuration = 30;
+export const dynamic = "force-dynamic";
+
+async function pingDb(maxAttempts = 4): Promise<void> {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      return;
+    } catch {
+      await new Promise((r) => setTimeout(r, Math.min(500 * 2 ** i, 3000)));
+    }
+  }
+}
+
 export async function POST(req: Request) {
+  await pingDb();
   const { provider, scope } = await req.json().catch(() => ({} as { provider?: ProviderType; scope?: string | null }));
   if (!provider) return NextResponse.json({ ok: false, error: "missing provider" }, { status: 400 });
 
@@ -74,18 +89,17 @@ export async function POST(req: Request) {
       }
       case "SHOPIFY": {
         if (!scope) { detail = "scope (store slug) required"; break; }
-        // Skip secret-scope rows — they're tested implicitly through the Client ID row.
-        if (scope.endsWith(":secret")) {
-          ok = true;
-          detail = "Client secret stored — verified via Client ID test";
-          break;
-        }
-        const store = await prisma.store.findUnique({ where: { slug: scope } });
-        if (!store) { detail = "store slug not found"; break; }
+        // Test for either scope (primary or :secret) actually tries the full Shopify
+        // connection — Client ID alone or Client Secret alone is meaningless. Both
+        // must work together for the OAuth client_credentials grant.
+        const baseSlug = scope.endsWith(":secret") ? scope.slice(0, -":secret".length) : scope;
+        const store = await prisma.store.findUnique({ where: { slug: baseSlug } });
+        if (!store) { detail = `store slug "${baseSlug}" not found`; break; }
         const { testShopifyConnection } = await import("@/lib/providers/shopify");
-        const result = await testShopifyConnection(scope);
+        const result = await testShopifyConnection(baseSlug);
         ok = result.ok;
         if (!result.ok) detail = result.error;
+        else detail = `Connected to "${result.shop}"`;
         break;
       }
       default:
