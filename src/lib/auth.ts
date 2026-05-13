@@ -1,18 +1,20 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import { prisma } from "./db";
 import { authConfig } from "./auth.config";
 
-// Full auth config — Node runtime only (Prisma adapter not Edge-compatible).
-// Middleware uses the slim authConfig from ./auth.config.ts instead.
+// Full auth config. We deliberately do NOT register PrismaAdapter here — the
+// adapter forces Neon connections on every auth invocation (csrf, providers,
+// signIn) which made /api/auth/* hang for ~30s during Neon cold-start, blocking
+// the login form from even fetching its CSRF token.
 //
-// Bootstrap login: ADMIN_EMAIL + ADMIN_PASSWORD env vars. Magic-link can be added
-// alongside once SES is configured; both providers can coexist.
+// Since session.strategy = "jwt" we don't need a database adapter; JWTs are
+// signed with AUTH_SECRET and verified locally. When we add the magic-link
+// email provider later (needs DB to store verification tokens), we'll re-add
+// the adapter behind a feature flag and only run those routes on the Node
+// runtime with a warmed connection.
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
-  adapter: PrismaAdapter(prisma),
   providers: [
     Credentials({
       id: "admin-password",
