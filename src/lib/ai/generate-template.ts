@@ -8,6 +8,7 @@
 
 import { getCredential } from "../credentials";
 import { prisma } from "../db";
+import { generateBanner } from "../gemini";
 import { LAYOUT_LIBRARY, FEW_SHOT_EXAMPLES } from "./template-patterns";
 
 export type TemplateGenInput = {
@@ -16,6 +17,7 @@ export type TemplateGenInput = {
   storeSlug?: string;        // divain-europa, etc. (drives footer legal entity + palette)
   language?: string;         // BCP-47 of source; downstream translation handles fan-out
   tone?: string;             // editorial / commercial / luxury / urgent (default: editorial)
+  generateBanner?: boolean;  // run Gemini after MJML and substitute the hero URL (default: true if Gemini key exists)
 };
 
 type StorePalette = { primary?: string; accent?: string; bg?: string; text?: string };
@@ -107,7 +109,9 @@ export type TemplateGenOutput = {
   preheader: string;
   mjml: string;              // full <mjml>…</mjml> document
   layoutPattern?: string;    // which pattern from the library was chosen
-  bannerPrompt?: string;     // prompt suitable for Gemini banner generation
+  bannerPrompt?: string;     // prompt fed to Gemini
+  bannerAssetId?: string;    // populated when Gemini generation succeeded
+  bannerUrl?: string;        // public URL of the generated hero
   designJson?: unknown;      // optional Unlayer-compatible JSON for round-trip editing
   modelUsed: string;
   promptTokens?: number;
@@ -183,13 +187,27 @@ REAL PRODUCT CATALOG RULES:
 - A list of REAL products from the store is included at the bottom of the user
   prompt (if the store has been synced). When the chosen layout has product
   slots (product-grid-editorial, premium-launch, brand-anthology), USE those
-  products: their exact title, exact handle, exact image URL, exact price.
+  products: exact title, exact handle, exact image URL from the catalog, exact
+  price.
 - DO NOT invent product names. DO NOT use placeholder cdn.divain.space URLs
   when real product image URLs are provided.
-- If the catalog block is empty (no products yet synced), fall back to
-  placeholder URLs cdn.divain.space/banners/{slug}.jpg AND emit a structure
-  with text-only product slots ("Producto destacado" labels) so it works as a
-  skeleton until products arrive.
+
+ASSET URL DISCIPLINE — no broken images:
+- If the user prompt does NOT include a "BANNER ASSET URL:" line and the
+  catalog block is empty, DO NOT emit <mj-image src="https://cdn.divain.space/..."
+  /> tags pointing to URLs that don't exist. Those render as broken images.
+- Instead, use a "type-only hero" approach:
+  · For lifestyle-hero pattern: replace background-url with a solid color
+    section background (palette.primary or text on bg), and write the offer
+    in big Outfit type — the design still reads, just without the photo.
+  · For product-grid-editorial without catalog: use 3 <mj-text> blocks with
+    product names from the brief, no <mj-image>.
+  · For premium-launch without catalog: pure typographic hero with the
+    product name in Outfit 36-44px, no image.
+- The brand wordmark in the header: always use <mj-text> with "divain."
+  in Outfit weight 700, NEVER an <mj-image> pointing at a fictional logo URL.
+- If a "BANNER ASSET URL:" line IS present in the prompt, use that exact URL
+  for the hero — that's the real Gemini-generated banner.
 
 PATTERN LIBRARY — pick ONE that fits the brief, then improvise on top of it.
 You MUST NOT just fill a generic skeleton. Every email starts by reading the
@@ -324,12 +342,64 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
     throw new Error("LLM mjml output doesn't look like MJML (no <mjml> root)");
   }
 
+  // Banner generation step: if the LLM gave us a bannerPrompt and Gemini is
+  // configured, run image gen now and inject the real URL into the MJML in
+  // place of the cdn.divain.space placeholder.
+  let finalMjml = parsed.mjml;
+  let bannerAssetId: string | undefined;
+  let bannerUrl: string | undefined;
+  const shouldGenBanner = input.generateBanner !== false && !!parsed.bannerPrompt;
+  if (shouldGenBanner) {
+    try {
+      const gemini = await getCredential("IMAGE_GEMINI");
+      if (gemini) {
+        const img = await generateBanner({
+          prompt: parsed.bannerPrompt!,
+          aspectRatio: "3:2",
+          brandHints: {
+            palette: [palette.primary, palette.bg, palette.text].filter(Boolean),
+            style: "editorial lifestyle photography for divain perfume brand",
+            avoidText: true,
+          },
+        });
+        const bytes = Buffer.from(img.base64, "base64");
+        const asset = await prisma.asset.create({
+          data: {
+            name: `hero-${parsed.layoutPattern ?? "auto"}-${Date.now()}`,
+            kind: "IMAGE",
+            mimeType: img.mimeType,
+            data: bytes,
+            sizeBytes: bytes.length,
+            tags: ["ai-generated", "hero", input.storeSlug ?? "global"],
+            prompt: parsed.bannerPrompt,
+            generatedBy: "gemini-2.5-flash-image",
+          },
+          select: { id: true },
+        });
+        bannerAssetId = asset.id;
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://sendify.divain.space";
+        bannerUrl = `${appUrl}/api/assets/${asset.id}`;
+        // Substitute any cdn.divain.space/banners/... placeholder with the real URL.
+        finalMjml = finalMjml.replace(
+          /https:\/\/cdn\.divain\.space\/banners\/[^"'\s)]+/g,
+          bannerUrl,
+        );
+      }
+    } catch (e) {
+      // Banner gen failure must not block template creation — log and continue
+      // with the placeholder URL. User can regenerate later.
+      console.warn("[generate-template] banner gen failed, falling back to placeholder:", e instanceof Error ? e.message : e);
+    }
+  }
+
   return {
     subject: parsed.subject,
     preheader: parsed.preheader,
-    mjml: parsed.mjml,
+    mjml: finalMjml,
     layoutPattern: parsed.layoutPattern,
     bannerPrompt: parsed.bannerPrompt,
+    bannerAssetId,
+    bannerUrl,
     modelUsed: model,
     promptTokens: json.usage?.prompt_tokens,
     completionTokens: json.usage?.completion_tokens,

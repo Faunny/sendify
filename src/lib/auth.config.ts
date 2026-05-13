@@ -22,6 +22,8 @@ export const authConfig = {
         pathname.startsWith("/api/promotions/webhook") ||
         pathname.startsWith("/api/ses/events")         ||
         pathname.startsWith("/api/cron/")              ||
+        // Assets served to email clients (no session cookies in email-rendering pipeline).
+        pathname.startsWith("/api/assets/")            ||
         // Form submissions + the embed JS must be open so the storefront can POST.
         // Routes look like /api/forms/{slug}/submit and /api/forms/{slug}/embed.js
         (pathname.startsWith("/api/forms/") &&

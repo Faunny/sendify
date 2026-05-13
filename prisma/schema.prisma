@@ -539,9 +539,10 @@ model Asset {
   id          String    @id @default(cuid())
   name        String
   kind        AssetKind @default(IMAGE)
-  s3Key       String
-  url         String    // CDN URL
+  s3Key       String    @default("")   // empty when stored inline as `data`
+  url         String    @default("")   // CDN URL (or empty when self-served)
   mimeType    String
+  data        Bytes?    // raw bytes for self-hosted assets (Gemini banners pre-S3)
   width       Int?
   height      Int?
   sizeBytes   Int?
