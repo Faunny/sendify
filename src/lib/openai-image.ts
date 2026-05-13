@@ -120,29 +120,39 @@ async function runEditWithReferences(
   const refs = (args.referenceImageUrls ?? []).slice(0, 4); // OpenAI caps refs
   if (refs.length === 0) throw new Error("runEditWithReferences called with no refs");
 
-  const form = new FormData();
-  form.append("model", model);
-  form.append("prompt", prompt);
-  form.append("size", sizeForAspect(args.aspectRatio));
-  form.append("quality", args.quality ?? "medium");
-  form.append("n", "1");
-
-  // Fetch all references in parallel and attach them to the form. The field
-  // name `image` repeated multiple times is how OpenAI expects multi-image
-  // edits per the gpt-image-1 docs.
+  // Fetch all references in parallel — reused for both attempts (-2 then -1).
   const blobs = await Promise.all(refs.map((u, i) => fetchAsBlob(u, `ref-${i}`)));
-  for (const { blob, filename } of blobs) {
-    form.append("image", blob, filename);
-  }
 
-  const res = await fetch("https://api.openai.com/v1/images/edits", {
-    method: "POST",
-    headers: { "Authorization": `Bearer ${apiKey}` },
-    body: form,
-  });
+  const callEdit = async (modelToUse: string) => {
+    const form = new FormData();
+    form.append("model", modelToUse);
+    form.append("prompt", prompt);
+    form.append("size", sizeForAspect(args.aspectRatio));
+    form.append("quality", args.quality ?? "medium");
+    form.append("n", "1");
+    for (const { blob, filename } of blobs) form.append("image", blob, filename);
+    return fetch("https://api.openai.com/v1/images/edits", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${apiKey}` },
+      body: form,
+    });
+  };
+
+  let res = await callEdit(model);
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`OpenAI image edit ${res.status}: ${body.slice(0, 280)}`);
+    // gpt-image-2 might not be available on the account OR might not support
+    // edits yet. Either way, fall back to gpt-image-1 once.
+    const looksLikeModelMissing = /model_not_found|does not exist|invalid_model|not supported/i.test(body) || (res.status === 404 && model !== "gpt-image-1");
+    if (looksLikeModelMissing && model !== "gpt-image-1") {
+      res = await callEdit("gpt-image-1");
+      if (!res.ok) {
+        const body2 = await res.text();
+        throw new Error(`OpenAI image edit ${res.status} (after fallback): ${body2.slice(0, 240)}`);
+      }
+    } else {
+      throw new Error(`OpenAI image edit ${res.status}: ${body.slice(0, 280)}`);
+    }
   }
   const json = await res.json() as { data?: Array<{ b64_json?: string; url?: string }> };
   const first = json.data?.[0];

@@ -70,10 +70,9 @@ export async function POST(req: Request) {
         pillar: sample.pillar,
         storeSlug,
         tone: sample.tone,
-        // Previews use low quality + skip the gpt-image-2 → 1 fallback dance
-        // so 2 generations fit safely inside Vercel Hobby's 60s function ceiling.
+        // Previews use low quality to fit inside Vercel Hobby's 60s ceiling.
+        // Model defaults to gpt-image-2 (auto-falls back to -1 on 404).
         imageQuality: "low",
-        imageModelOverride: "gpt-image-1",
       });
       const compiled = renderMjml(generated.mjml);
       return {
