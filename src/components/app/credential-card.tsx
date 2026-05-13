@@ -47,6 +47,11 @@ export function CredentialCard(props: CredentialCardProps) {
       .then((r) => r.json())
       .then((j) => {
         if (cancelled || !j?.ok) return;
+        // Cold-start: the query exceeded its 8s deadline. We don't know whether
+        // the credential exists, so leave the current state alone instead of
+        // falsely flipping to "No configurado" — the next render will get the
+        // truth once Neon is warm.
+        if (j.coldStart) return;
         if (j.exists) setHasValue(true);
         if (typeof j.lastTestOk === "boolean") {
           setTestResult({ ok: j.lastTestOk, detail: j.lastTestError ?? undefined });
