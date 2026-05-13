@@ -56,13 +56,14 @@ type ProductHint = {
   title: string;
   imageUrl: string | null;
   price: string | null;
+  productUrl: string | null;
 };
 
 async function loadProductHints(storeSlug: string | undefined, pillar: string | undefined): Promise<ProductHint[]> {
   if (!storeSlug) return [];
   const store = await prisma.store.findUnique({
     where: { slug: storeSlug },
-    select: { id: true, countryCode: true, currency: true, productExcludedSkuPatterns: true },
+    select: { id: true, countryCode: true, currency: true, storefrontUrl: true, productExcludedSkuPatterns: true },
   });
   if (!store) return [];
 
@@ -156,11 +157,13 @@ async function loadProductHints(storeSlug: string | undefined, pillar: string | 
     }).catch(() => []);
   }
 
+  const storefront = (store.storefrontUrl ?? "").replace(/\/$/, "");
   return products.map((p) => ({
     handle: p.handle,
     title: p.title,
     imageUrl: p.imageUrl,
     price: p.variants[0]?.prices[0]?.price?.toString() ?? null,
+    productUrl: storefront ? `${storefront}/products/${p.handle}?utm_source=sendify&utm_medium=email` : null,
   }));
 }
 
@@ -224,13 +227,15 @@ Return the JSON object now.`;
 }
 
 export async function generateTemplate(input: TemplateGenInput): Promise<TemplateGenOutput> {
-  // Resolve store palette → drives skeleton colors.
+  // Resolve store palette + storefront URL → drives skeleton colors and links.
   let palette: Required<StorePalette> = DEFAULT_PALETTE;
+  let storefrontUrl = "";
   if (input.storeSlug) {
     const store = await prisma.store.findUnique({
       where: { slug: input.storeSlug },
-      select: { brandPalette: true },
+      select: { brandPalette: true, storefrontUrl: true },
     }).catch(() => null);
+    storefrontUrl = (store?.storefrontUrl ?? "").replace(/\/$/, "");
     const p = (store?.brandPalette ?? {}) as StorePalette;
     palette = {
       primary: p.primary ?? DEFAULT_PALETTE.primary,
@@ -359,16 +364,20 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
     offerNumber: parsed.offerNumber ? String(parsed.offerNumber).slice(0, 30) : undefined,
     offerLabel:  parsed.offerLabel  ? String(parsed.offerLabel).slice(0, 40)  : undefined,
     ctaLabel: String(parsed.ctaLabel ?? "DESCUBRIR").toUpperCase().slice(0, 30),
-    ctaUrl: "#",
+    // Primary CTA points to the country storefront with UTM tracking. Adds
+    // ?utm_source=sendify&utm_medium=email so analytics can attribute clicks.
+    ctaUrl: storefrontUrl ? `${storefrontUrl}/?utm_source=sendify&utm_medium=email` : "#",
     productName: parsed.productName ? String(parsed.productName).slice(0, 80) : undefined,
     productCopy: parsed.productCopy ? String(parsed.productCopy).slice(0, 100) : undefined,
     productImageUrl: products[0]?.imageUrl ?? undefined,
+    productPageUrl: products[0]?.productUrl ?? undefined,
     customerIncentive: parsed.customerIncentive ? String(parsed.customerIncentive).slice(0, 30) : undefined,
     products: products.length > 0
       ? products.slice(0, 3).map((p) => ({
           title: p.title,
           price: p.price ? `${p.price} €` : "",
           imageUrl: p.imageUrl ?? "",
+          productUrl: p.productUrl ?? undefined,
         }))
       : undefined,
     heroUrl: bannerUrl ?? "",

@@ -25,10 +25,11 @@ export type SkeletonSlots = {
   // Brand anthology
   pillarBlurbs?: Array<{ title: string; copy: string; ctaLabel: string; ctaUrl?: string; imageUrl?: string }>;
   // Product grid
-  products?: Array<{ title: string; price: string; imageUrl: string; productUrl?: string }>;
+  products?: Array<{ title: string; price: string; imageUrl: string; productUrl?: string | null }>;
   // Premium launch
   productName?: string;
   productImageUrl?: string;
+  productPageUrl?: string;     // storefront URL for the featured product
   productCopy?: string;
   // Countdown / winback
   customerIncentive?: string;  // "-15%"
@@ -114,13 +115,19 @@ function lifestyleHero(s: SkeletonSlots): string {
       </mj-column>
     </mj-section>
     <mj-section padding="10px 12px 40px" background-color="${s.bgColor}">
-      ${products.map((p) => `
+      ${products.map((p) => {
+        const href = p.productUrl ?? "#";
+        const img = p.imageUrl
+          ? `<mj-image src="${p.imageUrl}" alt="${escapeHtml(p.title)}" border-radius="4px" href="${href}" />`
+          : `<mj-image src="https://via.placeholder.com/240x300?text=${encodeURIComponent(p.title)}" alt="${escapeHtml(p.title)}" border-radius="4px" href="${href}" />`;
+        return `
         <mj-column width="33.33%" padding="8px">
-          ${p.imageUrl ? `<mj-image src="${p.imageUrl}" alt="${escapeHtml(p.title)}" border-radius="4px" />` : `<mj-image src="https://via.placeholder.com/240x300?text=${encodeURIComponent(p.title)}" alt="${escapeHtml(p.title)}" border-radius="4px" />`}
-          <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="13px" color="${s.textColor}" font-weight="500" padding-top="10px">${escapeHtml(p.title)}</mj-text>
+          ${img}
+          <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="13px" color="${s.textColor}" font-weight="500" padding-top="10px"><a href="${href}" style="color:${s.textColor};text-decoration:none;">${escapeHtml(p.title)}</a></mj-text>
           ${p.price ? `<mj-text align="center" font-size="12px" color="${s.textColor}" opacity="0.65" padding-top="2px">${escapeHtml(p.price)}</mj-text>` : ""}
         </mj-column>
-      `).join("")}
+      `;
+      }).join("")}
     </mj-section>
   ` : "";
 
@@ -218,13 +225,16 @@ function productGridEditorial(s: SkeletonSlots): string {
     { title: "Producto destacado", price: "", imageUrl: s.heroUrl || "" },
     { title: "Producto destacado", price: "", imageUrl: s.heroUrl || "" },
   ]).slice(0, 3);
-  const cols = products.map((p) => `
+  const cols = products.map((p) => {
+    const href = p.productUrl ?? "#";
+    return `
     <mj-column width="33.33%" padding="8px">
-      ${p.imageUrl ? `<mj-image src="${p.imageUrl}" alt="${escapeHtml(p.title)}" border-radius="4px" />` : ""}
-      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="14px" color="${s.textColor}" font-weight="500" padding-top="12px">${escapeHtml(p.title)}</mj-text>
+      ${p.imageUrl ? `<mj-image src="${p.imageUrl}" alt="${escapeHtml(p.title)}" border-radius="4px" href="${href}" />` : ""}
+      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="14px" color="${s.textColor}" font-weight="500" padding-top="12px"><a href="${href}" style="color:${s.textColor};text-decoration:none;">${escapeHtml(p.title)}</a></mj-text>
       ${p.price ? `<mj-text align="center" font-size="13px" color="${s.textColor}" opacity="0.6" padding-top="2px">${escapeHtml(p.price)}</mj-text>` : ""}
     </mj-column>
-  `).join("");
+  `;
+  }).join("");
 
   const slots: Record<string, string> = {
     preheader: PREHEADER(s.preheader, s.bgColor),
@@ -264,7 +274,7 @@ function premiumLaunch(s: SkeletonSlots): string {
     wordmark: WORDMARK(s.textColor),
     headline: escapeHtml(s.headline),
     productImage: (s.productImageUrl ?? s.heroUrl)
-      ? `<mj-image src="${s.productImageUrl ?? s.heroUrl}" alt="${escapeHtml(s.productName ?? "")}" padding="0" />`
+      ? `<mj-image src="${s.productImageUrl ?? s.heroUrl}" alt="${escapeHtml(s.productName ?? "")}" padding="0" href="${s.productPageUrl ?? s.ctaUrl ?? "#"}" />`
       : "",
     productName: escapeHtml(s.productName ?? s.headline),
     productCopy: escapeHtml(s.productCopy ?? s.body ?? "Edición limitada · 200 unidades"),
