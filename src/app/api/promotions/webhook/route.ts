@@ -40,7 +40,13 @@ type Payload = {
   name: string;
   kind: "REGIONAL" | "GLOBAL" | "STORE";
   dateByCountry: Record<string, string>;
+  // Store identifier — accept any of these field names + any of these value
+  // formats so the upstream project doesn't have to match Sendify's internal
+  // schema exactly: full slug ("divain-europa") · short code ("eu") · cuid · null.
   storeId?: string;
+  store?: string;
+  storeSlug?: string;
+  shopDomain?: string;
   autoDraft?: boolean;
   leadDays?: number;
   defaultSegmentIds?: string[];
@@ -48,6 +54,40 @@ type Payload = {
   briefForLlm?: string;
   copyByLang?: Record<string, Record<string, string>>;
 };
+
+// Resolve a flexible store identifier to a Store.id. Accepts:
+//   - cuid  (the real id)
+//   - full slug ("divain-europa", "divain-uk", "divain-na", "divain-mx")
+//   - short code: "eu" | "europa" | "uk" | "gb" | "na" | "us" | "usa" | "mx" | "mexico"
+//   - shopifyDomain ("divaines.myshopify.com")
+// Returns null when nothing matches.
+async function resolveStoreId(raw: string | undefined | null): Promise<{ id: string; slug: string } | null> {
+  if (!raw) return null;
+  const v = raw.toString().trim().toLowerCase();
+
+  const SHORT_CODES: Record<string, string> = {
+    "eu": "divain-europa",     "europa": "divain-europa",
+    "uk": "divain-uk",         "gb":     "divain-uk",
+    "na": "divain-na",         "us":     "divain-na",  "usa": "divain-na",
+    "mx": "divain-mx",         "mexico": "divain-mx",  "méxico": "divain-mx",
+  };
+  const candidate = SHORT_CODES[v] ?? raw;
+
+  const store = await prisma.store.findFirst({
+    where: {
+      OR: [
+        { id: candidate },
+        { id: raw },
+        { slug: candidate },
+        { slug: raw },
+        { shopifyDomain: raw },
+      ],
+    },
+    select: { id: true, slug: true },
+  }).catch(() => null);
+
+  return store;
+}
 
 function getWebhookSecret(): string | null {
   // Read straight from env. We deliberately do NOT consult the DB here — this
@@ -102,17 +142,21 @@ export async function POST(req: Request) {
   }
 
   // ── UPSERT path
+  // Accept the store identifier under any of these field names. First defined
+  // wins; null means "applies to all stores" which is also a valid choice.
+  const storeInput = body.storeId ?? body.store ?? body.storeSlug ?? body.shopDomain ?? null;
   let storeId: string | null = null;
-  if (body.storeId) {
-    // Accept either a slug or a real id — easier for the upstream project.
-    const store = await prisma.store.findFirst({
-      where: { OR: [{ id: body.storeId }, { slug: body.storeId }] },
-      select: { id: true },
-    });
+  let resolvedSlug: string | null = null;
+  if (storeInput) {
+    const store = await resolveStoreId(storeInput);
     if (!store) {
-      return NextResponse.json({ ok: false, error: `storeId "${body.storeId}" not found (use the cuid or the slug)` }, { status: 400 });
+      return NextResponse.json({
+        ok: false,
+        error: `store "${storeInput}" not recognized. Accepted: cuid, slug (divain-europa | divain-uk | divain-na | divain-mx), short code (eu | uk | na | mx), or shopifyDomain.`,
+      }, { status: 400 });
     }
     storeId = store.id;
+    resolvedSlug = store.slug;
   }
 
   const data: Prisma.PromotionUncheckedCreateInput = {
@@ -150,9 +194,22 @@ export async function POST(req: Request) {
       },
     });
   } catch (e) {
+    // Surface the actual cause to the upstream sender + log to Vercel so we can
+    // grep when 50 retries hit. Prisma errors are most useful from the tail.
+    const msg = e instanceof Error ? e.message : "db upsert failed";
+    console.error("[promotions webhook] upsert failed", {
+      externalId: body.externalId, storeInput, resolvedStoreId: storeId, kind: body.kind, err: msg.slice(-500),
+    });
     return NextResponse.json({
       ok: false,
-      error: e instanceof Error ? e.message.slice(0, 300) : "db upsert failed",
+      error: msg.slice(-500),
+      debug: {
+        externalId: body.externalId,
+        storeInput,
+        resolvedStoreId: storeId,
+        resolvedSlug,
+        kind: body.kind,
+      },
     }, { status: 500 });
   }
 
@@ -164,6 +221,7 @@ export async function POST(req: Request) {
     name: promotion.name,
     autoDraft: promotion.autoDraft,
     leadDays: promotion.leadDays,
+    storeSlug: resolvedSlug,
     syncedAt: new Date().toISOString(),
   });
 }
