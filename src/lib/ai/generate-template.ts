@@ -307,6 +307,27 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
   const shouldGenBanner = input.generateBanner !== false && bannerPrompt.length > 10;
   if (shouldGenBanner) {
     try {
+      // 0) Library-first: try to reuse an UNUSED asset whose tags match the
+      // layout pattern + store slug before spending Gemini/OpenAI tokens.
+      const libraryTags = [layoutPattern, input.storeSlug ?? "global", input.pillar.toLowerCase()].filter(Boolean);
+      const reusable = await prisma.asset.findFirst({
+        where: {
+          kind: "IMAGE",
+          usedCount: 0,
+          tags: { hasSome: libraryTags },
+        },
+        orderBy: { createdAt: "asc" },
+        select: { id: true },
+      }).catch(() => null);
+      if (reusable) {
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://sendify.divain.space";
+        bannerAssetId = reusable.id;
+        bannerUrl = `${appUrl}/api/assets/${reusable.id}`;
+        await prisma.asset.update({
+          where: { id: reusable.id },
+          data: { usedCount: { increment: 1 }, lastUsedAt: new Date() },
+        }).catch(() => {});
+      } else {
       // We do NOT try to compose the actual divain bottle into the AI hero —
       // that path produced unrecognizable bottles (gpt-image-2 invents shapes
       // and labels regardless of the reference). Instead the hero is a clean
@@ -338,15 +359,18 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
           mimeType: img.mimeType,
           data: bytes,
           sizeBytes: bytes.length,
-          tags: ["ai-generated", "hero", input.storeSlug ?? "global"],
+          tags: ["ai-generated", "hero", layoutPattern, input.pillar.toLowerCase(), input.storeSlug ?? "global"],
           prompt: bannerPrompt,
           generatedBy: img.provider,
+          usedCount: 1,
+          lastUsedAt: new Date(),
         },
         select: { id: true },
       });
       bannerAssetId = asset.id;
       const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://sendify.divain.space";
       bannerUrl = `${appUrl}/api/assets/${asset.id}`;
+      }
     } catch (e) {
       bannerError = e instanceof Error ? e.message.slice(0, 320) : "image gen failed";
       console.warn("[generate-template] banner gen failed:", e);

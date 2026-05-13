@@ -554,7 +554,14 @@ model Asset {
   tags        String[]
   prompt      String?   // for AI-generated assets
   generatedBy String?   // "gemini-2.5-flash-image" | "manual" | "agent:xxx"
+  // Usage tracking — lets an external agent drop assets here, Sendify pick
+  // unused ones first, and a UI filter "used / unused / all".
+  usedCount   Int       @default(0)
+  lastUsedAt  DateTime?
+  notes       String?   // free-form context the uploader wants to remember
   createdAt   DateTime  @default(now())
+
+  @@index([kind, usedCount, createdAt])
 }
 
 // ── Cost tracking ────────────────────────────────────────────────────────────
