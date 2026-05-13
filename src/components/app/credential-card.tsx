@@ -80,6 +80,7 @@ export function CredentialCard(props: CredentialCardProps) {
     setSyncing(true);
     setSyncProgress({});
     setTestResult(null);
+    let transientFailures = 0;
     try {
       while (true) {
         const res = await fetch("/api/shopify/sync", {
@@ -87,11 +88,25 @@ export function CredentialCard(props: CredentialCardProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ storeSlug: props.scope, what: "both" }),
         });
-        const json = await res.json();
+        // Vercel returns an HTML error page on function-level timeouts/crashes
+        // (status 504/502/500) so the body isn't JSON. Read as text first, try
+        // to parse, treat unparseable >=500 as a transient hiccup and retry.
+        const raw = await res.text();
+        let json: { ok?: boolean; error?: string; customers?: { hasMore?: boolean; finishedAt?: number }; products?: { hasMore?: boolean; finishedAt?: number } } | null = null;
+        try { json = JSON.parse(raw) as typeof json; } catch { /* not JSON */ }
+        if (!json) {
+          if (res.status >= 500 && transientFailures < 3) {
+            transientFailures++;
+            await new Promise((r) => setTimeout(r, 2000));
+            continue;
+          }
+          throw new Error(`server returned non-JSON (${res.status}): ${raw.slice(0, 160).replace(/\s+/g, " ")}`);
+        }
         if (!json.ok) {
           throw new Error(json.error ?? "sync failed");
         }
-        setSyncProgress({ customers: json.customers, products: json.products });
+        transientFailures = 0;
+        setSyncProgress({ customers: json.customers as never, products: json.products as never });
         const customersMore = json.customers?.hasMore;
         const productsMore  = json.products?.hasMore;
         if (!customersMore && !productsMore) break;
