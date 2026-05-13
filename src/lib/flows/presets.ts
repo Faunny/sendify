@@ -15,12 +15,19 @@ import type { FlowTrigger } from "@prisma/client";
 
 // ── Step types ──────────────────────────────────────────────────────────────
 
-export type FlowStepDelay = { type: "delay"; hours: number };
+// Every step type carries an optional `enabled` flag (defaults to true) so the
+// owner can pause individual emails inside an otherwise-active flow without
+// blowing the whole sequence away. Disabled sends skip cleanly (advance to next
+// step with no SES call); disabled delays still wait (you'd never want to fast-
+// forward a wait timer by accident).
+
+export type FlowStepDelay = { type: "delay"; hours: number; enabled?: boolean };
 export type FlowStepSend = {
   type: "send";
   subject: string;
   preheader: string;
   mjml: string;
+  enabled?: boolean;
 };
 // Mid-flow split: evaluate a condition against the customer; on false, exit early.
 // Keeps the graph linear — true means "keep going to next step", false means
@@ -33,6 +40,7 @@ export type FlowStepCondition = {
   value: number | string | boolean;
   // Human-readable label for the UI flow visualization.
   label: string;
+  enabled?: boolean;
 };
 export type FlowStep = FlowStepDelay | FlowStepSend | FlowStepCondition;
 

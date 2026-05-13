@@ -171,6 +171,23 @@ export async function tickDueEnrollments(limit = 100): Promise<{
         continue;
       }
 
+      // Owner has paused this individual step → skip it cleanly and advance.
+      // Disabled delays still consume their wait (we don't fast-forward time);
+      // disabled sends/conditions become no-ops.
+      if (step.enabled === false && step.type !== "delay") {
+        const nextStepIdx = e.currentStep + 1;
+        const next = graph.steps[nextStepIdx];
+        const nextDelayMs = next?.type === "delay" && next.enabled !== false ? next.hours * 3600_000 : 0;
+        await prisma.flowEnrollment.update({
+          where: { id: e.id },
+          data: {
+            currentStep: next?.type === "delay" ? nextStepIdx + 1 : nextStepIdx,
+            nextRunAt: new Date(Date.now() + nextDelayMs),
+          },
+        });
+        continue;
+      }
+
       // Condition step: evaluate against the customer; on false, exit the flow.
       if (step.type === "condition") {
         const passes = evalCondition(step, e.customer);

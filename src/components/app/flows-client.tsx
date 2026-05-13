@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   Workflow, Plus, Heart, ShoppingCart, Sparkles, Clock, Gift, Bell,
   Eye, Star, RotateCcw, TrendingDown, PartyPopper, ShoppingBag, Mail,
-  Award, Repeat, MoonStar, Loader2, Trash2,
+  Award, Repeat, MoonStar, Loader2, Trash2, Power, PowerOff, ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { FLOW_PRESETS, PRESETS_BY_CATEGORY, type FlowPresetCategory } from "@/lib/flows/presets";
@@ -91,43 +91,51 @@ export function FlowsClient({ initialFlows, stores }: { initialFlows: FlowRow[];
       {flows.length === 0 ? (
         <EmptyHero onCreate={() => setNewFlowOpen(true)} />
       ) : (
-        <div className="rounded-md border border-border bg-card/40 overflow-hidden">
-          <table className="w-full text-[13px]">
-            <thead className="bg-secondary/40 text-[11px] uppercase tracking-wider text-muted-foreground">
-              <tr>
-                <th className="text-left px-3 py-2 font-medium">Nombre</th>
-                <th className="text-left px-3 py-2 font-medium">Trigger</th>
-                <th className="text-left px-3 py-2 font-medium">Store</th>
-                <th className="text-right px-3 py-2 font-medium">Inscripciones</th>
-                <th className="text-right px-3 py-2 font-medium">Enviados</th>
-                <th className="text-center px-3 py-2 font-medium">Activo</th>
-                <th className="w-8"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {flows.map((f) => (
-                <tr key={f.id} className="border-t border-border">
-                  <td className="px-3 py-2.5 font-medium">{f.name}</td>
-                  <td className="px-3 py-2.5 text-muted-foreground text-[12px]">{TRIGGER_LABEL[f.trigger] ?? f.trigger}</td>
-                  <td className="px-3 py-2.5 text-muted-foreground text-[12px]">{f.storeName}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums">{f.enrollmentCount}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums">{f.sendCount}</td>
-                  <td className="px-3 py-2.5 text-center">
-                    <Switch checked={f.active} onCheckedChange={(v) => toggleActive(f.id, v)} />
-                  </td>
-                  <td className="px-3 py-2.5">
-                    <button
-                      onClick={() => remove(f.id)}
-                      className="text-muted-foreground hover:text-[color:var(--danger)] transition-colors"
-                      title="Eliminar"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="grid grid-cols-1 gap-2">
+          {flows.map((f) => (
+            <div
+              key={f.id}
+              className={`group rounded-md border p-3 transition-colors ${f.active ? "border-[color:var(--accent)]/30 bg-[color-mix(in_oklch,var(--accent)_4%,transparent)]" : "border-border bg-card/30"}`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`grid h-9 w-9 place-items-center rounded-full shrink-0 ${f.active ? "bg-[color:var(--accent)] text-[color:var(--accent-fg)]" : "bg-secondary text-muted-foreground"}`}>
+                  {f.active ? <Power className="h-4 w-4" /> : <PowerOff className="h-4 w-4" />}
+                </div>
+                <Link href={`/flows/${f.id}`} className="flex-1 min-w-0">
+                  <div className="text-[14px] font-medium truncate">{f.name}</div>
+                  <div className="text-[11px] text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
+                    <span className="uppercase tracking-wider">{TRIGGER_LABEL[f.trigger] ?? f.trigger}</span>
+                    <span>·</span>
+                    <span>{f.storeName}</span>
+                    <span>·</span>
+                    <span className="tabular-nums">{f.enrollmentCount} inscritos</span>
+                    <span>·</span>
+                    <span className="tabular-nums">{f.sendCount} enviados</span>
+                  </div>
+                </Link>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    variant={f.active ? "outline" : "default"}
+                    onClick={() => toggleActive(f.id, !f.active)}
+                  >
+                    {f.active ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
+                    {f.active ? "Pausar" : "Activar"}
+                  </Button>
+                  <Link href={`/flows/${f.id}`} className="text-muted-foreground hover:text-foreground transition-colors p-1.5">
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                  <button
+                    onClick={() => remove(f.id)}
+                    className="text-muted-foreground hover:text-[color:var(--danger)] transition-colors p-1.5"
+                    title="Eliminar"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
