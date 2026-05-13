@@ -62,7 +62,7 @@ async function loadProductHints(storeSlug: string | undefined, pillar: string | 
   if (!storeSlug) return [];
   const store = await prisma.store.findUnique({
     where: { slug: storeSlug },
-    select: { id: true, countryCode: true, currency: true },
+    select: { id: true, countryCode: true, currency: true, productExcludedSkuPatterns: true },
   });
   if (!store) return [];
 
@@ -77,16 +77,19 @@ async function loadProductHints(storeSlug: string | undefined, pillar: string | 
   };
 
   // Strategy: prefer products WITH an image AND matching the pillar, then with
-  // an image (regardless of pillar), then anything active. Exclusion is by SKU
-  // PATTERN (case-insensitive `contains`): a product is excluded if any of its
-  // variants has an SKU containing any of the patterns. Configure via env var:
-  //   SENDIFY_AI_EXCLUDED_SKU_PATTERNS=DIV-,SAMPLE,MUESTRA,BOLSA,GOMINOLAS
-  // Each entry is a substring; pasting "DIV-" excludes every SKU containing
-  // "DIV-" anywhere in the string. Empty/whitespace entries are ignored.
+  // an image (regardless of pillar), then anything active.
+  //
+  // Exclusion patterns are now per-store (Store.productExcludedSkuPatterns,
+  // editable from Settings → Stores). Env var SENDIFY_AI_EXCLUDED_SKU_PATTERNS
+  // is honoured as a global fallback for stores that haven't configured their
+  // own list yet, and DEFAULT_EXCLUDED_PATTERNS as last-resort.
   const DEFAULT_EXCLUDED_PATTERNS = ["BOLSA", "GOMINOLAS", "MUESTRA", "SAMPLE"];
+  const storeLevel = store.productExcludedSkuPatterns ?? [];
   const envExcluded = (process.env.SENDIFY_AI_EXCLUDED_SKU_PATTERNS ?? process.env.SENDIFY_AI_EXCLUDED_SKUS ?? "")
     .split(",").map((s) => s.trim()).filter(Boolean);
-  const excludedPatterns = envExcluded.length > 0 ? envExcluded : DEFAULT_EXCLUDED_PATTERNS;
+  const excludedPatterns = storeLevel.length > 0 ? storeLevel
+                         : envExcluded.length  > 0 ? envExcluded
+                         : DEFAULT_EXCLUDED_PATTERNS;
 
   const keywords = pillar && pillar !== "ALL" ? (PILLAR_KEYWORDS[pillar] ?? []) : [];
 

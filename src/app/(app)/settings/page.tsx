@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Building2, Check, ChevronRight, ExternalLink, Key, Languages, Mail, Plug, Plus, ShieldCheck, Users, Webhook } from "lucide-react";
 import { CredentialCard } from "@/components/app/credential-card";
 import { AwsSesCard } from "@/components/app/aws-ses-card";
+import { ExcludedSkusEditor } from "@/components/app/excluded-skus-editor";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -142,6 +143,8 @@ export default function SettingsPage() {
                     detail="Usado para (a) intercambiar por un access token via OAuth client_credentials, y (b) validar HMAC-SHA256 de los webhooks entrantes de Shopify."
                     helpUrl={`https://${s.shopifyDomain}/admin/settings/apps/development`}
                   />
+
+                  <ExcludedSkusEditor storeSlug={s.slug} storeName={s.name} />
 
                   <div className="rounded-md border border-border bg-card/40 p-3 space-y-1.5">
                     <div className="flex items-center justify-between">

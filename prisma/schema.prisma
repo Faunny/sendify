@@ -116,6 +116,11 @@ model Store {
   brandFontHeading String? @default("Geist")
   brandFontBody   String?  @default("Inter")
 
+  // Substring patterns (case-insensitive) to exclude from AI template product
+  // selection — e.g. "BOLSA", "GOMINOLAS", "DIV-", "MUESTRA". A product is
+  // excluded if ANY of its variants' SKU contains ANY of these patterns.
+  productExcludedSkuPatterns String[] @default([])
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
