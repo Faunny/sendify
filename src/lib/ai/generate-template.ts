@@ -190,7 +190,7 @@ OUTPUT — pure JSON, no markdown fences, no commentary:
   "productName": "<used only when premium-launch. Real product name from the catalog if available, otherwise invent a believable one tied to the brief>",
   "productCopy": "<used only when premium-launch. 4-8 word label below the product name — 'Edición limitada · 200 unidades', 'Disponible desde 12 mayo'>",
   "customerIncentive": "<used only when winback-empathic. The incentive as displayed: '-15%', 'envío gratis'>",
-  "bannerPrompt": "<REQUIRED for every layout except countdown-urgency. Describe an editorial fashion scene featuring a REAL-LOOKING WOMAN MODEL AND a divain perfume bottle (Sendify composes the actual product photo into the scene automatically using gpt-image-2 edits). Specify HOW the bottle interacts with the model: held in her hand, pressed to her wrist, resting on the sand beside her, placed on a window sill behind her, balanced on her open palm, etc.\\n\\nDivain's aesthetic is editorial fashion photography: woman on a beach, in a forest, on sand dunes, by the sea, in a garden. Dressed naturally (linen, swimsuit, sundress, knitwear) depending on the brief's season.\\n\\n50-80 words. Describe: the woman, her wardrobe, the setting, the mood, the light, the colour palette, AND HOW THE PERFUME APPEARS. NO text/logos/captions/numbers in the image.\\n\\nGood examples:\\n - 'A woman in her late twenties in a white linen sundress on warm sand at golden hour, holding the perfume bottle close to her chest with both hands, eyes half-closed. Soft warm light, shallow depth of field, sandy and ivory palette.'\\n - 'A woman in her thirties walking through a pine forest in a knit cardigan, the perfume bottle balanced gently on her open right palm as she pauses. Autumn light through trees, warm browns and forest greens, magazine editorial.'\\n - 'A young woman reclining on white dunes at sunset, the perfume bottle resting on the sand beside her left hand. Peaceful expression, hair pulled back, soft pastel sky, refined.'>"
+  "bannerPrompt": "<REQUIRED for every layout except countdown-urgency. Describe an editorial fashion scene featuring a REAL-LOOKING WOMAN MODEL — NO products in the photo, no bottles, no boxes, no labels. The actual divain product is displayed SEPARATELY in the email (in the 'Selección destacada' section), not in this photo. Treat this prompt like a magazine cover shoot of a model.\\n\\nDivain's aesthetic is editorial fashion photography: woman on a beach, in a forest, on sand dunes, by the sea, in a garden. Dressed naturally (linen, swimsuit, sundress, knitwear) depending on the brief's season.\\n\\n50-80 words. Describe: the woman, her wardrobe, the setting, the mood, the light, the colour palette. ZERO text/logos/captions/numbers/products in the image.\\n\\nGood examples:\\n - 'A woman in her late twenties in a white linen sundress on warm sand at golden hour, looking out to sea, eyes half-closed. Soft warm light, shallow depth of field, sandy and ivory palette.'\\n - 'A woman in her thirties walking through a pine forest in a knit cardigan, pausing to look up. Autumn light through trees, warm browns and forest greens, magazine fashion editorial.'\\n - 'A young woman reclining on white dunes at sunset. Peaceful expression, hair pulled back, soft pastel sky, refined and aspirational.'>"
 }
 
 DECISION HEURISTIC:
@@ -307,27 +307,17 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
   const shouldGenBanner = input.generateBanner !== false && bannerPrompt.length > 10;
   if (shouldGenBanner) {
     try {
-      // The real divain aesthetic: editorial fashion photograph of a woman
-      // model in a setting (beach/forest/dunes/garden), AND the actual divain
-      // perfume bottle is visible — held in her hand, placed beside her, or
-      // somewhere prominent in the frame. Pass the hero product as a reference
-      // so gpt-image-2 composes that exact bottle into the scene.
-      // For previews (skipProductReferences=true) we skip the /edits round-
-      // trip and just generate from scratch — ~3x faster, suitable for
-      // validating layout/copy before committing to a real send.
-      const heroProduct = products.find((p) => !!p.imageUrl);
-      const referenceImageUrls = (!input.skipProductReferences && heroProduct?.imageUrl)
-        ? [heroProduct.imageUrl]
-        : [];
-
-      // Hard-direct the model toward fashion-editorial output WITH the bottle
-      // composed in. If there's no product to compose, fall back to model-only.
-      const promptWithBottle = referenceImageUrls.length > 0
-        ? `Editorial fashion photograph for a high-end perfume brand. ${bannerPrompt}. The woman MUST be holding (or seated next to) the EXACT perfume bottle shown in the reference photo — that is a real divain product and must appear prominently in the frame, recognizable, in focus. Magazine-cover quality, shot on full-frame 85mm lens, soft natural light, shallow depth of field, refined and aspirational mood. NO text, NO logos, NO captions of any kind in the image.`
-        : `Editorial fashion photograph in the style of high-end perfume brand advertising. ${bannerPrompt}. Real woman model, natural skin, candid expression, magazine-cover quality, shot on full-frame camera 85mm lens, shallow depth of field, soft natural light, refined and aspirational mood. NO text, NO logos.`;
+      // We do NOT try to compose the actual divain bottle into the AI hero —
+      // that path produced unrecognizable bottles (gpt-image-2 invents shapes
+      // and labels regardless of the reference). Instead the hero is a clean
+      // editorial scene (model + setting, NO products), and the actual divain
+      // product photo is shown separately in the "Selección destacada" section
+      // below where there's no AI involved at all. This matches divain's
+      // actual Klaviyo aesthetic (model hero + product showcase, separated).
+      const heroOnlyPrompt = `Editorial fashion photograph in the style of high-end perfume brand advertising. ${bannerPrompt}. Real woman model, natural skin, candid expression, magazine-cover quality, shot on full-frame 85mm lens, shallow depth of field, soft natural light, refined and aspirational mood. The scene MUST NOT contain any perfume bottles, products, packaging, boxes, labels, brand names, text, logos, captions or numbers — just the model and the setting. The bottle is shown separately in the email, not in this photo.`;
 
       const img = await generateBannerAny({
-        prompt: promptWithBottle,
+        prompt: heroOnlyPrompt,
         aspectRatio: "3:2",
         brandHints: {
           palette: [palette.primary, palette.bg, palette.text].filter(Boolean),
@@ -336,7 +326,9 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
         },
         quality: input.imageQuality ?? "medium",
         preferredModel: input.imageModelOverride,
-        referenceImageUrls,
+        // Intentionally NO references — generating from scratch keeps it fast,
+        // text-free, and skips the unreliable bottle-compositing.
+        referenceImageUrls: [],
       });
       const bytes = Buffer.from(img.base64, "base64");
       const asset = await prisma.asset.create({
