@@ -29,11 +29,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ slug: 
 
   const { slug } = await params;
   const body = await req.json().catch(() => ({} as { patterns?: unknown }));
-  const raw = Array.isArray(body.patterns) ? body.patterns : [];
+  const raw: unknown[] = Array.isArray(body.patterns) ? body.patterns : [];
   // Normalise: trim, dedupe, drop empties. Keep case as-typed so the user can
   // read it back; the matcher itself is case-insensitive.
-  const patterns = Array.from(new Set(
-    raw.map((p) => String(p).trim()).filter((p) => p.length > 0 && p.length < 80),
+  const patterns: string[] = Array.from(new Set(
+    raw.map((p: unknown) => String(p).trim()).filter((p: string) => p.length > 0 && p.length < 80),
   )).slice(0, 50);
 
   try {
