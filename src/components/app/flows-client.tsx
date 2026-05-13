@@ -190,13 +190,30 @@ function NewFlowDialog({
     try {
       if (!storeId) throw new Error("selecciona una store");
       if (!presetId) throw new Error("selecciona un preset");
-      const r = await fetch("/api/flows", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeId, presetId, name: name.trim() || undefined }),
-      });
-      const j = await r.json();
-      if (!j.ok) throw new Error(j.error ?? "create failed");
+
+      let r: Response;
+      try {
+        r = await fetch("/api/flows", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ storeId, presetId, name: name.trim() || undefined }),
+        });
+      } catch (netErr) {
+        // Native fetch threw — server unreachable / function crashed / deploy still
+        // in progress. Make the error actionable instead of just "Failed to fetch".
+        throw new Error(`Servidor no responde (${netErr instanceof Error ? netErr.message : "network"}) — espera a que termine el deploy y reintenta.`);
+      }
+
+      // Try to parse as JSON, but fall back to text if the server returned HTML
+      // (e.g. Vercel's 504 timeout page).
+      const text = await r.text();
+      let j: { ok?: boolean; error?: string; flow?: { id: string; name: string; trigger: string; active: boolean; updatedAt: string } } = {};
+      try { j = JSON.parse(text); } catch {
+        throw new Error(`Respuesta no JSON (HTTP ${r.status}): ${text.slice(0, 160)}`);
+      }
+      if (!r.ok || !j.ok) throw new Error(j.error ?? `HTTP ${r.status}`);
+      if (!j.flow) throw new Error("respuesta sin flow");
+
       const store = stores.find((s) => s.id === storeId)!;
       onCreated({
         id: j.flow.id,
