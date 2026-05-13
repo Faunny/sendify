@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Sparkles, Loader2, AlertTriangle, Smartphone, Monitor, Code } from "lucide-react";
+import { Sparkles, Loader2, AlertTriangle, Smartphone, Monitor, Code, Send, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type Sample =
@@ -25,6 +26,38 @@ export function SamplePackButton({ stores }: { stores: { slug: string; name: str
   const [storeSlug, setStoreSlug] = useState(stores[0]?.slug ?? "divain-europa");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [device, setDevice] = useState<"mobile" | "desktop">("desktop");
+  const [testEmail, setTestEmail] = useState("");
+  const [sendBusy, setSendBusy] = useState(false);
+  const [sendResult, setSendResult] = useState<{ ok: boolean; detail: string; templateId?: string } | null>(null);
+
+  async function saveAndSend(sample: Sample) {
+    if (!sample.ok) return;
+    setSendBusy(true); setSendResult(null);
+    try {
+      const res = await fetch("/api/templates/test-send-preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: `Preview · ${sample.label}`,
+          subject: sample.subject,
+          preheader: sample.preheader,
+          mjml: sample.mjml,
+          storeSlug,
+          to: testEmail.trim(),
+        }),
+      });
+      const json = await res.json();
+      if (!json.ok) {
+        setSendResult({ ok: false, detail: json.error ?? "failed", templateId: json.templateId });
+      } else {
+        setSendResult({ ok: true, detail: `Enviado a ${testEmail} · template guardado`, templateId: json.templateId });
+      }
+    } catch (e) {
+      setSendResult({ ok: false, detail: e instanceof Error ? e.message : "network error" });
+    } finally {
+      setSendBusy(false);
+    }
+  }
 
   async function fetchBatch(batch: number) {
     const res = await fetch("/api/templates/sample-pack", {
@@ -157,6 +190,40 @@ export function SamplePackButton({ stores }: { stores: { slug: string; name: str
                         </Button>
                       </div>
                     </div>
+                    <div className="px-3 py-2.5 border-b border-border bg-card/60 flex flex-wrap items-center gap-2">
+                      <Input
+                        type="email"
+                        value={testEmail}
+                        onChange={(e) => setTestEmail(e.target.value)}
+                        placeholder="email para test send (ej. faun@divainparfums.com)"
+                        className="h-8 text-[12px] flex-1 min-w-[220px]"
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() => saveAndSend(active)}
+                        disabled={sendBusy || !testEmail.trim() || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(testEmail.trim())}
+                      >
+                        {sendBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                        Guardar + enviar test
+                      </Button>
+                    </div>
+                    {sendResult && (
+                      <div className={`px-3 py-2 text-[12px] border-b flex items-start gap-1.5 ${
+                        sendResult.ok
+                          ? "bg-[color-mix(in_oklch,var(--positive)_8%,transparent)] text-[color:var(--positive)] border-[color:var(--positive)]/30"
+                          : "bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] text-[color:var(--danger)] border-[color:var(--danger)]/30"
+                      }`}>
+                        {sendResult.ok ? <Check className="h-3.5 w-3.5 shrink-0 mt-0.5" /> : <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />}
+                        <div>
+                          {sendResult.detail}
+                          {sendResult.templateId && (
+                            <div className="mt-0.5 text-[11px] opacity-80">
+                              Template id: <code>{sendResult.templateId}</code>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     {active.bannerError && (
                       <div className="px-3 py-2 text-[12px] text-[color:var(--danger)] bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] border-b border-[color:var(--danger)]/30 flex items-start gap-1.5">
                         <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
