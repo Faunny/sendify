@@ -57,11 +57,13 @@ export async function sendEmail(args: SendArgs) {
     headers.push({ Name: "List-Unsubscribe-Post", Value: "List-Unsubscribe=One-Click" });
   }
 
-  const command = new SendEmailCommand({
+  const requestedConfigSet = args.configurationSet ?? (cred?.meta?.configurationSet as string | undefined) ?? process.env.SES_CONFIGURATION_SET;
+
+  const buildCommand = (configSetName: string | undefined) => new SendEmailCommand({
     FromEmailAddress: args.from,
     Destination: { ToAddresses: [args.to] },
     ReplyToAddresses: args.replyTo ? [args.replyTo] : undefined,
-    ConfigurationSetName: args.configurationSet ?? (cred?.meta?.configurationSet as string | undefined) ?? process.env.SES_CONFIGURATION_SET,
+    ConfigurationSetName: configSetName,
     EmailTags: args.tags?.map((t) => ({ Name: t.name, Value: t.value })),
     Content: {
       Simple: {
@@ -76,6 +78,20 @@ export async function sendEmail(args: SendArgs) {
   });
 
   const client = await getClient();
-  const res = await client.send(command);
-  return { messageId: res.MessageId ?? "" };
+  try {
+    const res = await client.send(buildCommand(requestedConfigSet));
+    return { messageId: res.MessageId ?? "" };
+  } catch (e) {
+    // If SES rejects the configuration set (most common: the env var pointed
+    // to a set that was never created in AWS) retry without it. Engagement-
+    // tracking event publishing simply won't happen, but the email goes out.
+    const msg = e instanceof Error ? e.message : "";
+    const configSetMissing = /ConfigurationSet[^s]*does not exist|ConfigurationSetDoesNotExist/i.test(msg);
+    if (requestedConfigSet && configSetMissing) {
+      console.warn(`[ses] configuration set "${requestedConfigSet}" missing — retrying send without it`);
+      const res = await client.send(buildCommand(undefined));
+      return { messageId: res.MessageId ?? "" };
+    }
+    throw e;
+  }
 }
