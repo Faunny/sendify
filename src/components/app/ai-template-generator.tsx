@@ -62,7 +62,7 @@ export function AiTemplateGenerator({ stores }: { stores: { slug: string; name: 
 
   function openInBuilder() {
     if (!result?.templateId) return;
-    router.push(`/builder?templateId=${result.templateId}`);
+    router.push(`/templates/${result.templateId}/edit`);
   }
 
   return (

@@ -78,7 +78,7 @@ export default async function TemplatesPage() {
                 </div>
                 <div className="flex items-center gap-2 pt-1">
                   <Button size="sm" variant="outline" className="text-[13px]" asChild>
-                    <Link href={`/builder?templateId=${t.id}`}><Edit3 className="h-3 w-3" /> Editar</Link>
+                    <Link href={`/templates/${t.id}/edit`}><Edit3 className="h-3 w-3" /> Editar</Link>
                   </Button>
                 </div>
               </CardContent>
