@@ -29,6 +29,79 @@ const DEFAULT_PALETTE: Required<StorePalette> = {
   text:    "#1A1A1A",
 };
 
+type ProductHint = {
+  handle: string;
+  title: string;
+  vendor: string | null;
+  productType: string | null;
+  imageUrl: string | null;
+  price: string | null;
+  comparePrice: string | null;
+  currency: string | null;
+};
+
+// Pull a small relevant sample of ACTIVE products for the store so the LLM can
+// reference real photos / names / prices in the MJML — instead of inventing
+// placeholders. Filter by pillar (productType / tags) when one is given.
+async function loadProductHints(storeSlug: string | undefined, pillar: string | undefined): Promise<ProductHint[]> {
+  if (!storeSlug) return [];
+  const store = await prisma.store.findUnique({
+    where: { slug: storeSlug },
+    select: { id: true, defaultLanguage: true, countryCode: true, currency: true },
+  });
+  if (!store) return [];
+
+  // Pillar → product-type / tag matching. divain uses tags + productType to
+  // categorize: PARFUMS, CARE, HOME, RITUAL. Match loosely.
+  const pillarFilter = pillar && pillar !== "ALL" ? {
+    OR: [
+      { productType: { contains: pillar, mode: "insensitive" as const } },
+      { tags: { has: pillar.toLowerCase() } },
+      { tags: { has: pillar } },
+    ],
+  } : {};
+
+  const products = await prisma.product.findMany({
+    where: { storeId: store.id, status: "active", ...pillarFilter },
+    orderBy: { shopifyUpdatedAt: "desc" },
+    take: 8,
+    select: {
+      handle: true, title: true, vendor: true, productType: true, imageUrl: true,
+      variants: {
+        take: 1,
+        select: {
+          prices: {
+            where: { market: store.countryCode },
+            take: 1,
+            select: { price: true, comparePrice: true, currency: true },
+          },
+        },
+      },
+    },
+  }).catch(() => []);
+
+  return products.map((p) => ({
+    handle: p.handle,
+    title: p.title,
+    vendor: p.vendor,
+    productType: p.productType,
+    imageUrl: p.imageUrl,
+    price: p.variants[0]?.prices[0]?.price?.toString() ?? null,
+    comparePrice: p.variants[0]?.prices[0]?.comparePrice?.toString() ?? null,
+    currency: p.variants[0]?.prices[0]?.currency ?? store.currency,
+  }));
+}
+
+function buildProductContextBlock(products: ProductHint[]): string {
+  if (products.length === 0) return "";
+  const lines = products.map((p, i) => {
+    const priceStr = p.price ? `${p.price} ${p.currency}` : "—";
+    const compareStr = p.comparePrice ? ` (was ${p.comparePrice})` : "";
+    return `${i + 1}. ${p.title} (${p.handle}) · ${p.productType ?? "—"} · ${priceStr}${compareStr} · image: ${p.imageUrl ?? "(no image)"}`;
+  }).join("\n");
+  return `\nREAL CATALOG SAMPLE (active products from this store, use these exact image URLs + names + prices when the chosen layout needs products — DO NOT invent product names or placeholder URLs):\n${lines}\n`;
+}
+
 export type TemplateGenOutput = {
   subject: string;
   preheader: string;
@@ -106,6 +179,18 @@ STRUCTURE (adapt to brief, this is a starting skeleton):
 
 Use placeholder image URLs in this format: \`https://cdn.divain.space/banners/{event-slug}-hero.jpg\` for the hero, \`https://cdn.divain.space/products/{handle}.jpg\` for products. The user replaces them or Gemini auto-generates the hero.
 
+REAL PRODUCT CATALOG RULES:
+- A list of REAL products from the store is included at the bottom of the user
+  prompt (if the store has been synced). When the chosen layout has product
+  slots (product-grid-editorial, premium-launch, brand-anthology), USE those
+  products: their exact title, exact handle, exact image URL, exact price.
+- DO NOT invent product names. DO NOT use placeholder cdn.divain.space URLs
+  when real product image URLs are provided.
+- If the catalog block is empty (no products yet synced), fall back to
+  placeholder URLs cdn.divain.space/banners/{slug}.jpg AND emit a structure
+  with text-only product slots ("Producto destacado" labels) so it works as a
+  skeleton until products arrive.
+
 PATTERN LIBRARY — pick ONE that fits the brief, then improvise on top of it.
 You MUST NOT just fill a generic skeleton. Every email starts by reading the
 brief, deciding which pattern best embodies the moment, and then composing the
@@ -142,7 +227,7 @@ Respond with ONLY a JSON object — no commentary, no markdown fences:
 }`;
 }
 
-function buildUserPrompt(input: TemplateGenInput): string {
+function buildUserPrompt(input: TemplateGenInput, productContext: string): string {
   const pillarHint = input.pillar === "ALL"
     ? "Audience: general divain customers. Reference the full brand."
     : `Pillar: divain. ${input.pillar} (focus the email around this line)`;
@@ -158,7 +243,7 @@ ${input.brief}
 ${pillarHint}
 ${toneHint}
 ${langHint}
-
+${productContext}
 Return the JSON object now.`;
 }
 
@@ -179,6 +264,11 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
       text:    p.text    ?? DEFAULT_PALETTE.text,
     };
   }
+
+  // Pull a sample of real products so the LLM can reference actual SKUs, prices
+  // and image URLs instead of fabricating placeholders.
+  const products = await loadProductHints(input.storeSlug, input.pillar);
+  const productContext = buildProductContextBlock(products);
 
   // For DESIGN, prefer GPT-4o (better aesthetic + structure) over DeepSeek.
   // DeepSeek is great for translation but produces more templatey output here.
@@ -201,7 +291,7 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
       model,
       messages: [
         { role: "system", content: buildSystemPrompt(palette) },
-        { role: "user", content: buildUserPrompt(input) },
+        { role: "user", content: buildUserPrompt(input, productContext) },
       ],
       temperature: 0.7,
       response_format: { type: "json_object" },
