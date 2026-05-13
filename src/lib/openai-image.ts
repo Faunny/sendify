@@ -40,20 +40,37 @@ export async function generateImageWithOpenAI(args: GenerateImageArgs): Promise<
   const subject = args.prompt.replace(/^(photo of |photograph of |image of )/i, "");
   const prompt = `Photograph: ${subject}. Style: ${styleHint}.${paletteHint}${noTextRule} The composition must be editorial, clean, and suitable as a hero banner background with text overlaid LATER in the email template.`;
 
-  const res = await fetch("https://api.openai.com/v1/images/generations", {
+  // Default to gpt-image-2 (latest); if the account doesn't have access to it
+  // (404 model_not_found) automatically retry with gpt-image-1. The user can
+  // pin a specific model in cred.meta.imageModel to skip the fallback.
+  const requestedModel = (cred.meta?.imageModel as string) ?? "gpt-image-2";
+  const callOpenAI = async (model: string) => fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${cred.value}` },
     body: JSON.stringify({
-      model: (cred.meta?.imageModel as string) ?? "gpt-image-1",
+      model,
       prompt,
       size: sizeForAspect(args.aspectRatio),
       quality: args.quality ?? "medium",
       n: 1,
     }),
   });
+
+  let res = await callOpenAI(requestedModel);
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`OpenAI image ${res.status}: ${body.slice(0, 280)}`);
+    // If the requested model isn't available for this account, fall back to
+    // gpt-image-1 once. Anything else (auth, quota, content policy) propagates.
+    const looksLikeModelMissing = /model_not_found|does not exist|invalid_model/i.test(body) || (res.status === 404 && requestedModel !== "gpt-image-1");
+    if (looksLikeModelMissing && requestedModel !== "gpt-image-1") {
+      res = await callOpenAI("gpt-image-1");
+      if (!res.ok) {
+        const body2 = await res.text();
+        throw new Error(`OpenAI image ${res.status} (after fallback): ${body2.slice(0, 240)}`);
+      }
+    } else {
+      throw new Error(`OpenAI image ${res.status}: ${body.slice(0, 280)}`);
+    }
   }
   const json = await res.json() as { data?: Array<{ b64_json?: string; url?: string }> };
   const first = json.data?.[0];

@@ -278,9 +278,9 @@ export default function SettingsPage() {
               <div className="grid gap-3">
                 <CredentialCard
                   provider="IMAGE_OPENAI"
-                  title="OpenAI · GPT Image 1"
-                  hint="Preferido · ~$0.04-0.06/imagen medium 1536x1024 · modelo gpt-image-1"
-                  detail="Lanzado abril 2025, mejor que DALL-E 3 en brand work text-free. La misma key OpenAI también vale para templates si la pegas en TRANSLATION_OPENAI arriba."
+                  title="OpenAI · GPT Image 2"
+                  hint="Preferido · ~$0.04-0.06/imagen medium 1536x1024 · modelo gpt-image-2"
+                  detail="Sendify usa gpt-image-2 por defecto y cae a gpt-image-1 si tu cuenta aún no tiene acceso al 2. La misma key OpenAI también vale para templates si la pegas en TRANSLATION_OPENAI arriba."
                   helpUrl="https://platform.openai.com/api-keys"
                   helpUrlLabel="Conseguir API key →"
                 />
