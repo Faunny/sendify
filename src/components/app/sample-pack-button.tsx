@@ -117,7 +117,7 @@ export function SamplePackButton({ stores }: { stores: { slug: string; name: str
         </select>
         <Button size="sm" onClick={run} disabled={busy}>
           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-          {busy ? "Generando 4 previews…" : "Generar 4 previews"}
+          {busy ? "Generando 8 previews…" : "Generar 8 previews"}
         </Button>
       </div>
 
@@ -126,14 +126,14 @@ export function SamplePackButton({ stores }: { stores: { slug: string; name: str
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-[15px]">
               <Sparkles className="h-4 w-4 text-[color:var(--accent)]" />
-              Sample pack · 4 estéticas (no se guardan)
+              Sample pack · 8 estéticas (no se guardan a menos que pulses Guardar)
             </DialogTitle>
           </DialogHeader>
 
           {busy && (
             <div className="py-16 flex items-center justify-center gap-2 text-[14px] text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              Generando 4 previews · copy + heros · ~30-50s…
+              Generando 8 previews · copy + heros · ~40-70s…
             </div>
           )}
 
