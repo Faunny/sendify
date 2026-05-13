@@ -13,7 +13,7 @@
 
 import { getCredential } from "../credentials";
 import { prisma } from "../db";
-import { generateBanner } from "../gemini";
+import { generateBannerAny } from "../banner-provider";
 import { LAYOUT_LIBRARY } from "./template-patterns";
 import { renderSkeleton, type SkeletonSlots } from "./template-skeletons";
 
@@ -228,41 +228,36 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
   const bannerPrompt = typeof parsed.bannerPrompt === "string" ? parsed.bannerPrompt.trim() : "";
   const shouldGenBanner = input.generateBanner !== false && bannerPrompt.length > 10;
   if (shouldGenBanner) {
-    const geminiCred = await getCredential("IMAGE_GEMINI");
-    if (!geminiCred) {
-      bannerError = "IMAGE_GEMINI key not configured";
-    } else {
-      try {
-        const img = await generateBanner({
+    try {
+      const img = await generateBannerAny({
+        prompt: bannerPrompt,
+        aspectRatio: "3:2",
+        brandHints: {
+          palette: [palette.primary, palette.bg, palette.text].filter(Boolean),
+          style: "editorial lifestyle photography for divain perfume brand",
+          avoidText: true,
+        },
+      });
+      const bytes = Buffer.from(img.base64, "base64");
+      const asset = await prisma.asset.create({
+        data: {
+          name: `hero-${layoutPattern}-${Date.now()}`,
+          kind: "IMAGE",
+          mimeType: img.mimeType,
+          data: bytes,
+          sizeBytes: bytes.length,
+          tags: ["ai-generated", "hero", input.storeSlug ?? "global"],
           prompt: bannerPrompt,
-          aspectRatio: "3:2",
-          brandHints: {
-            palette: [palette.primary, palette.bg, palette.text].filter(Boolean),
-            style: "editorial lifestyle photography for divain perfume brand",
-            avoidText: true,
-          },
-        });
-        const bytes = Buffer.from(img.base64, "base64");
-        const asset = await prisma.asset.create({
-          data: {
-            name: `hero-${layoutPattern}-${Date.now()}`,
-            kind: "IMAGE",
-            mimeType: img.mimeType,
-            data: bytes,
-            sizeBytes: bytes.length,
-            tags: ["ai-generated", "hero", input.storeSlug ?? "global"],
-            prompt: bannerPrompt,
-            generatedBy: "gemini-2.5-flash-image",
-          },
-          select: { id: true },
-        });
-        bannerAssetId = asset.id;
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://sendify.divain.space";
-        bannerUrl = `${appUrl}/api/assets/${asset.id}`;
-      } catch (e) {
-        bannerError = e instanceof Error ? e.message.slice(0, 280) : "Gemini failed";
-        console.warn("[generate-template] banner gen failed:", e);
-      }
+          generatedBy: img.provider,
+        },
+        select: { id: true },
+      });
+      bannerAssetId = asset.id;
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://sendify.divain.space";
+      bannerUrl = `${appUrl}/api/assets/${asset.id}`;
+    } catch (e) {
+      bannerError = e instanceof Error ? e.message.slice(0, 320) : "image gen failed";
+      console.warn("[generate-template] banner gen failed:", e);
     }
   } else if (!bannerPrompt && input.generateBanner !== false) {
     bannerError = "LLM did not return a bannerPrompt (pattern likely doesn't need one)";

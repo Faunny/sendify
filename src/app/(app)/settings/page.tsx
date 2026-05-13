@@ -274,22 +274,23 @@ export default function SettingsPage() {
             {/* AI image generation */}
             <section>
               <h2 className="text-[14px] font-medium mb-1">Generación de imágenes AI</h2>
-              <p className="text-[12px] text-muted-foreground mb-3">Para crear banners y heros desde el builder. Gemini 2.5 Flash Image (Nano Banana) es la primera opción; DALL-E (vía OpenAI) como fallback.</p>
+              <p className="text-[12px] text-muted-foreground mb-3">Para banners/heros. <strong className="text-foreground">GPT Image 1 (OpenAI)</strong> es la primera opción si está configurado, con Gemini 2.5 Flash Image como fallback automático cuando uno se queda sin cuota.</p>
               <div className="grid gap-3">
                 <CredentialCard
-                  provider="IMAGE_GEMINI"
-                  title="Google Gemini 2.5 Flash Image (Nano Banana)"
-                  hint="$0.04 por imagen · paleta de marca divain inyectada automáticamente"
-                  detail="Free tier disponible para empezar. Soporta 1:1, 3:2, 16:9, 9:16."
-                  helpUrl="https://aistudio.google.com/apikey"
-                  helpUrlLabel="Conseguir API key (gratis) →"
+                  provider="IMAGE_OPENAI"
+                  title="OpenAI · GPT Image 1"
+                  hint="Preferido · ~$0.04-0.06/imagen medium 1536x1024 · modelo gpt-image-1"
+                  detail="Lanzado abril 2025, mejor que DALL-E 3 en brand work text-free. La misma key OpenAI también vale para templates si la pegas en TRANSLATION_OPENAI arriba."
+                  helpUrl="https://platform.openai.com/api-keys"
+                  helpUrlLabel="Conseguir API key →"
                 />
                 <CredentialCard
-                  provider="IMAGE_OPENAI"
-                  title="OpenAI · DALL-E"
-                  hint="Fallback · ~$0.04/image (DALL-E 3)"
-                  detail="Si ya pegaste OPENAI arriba, no hace falta repetirla aquí — es la misma."
-                  helpUrl="https://platform.openai.com/api-keys"
+                  provider="IMAGE_GEMINI"
+                  title="Google Gemini 2.5 Flash Image (fallback)"
+                  hint="Free tier ~50-100/día · paid ~$0.04/imagen · activa billing en el proyecto Cloud para subir cuotas"
+                  detail="Tu suscripción Google AI Ultra es solo consumer (gemini.google.com), NO sube las cuotas de esta API. Hay que activar billing en aistudio.google.com/apikey → click en tu key."
+                  helpUrl="https://aistudio.google.com/apikey"
+                  helpUrlLabel="Configurar key + billing →"
                 />
               </div>
             </section>
