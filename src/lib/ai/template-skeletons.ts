@@ -102,30 +102,70 @@ function lifestyleHero(s: SkeletonSlots): string {
         </mj-column>
       </mj-section>`;
   const subheadColor = s.heroUrl ? "#FFFFFF" : s.bgColor;
+
+  // Real-product showcase row. When we DO have catalog data, show 3 actual
+  // products from the store with their photos and prices. When we don't yet,
+  // emit a small hint block so the email isn't just "headline + CTA".
+  const products = (s.products ?? []).slice(0, 3);
+  const productSection = products.length > 0 ? `
+    <mj-section padding="40px 16px 10px" background-color="${s.bgColor}">
+      <mj-column>
+        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="12px" letter-spacing="3px" text-transform="uppercase" color="${s.textColor}" opacity="0.7">Selección destacada</mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section padding="10px 12px 40px" background-color="${s.bgColor}">
+      ${products.map((p) => `
+        <mj-column width="33.33%" padding="8px">
+          ${p.imageUrl ? `<mj-image src="${p.imageUrl}" alt="${escapeHtml(p.title)}" border-radius="4px" />` : `<mj-image src="https://via.placeholder.com/240x300?text=${encodeURIComponent(p.title)}" alt="${escapeHtml(p.title)}" border-radius="4px" />`}
+          <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="13px" color="${s.textColor}" font-weight="500" padding-top="10px">${escapeHtml(p.title)}</mj-text>
+          ${p.price ? `<mj-text align="center" font-size="12px" color="${s.textColor}" opacity="0.65" padding-top="2px">${escapeHtml(p.price)}</mj-text>` : ""}
+        </mj-column>
+      `).join("")}
+    </mj-section>
+  ` : "";
+
+  // Editorial closer section — 2-column layout with copy + supporting visual.
+  // Always renders so the email has structural depth beyond hero + CTA.
+  const closerSection = `
+    <mj-section padding="40px 24px 50px" background-color="#F5F1EA">
+      <mj-column width="60%">
+        <mj-text font-family="Outfit, Helvetica, Arial, sans-serif" font-size="20px" font-weight="500" color="${s.textColor}" line-height="1.35">Cada fragancia, una historia.</mj-text>
+        <mj-text font-size="14px" line-height="1.65" color="${s.textColor}" padding-top="12px">Llevamos años perfeccionando las equivalencias. Detrás de cada nota hay un proceso que respeta el original y lo hace accesible. Descubre la colección y elige la que mejor te cuente.</mj-text>
+        <mj-spacer height="8px" />
+        ${PILL_BUTTON("LEER MÁS", s.primaryColor, s.bgColor, "#")}
+      </mj-column>
+      <mj-column width="40%" vertical-align="middle">
+        ${s.heroUrl ? `<mj-image src="${s.heroUrl}" alt="" border-radius="4px" />` : `<mj-spacer height="120px" />`}
+      </mj-column>
+    </mj-section>
+  `;
+
   const slots: Record<string, string> = {
     preheader: PREHEADER(s.preheader, s.bgColor),
     wordmark: WORDMARK(s.textColor),
-    heroSection: heroSection,
+    heroSection,
     subhead: s.subhead ? `<mj-text align="center" color="${subheadColor}" font-size="13px" letter-spacing="4px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" padding-top="18px">${escapeHtml(s.subhead)}</mj-text>` : "",
     body: s.body ? `<mj-text align="center" font-size="15px" line-height="1.65" color="${s.textColor}" padding="0 30px 24px">${escapeHtml(s.body)}</mj-text>` : "",
     cta: PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#"),
+    productSection,
+    closerSection,
     brandBar: BRAND_BAR(),
     bgColor: s.bgColor,
   };
 
-  // Substitute {{subhead}} BEFORE wrapping, since heroSection already contains
-  // the placeholder.
   const filledHero = heroSection.replace("{{subhead}}", slots.subhead);
   return render(`<mjml>${HEAD}<mj-body background-color="{{bgColor}}">
 {{preheader}}
 {{wordmark}}
 ${filledHero}
-<mj-section padding="50px 24px 20px">
+<mj-section padding="50px 24px 30px">
   <mj-column>
     {{body}}
     {{cta}}
   </mj-column>
 </mj-section>
+{{productSection}}
+{{closerSection}}
 {{brandBar}}
 </mj-body></mjml>`, slots);
 }
