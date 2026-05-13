@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/app/page-header";
 import { AutoPlanButton } from "@/components/app/auto-plan-button";
+import { TestSendPromo } from "@/components/app/test-send-promo";
 import { prisma } from "@/lib/db";
 import { MARKETING_CALENDAR_2026, dateForStore, STORE_COUNTRY } from "@/lib/calendar/marketing-events";
 
@@ -15,6 +16,38 @@ export default async function CalendarPage() {
     select: { id: true, slug: true, name: true },
     orderBy: { name: "asc" },
   }).catch(() => []);
+
+  // Load active Promotion rows for the "test-send" picker. Sort by closest-
+  // upcoming-date so the dropdown shows the most relevant first.
+  const todayMs = Date.now();
+  const promoRows = await prisma.promotion.findMany({
+    where: { active: true },
+    select: { id: true, name: true, storeId: true, dateByCountry: true },
+    take: 250,
+  }).catch(() => []);
+  const promosForPicker = promoRows.map((p) => {
+    const dates = (p.dateByCountry ?? {}) as Record<string, unknown>;
+    let nearest = Number.POSITIVE_INFINITY;
+    let nearestDate: string | null = null;
+    for (const range of Object.values(dates)) {
+      const endStr = typeof range === "string"
+        ? range
+        : (range && typeof range === "object" && "end" in range ? (range as { end?: string }).end : null) ?? null;
+      if (!endStr) continue;
+      const t = new Date(endStr).getTime();
+      if (isNaN(t)) continue;
+      const diff = Math.abs(t - todayMs);
+      if (diff < nearest) { nearest = diff; nearestDate = endStr; }
+    }
+    const store = stores.find((s) => s.id === p.storeId);
+    return {
+      id: p.id, name: p.name,
+      storeSlug: store?.slug ?? null,
+      storeName: store?.name ?? null,
+      nextDate: nearestDate,
+      _sortKey: nearest,
+    };
+  }).sort((a, b) => a._sortKey - b._sortKey).slice(0, 50);
 
   // Fetch every campaign that has a draftReason — that's how the auto-planner
   // tags its work — so we can show "drafted ✓" badges next to events.
@@ -90,6 +123,8 @@ export default async function CalendarPage() {
           <AutoPlanButton />
         }
       />
+
+      <TestSendPromo promos={promosForPicker} defaultEmail="divain@divainparfums.com" />
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
         <Mini label="Lista para draftear" value={ready}     accent="accent" />
