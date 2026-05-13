@@ -12,7 +12,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { generateTemplate, type TemplateGenInput } from "@/lib/ai/generate-template";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {

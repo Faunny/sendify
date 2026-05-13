@@ -33,12 +33,12 @@ async function waitForDb(maxAttempts = 4): Promise<void> {
   await prisma.$queryRaw`SELECT 1`;
 }
 
-export const maxDuration = 60; // Hobby ceiling — we stop syncing internally at 45s.
+export const maxDuration = 300; // Vercel Pro ceiling.
 export const dynamic = "force-dynamic";
 
-// Hobby caps the function at 60s. After waitForDb (up to ~7s) + auth + response
-// serialization we have ~45s of sync budget. Be conservative.
-const BUDGET_MS = 40_000;
+// On Pro most stores fit in 1-2 rounds. Stop ~30s before the cap to leave room
+// for waitForDb, auth, and response serialization.
+const BUDGET_MS = 270_000;
 
 export async function POST(req: Request) {
   const session = await auth();

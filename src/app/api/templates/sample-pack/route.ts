@@ -12,7 +12,7 @@ import { auth } from "@/lib/auth";
 import { generateTemplate } from "@/lib/ai/generate-template";
 import { renderMjml } from "@/lib/mjml";
 
-export const maxDuration = 60;
+export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
 const SAMPLE_BRIEFS: Array<{ id: string; label: string; brief: string; pillar: "PARFUMS" | "CARE" | "HOME" | "RITUAL" | "ALL"; tone: string }> = [
@@ -53,15 +53,12 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({} as { storeSlug?: string; batch?: number }));
   const storeSlug = body.storeSlug ?? "divain-europa";
-  // Hobby plan caps functions at 60s. 2 previews fit comfortably; the UI loops
-  // a second call for the remaining pair.
-  const batch = Math.max(0, Math.min(1, body.batch ?? 0));
-  const batched = SAMPLE_BRIEFS.slice(batch * 2, batch * 2 + 2);
+  // On Vercel Pro (300s ceiling) all 4 fit in one call. Keep batch param for
+  // backwards compat with the UI's loop but default to running everything.
+  const batch = Math.max(0, body.batch ?? 0);
+  const batched = batch === 0 ? SAMPLE_BRIEFS : SAMPLE_BRIEFS.slice(batch * 2, batch * 2 + 2);
 
-  // Run all 4 in parallel with a 350ms stagger so we don't slam the image
-  // provider's rpm cap at the same instant. Each generation takes 15-35s
-  // depending on whether the image provider routes to OpenAI or Gemini; the
-  // wall-clock for the batch is ~max(individual) + (3 × 0.35s) ≈ 35s.
+  // Parallel with 350ms stagger to spread image-provider rpm bursts.
   const results = await Promise.all(batched.map(async (sample, i) => {
     if (i > 0) await new Promise((r) => setTimeout(r, i * 350));
     try {
@@ -70,9 +67,9 @@ export async function POST(req: Request) {
         pillar: sample.pillar,
         storeSlug,
         tone: sample.tone,
-        // Previews use low quality to fit inside Vercel Hobby's 60s ceiling.
-        // Model defaults to gpt-image-2 (auto-falls back to -1 on 404).
-        imageQuality: "low",
+        // Pro plan has plenty of headroom — use medium quality for realistic
+        // preview fidelity. Model defaults to gpt-image-2 (auto-fallback -1).
+        imageQuality: "medium",
       });
       const compiled = renderMjml(generated.mjml);
       return {
