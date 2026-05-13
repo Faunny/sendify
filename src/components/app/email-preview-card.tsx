@@ -84,7 +84,7 @@ export function EmailPreviewCard({ campaign, store, sender, language, products =
 
       {/* From + subject */}
       <div className="px-4 py-2.5 border-b border-[#eee] flex items-start gap-2.5 bg-white">
-        <div className="h-7 w-7 shrink-0 rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--gold-700)] grid place-items-center text-[9px] text-[var(--accent-fg)] font-bold">DP</div>
+        <div className="h-7 w-7 shrink-0 rounded-full bg-black grid place-items-center text-[9px] text-white font-bold">DP</div>
         <div className="flex-1 min-w-0">
           <div className="text-[11px] text-black/60 truncate">{sender.fromName} &lt;{sender.fromEmail}&gt;</div>
           <div className="text-[12px] font-medium text-black mt-0.5 truncate">{campaign.subject}</div>

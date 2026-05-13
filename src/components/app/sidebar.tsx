@@ -159,7 +159,7 @@ function StoreSwitcher() {
     <div className="group rounded-lg border border-border bg-card p-2 hover:border-border/80 transition-colors cursor-pointer">
       <div className="flex items-center gap-2">
         <Avatar className="h-6 w-6 rounded-md">
-          <AvatarFallback className="rounded-md bg-gradient-to-br from-[var(--accent)] to-[var(--gold-700)] text-[11px] text-[var(--accent-fg)]">
+          <AvatarFallback className="rounded-md bg-foreground text-background text-[11px] font-semibold">
             DP
           </AvatarFallback>
         </Avatar>

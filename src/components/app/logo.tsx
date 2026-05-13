@@ -11,16 +11,16 @@ export function Logo({ className, compact }: { className?: string; compact?: boo
     <div className={cn("flex items-center gap-2 select-none", className)}>
       <span
         aria-hidden
-        className="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-[var(--accent)] to-[var(--gold-700)] shadow-[inset_0_1px_0_rgb(255_255_255/0.25),0_2px_6px_rgb(0_0_0/0.35)]"
+        className="grid h-7 w-7 place-items-center rounded-md bg-foreground text-background shadow-[inset_0_1px_0_rgb(255_255_255/0.08),0_2px_6px_rgb(0_0_0/0.25)]"
       >
-        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-[var(--accent-fg)]" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M3 5l9 7 9-7" />
           <path d="M3 5h18v14H3z" />
         </svg>
       </span>
       {!compact && (
         <span className="brand-wordmark text-[15px] text-foreground">
-          sendify<span className="text-[color:var(--accent)]">.</span>
+          sendify<span className="text-foreground">.</span>
         </span>
       )}
     </div>

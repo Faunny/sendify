@@ -5,9 +5,11 @@
    @font-face and falls back to Helvetica when clients can't load web fonts. */
 
 /* ────────────────────────────────────────────────────────────────────────
-   Sendify theme — inspired by Divain's luxury-minimal aesthetic.
-   Stark monochrome surfaces with a warm gold accent for primary actions.
-   Dark mode is the default; light mode is available but secondary.
+   Sendify theme — pure monochrome. Gold (oklch hue 70-75) was unreadable
+   on the dark UI per user feedback, so the entire UI accent now resolves
+   to a high-contrast neutral (near-black on light, near-white on dark).
+   The Divain brand's gold palette (var(--color-gold-*)) is kept available
+   for outgoing EMAIL templates — it just no longer drives the platform UI.
    ──────────────────────────────────────────────────────────────────────── */
 
 @theme {
@@ -37,18 +39,18 @@
   --fg:                 oklch(0.14 0 0);
   --fg-muted:           oklch(0.45 0 0);
   --fg-subtle:          oklch(0.58 0 0);
-  --accent:             oklch(0.72 0.10 70);
-  --accent-fg:          oklch(0.18 0.05 70);
-  --accent-soft:        oklch(0.95 0.04 75);
-  --ring:               oklch(0.72 0.10 70 / 0.35);
+  --accent:             oklch(0.18 0 0);
+  --accent-fg:          oklch(0.98 0 0);
+  --accent-soft:        oklch(0.94 0 0);
+  --ring:               oklch(0.18 0 0 / 0.35);
   --positive:           oklch(0.72 0.16 152);
   --warning:            oklch(0.79 0.14 75);
   --danger:             oklch(0.62 0.21 25);
-  --chart-1:            oklch(0.72 0.10 70);
-  --chart-2:            oklch(0.62 0.12 230);
-  --chart-3:            oklch(0.72 0.16 152);
-  --chart-4:            oklch(0.62 0.21 25);
-  --chart-5:            oklch(0.58 0.18 305);
+  --chart-1:            oklch(0.62 0.12 230);
+  --chart-2:            oklch(0.72 0.16 152);
+  --chart-3:            oklch(0.62 0.21 25);
+  --chart-4:            oklch(0.58 0.18 305);
+  --chart-5:            oklch(0.45 0 0);
   --radius:             0.625rem;
 }
 
@@ -62,18 +64,18 @@
   --fg:                 oklch(0.98 0 0);
   --fg-muted:           oklch(0.72 0 0);
   --fg-subtle:          oklch(0.55 0 0);
-  --accent:             oklch(0.82 0.10 75);
-  --accent-fg:          oklch(0.16 0.04 75);
-  --accent-soft:        oklch(0.28 0.06 75);
-  --ring:               oklch(0.82 0.10 75 / 0.45);
+  --accent:             oklch(0.98 0 0);
+  --accent-fg:          oklch(0.14 0 0);
+  --accent-soft:        oklch(0.26 0 0);
+  --ring:               oklch(0.98 0 0 / 0.45);
   --positive:           oklch(0.78 0.18 152);
   --warning:            oklch(0.84 0.16 75);
   --danger:             oklch(0.68 0.22 25);
-  --chart-1:            oklch(0.82 0.10 75);
-  --chart-2:            oklch(0.72 0.14 230);
-  --chart-3:            oklch(0.78 0.18 152);
-  --chart-4:            oklch(0.68 0.22 25);
-  --chart-5:            oklch(0.68 0.18 305);
+  --chart-1:            oklch(0.72 0.14 230);
+  --chart-2:            oklch(0.78 0.18 152);
+  --chart-3:            oklch(0.68 0.22 25);
+  --chart-4:            oklch(0.68 0.18 305);
+  --chart-5:            oklch(0.72 0 0);
 }
 
 @theme inline {
