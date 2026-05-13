@@ -227,6 +227,65 @@ ${catalogBlock}
 Return the JSON object now.`;
 }
 
+// ── Hero prompt builder ─────────────────────────────────────────────────────
+//
+// Pattern-aware override of the LLM's bannerPrompt. We don't trust the LLM
+// to produce a coherent hero brief on its own — different email layouts need
+// very different photography. This function takes the layout pattern + the
+// LLM's prompt and emits a strict image-gen instruction the model can follow.
+//
+// Universal rule (every pattern): NO bottles, NO products, NO packaging, NO
+// boxes, NO labels, NO brand text, NO numbers, NO captions. The bottle is
+// shown separately in the email's product grid section using real Shopify
+// CDN URLs — not in this AI photo. We learned the hard way that gpt-image-2
+// invents bottle shapes regardless of references, so we just don't include
+// them in the hero at all.
+
+const NO_PRODUCTS_RULE = "The scene MUST NOT contain any perfume bottles, products, packaging, boxes, labels, brand names, text overlays, logos, captions, numbers, prices, percentages or written words anywhere in the frame. No cosmetic containers of any kind. Just the human subject and the setting.";
+
+function buildHeroPrompt(layoutPattern: string, llmPrompt: string): string {
+  const seed = (llmPrompt || "").trim();
+
+  switch (layoutPattern) {
+    case "lifestyle-hero":
+      return `Editorial fashion photograph in the style of high-end perfume brand advertising. ${seed}. Real woman model, natural skin, candid expression, magazine-cover quality, shot on full-frame 85mm lens, shallow depth of field, soft natural light, refined and aspirational mood. ${NO_PRODUCTS_RULE}`;
+
+    case "big-number-hero":
+      // Big-number layouts show a giant offer number ON THE EMAIL — the hero
+      // image should be abstract or texture-based, not narrative. Avoid faces
+      // because the number competes with them for attention.
+      return `Minimalist editorial photograph: ${seed}. Abstract or textural composition — silk fabric, marble surface, soft floral arrangement, warm sunlight on linen, or a stylized still life of natural materials (NO bottles, NO containers). Muted palette, magazine-quality, soft natural light, shallow depth of field. ${NO_PRODUCTS_RULE}`;
+
+    case "premium-launch":
+      // Premium launch = aspirational close crop. Hand, neck, shoulder, fabric.
+      return `Premium editorial close-crop photograph: ${seed}. Tight crop on a model — neck, collarbone, hand, shoulder, or hair detail — luxury fashion campaign aesthetic, magazine-grade, soft directional light, refined and quiet. ${NO_PRODUCTS_RULE}`;
+
+    case "countdown-urgency":
+      // Countdown emails need tension and movement, not stillness.
+      return `Cinematic editorial photograph with subtle tension: ${seed}. Real model in mid-action — walking, glancing, reaching — golden-hour light, magazine quality, slight motion blur, modern wardrobe. ${NO_PRODUCTS_RULE}`;
+
+    case "app-promo-gradient":
+      // App promo specifically calls for a phone. The bottle of perfume is
+      // wrong here — it's an APP promo. Override hard.
+      return `Modern lifestyle photograph: stylish woman's hand holding a sleek smartphone, soft natural daylight, minimal aesthetic, manicured nails, the phone screen is clean and blank (NO app interface, NO text on the screen — just a black or off-white screen), refined and aspirational. Background is a softly blurred neutral surface (linen, marble, or pale gradient). ${NO_PRODUCTS_RULE}`;
+
+    case "product-grid-editorial":
+      // Editorial product grid emails — the hero is a wide environmental shot.
+      return `Wide editorial environmental photograph: ${seed}. A real woman model in a refined interior or natural setting, full-body or three-quarter framing, magazine-cover quality, soft natural light, aspirational lifestyle aesthetic. ${NO_PRODUCTS_RULE}`;
+
+    case "brand-anthology":
+      // Brand storytelling — slow, considered, romantic.
+      return `Cinematic editorial portrait: ${seed}. Real woman model, slow contemplative mood, beautifully lit (window light, golden hour, or candlelight), magazine quality, refined and timeless. ${NO_PRODUCTS_RULE}`;
+
+    case "winback-empathic":
+      // Winback emails want warmth and intimacy — recognize the customer.
+      return `Warm intimate editorial photograph: ${seed}. Real woman model in a quiet personal moment — at home, reading, looking out a window — soft golden light, candid emotional warmth, magazine quality. ${NO_PRODUCTS_RULE}`;
+
+    default:
+      return `Editorial fashion photograph: ${seed}. Real model, natural skin, magazine-cover quality, soft natural light, refined and aspirational mood. ${NO_PRODUCTS_RULE}`;
+  }
+}
+
 export async function generateTemplate(input: TemplateGenInput): Promise<TemplateGenOutput> {
   // Resolve store palette + storefront URL → drives skeleton colors and links.
   let palette: Required<StorePalette> = DEFAULT_PALETTE;
@@ -327,14 +386,19 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
   const shouldGenBanner = input.generateBanner !== false && bannerPrompt.length > 10;
   if (shouldGenBanner) {
     try {
-      // 0) Library-first: try to reuse an UNUSED asset whose tags match the
-      // layout pattern + store slug before spending Gemini/OpenAI tokens.
-      const libraryTags = [layoutPattern, input.storeSlug ?? "global", input.pillar.toLowerCase()].filter(Boolean);
+      // 0) Library-first reuse. Strict matching: the asset MUST be tagged with
+      // BOTH the exact layoutPattern AND a version marker. The version marker
+      // ("v3-no-products") means the asset was generated under the current
+      // rules (model only, no bottles, no products visible). Pre-v3 assets are
+      // bottle photos that don't match what we want, so excluding them via
+      // hasEvery filters them out automatically — no DB migration needed.
+      const PROMPT_VERSION = "v3-no-products";
+      const libraryTags = [layoutPattern, input.storeSlug ?? "global", PROMPT_VERSION];
       const reusable = await prisma.asset.findFirst({
         where: {
           kind: "IMAGE",
           usedCount: 0,
-          tags: { hasSome: libraryTags },
+          tags: { hasEvery: libraryTags },
         },
         orderBy: { createdAt: "asc" },
         select: { id: true },
@@ -348,14 +412,12 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
           data: { usedCount: { increment: 1 }, lastUsedAt: new Date() },
         }).catch(() => {});
       } else {
-      // We do NOT try to compose the actual divain bottle into the AI hero —
-      // that path produced unrecognizable bottles (gpt-image-2 invents shapes
-      // and labels regardless of the reference). Instead the hero is a clean
-      // editorial scene (model + setting, NO products), and the actual divain
-      // product photo is shown separately in the "Selección destacada" section
-      // below where there's no AI involved at all. This matches divain's
-      // actual Klaviyo aesthetic (model hero + product showcase, separated).
-      const heroOnlyPrompt = `Editorial fashion photograph in the style of high-end perfume brand advertising. ${bannerPrompt}. Real woman model, natural skin, candid expression, magazine-cover quality, shot on full-frame 85mm lens, shallow depth of field, soft natural light, refined and aspirational mood. The scene MUST NOT contain any perfume bottles, products, packaging, boxes, labels, brand names, text, logos, captions or numbers — just the model and the setting. The bottle is shown separately in the email, not in this photo.`;
+      // Build a pattern-aware hero prompt. The same email layout produces
+      // visually different photos depending on what it's selling — an app
+      // promo wants a phone, a premium launch wants a close model crop,
+      // countdown urgency wants tension. None of them should ever show a
+      // bottle (we tried, gpt-image-2 invents wrong bottles every time).
+      const heroOnlyPrompt = buildHeroPrompt(layoutPattern, bannerPrompt);
 
       const img = await generateBannerAny({
         prompt: heroOnlyPrompt,
@@ -379,7 +441,7 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
           mimeType: img.mimeType,
           data: bytes,
           sizeBytes: bytes.length,
-          tags: ["ai-generated", "hero", layoutPattern, input.pillar.toLowerCase(), input.storeSlug ?? "global"],
+          tags: ["ai-generated", "hero", layoutPattern, input.pillar.toLowerCase(), input.storeSlug ?? "global", PROMPT_VERSION],
           prompt: bannerPrompt,
           generatedBy: img.provider,
           usedCount: 1,
