@@ -5,6 +5,8 @@ import { Building2, Check, ChevronRight, ExternalLink, Key, Languages, Mail, Plu
 import { CredentialCard } from "@/components/app/credential-card";
 import { AwsSesCard } from "@/components/app/aws-ses-card";
 import { ExcludedSkusEditor } from "@/components/app/excluded-skus-editor";
+import { AddSenderDialog } from "@/components/app/add-sender-dialog";
+import { SenderConfigDialog } from "@/components/app/sender-config-dialog";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -36,7 +38,7 @@ export default function SettingsPage() {
         <TabsContent value="senders">
           <div className="flex items-center justify-between mb-3">
             <p className="text-sm text-muted-foreground">SES verified domains and email identities. DKIM, SPF and DMARC checked nightly.</p>
-            <Button size="sm"><Plus className="h-3.5 w-3.5" /> Add sender</Button>
+            <AddSenderDialog stores={STORES.map((s) => ({ slug: s.slug, name: s.name }))} />
           </div>
           <div className="grid gap-3">
             {SENDERS.map((s) => {
@@ -65,7 +67,10 @@ export default function SettingsPage() {
                         <div className="text-[12px] text-muted-foreground">Daily cap</div>
                         <div className="text-[14px] tabular-nums">{s.dailyCap.toLocaleString()}</div>
                       </div>
-                      <Button variant="outline" size="sm">Configure</Button>
+                      <SenderConfigDialog
+                        sender={{ id: s.id, fromEmail: s.fromEmail, fromName: s.fromName, verified: s.verified, dailyCap: s.dailyCap }}
+                        trigger={<Button variant="outline" size="sm">Configure</Button>}
+                      />
                     </div>
                     <WarmupProgress sender={s} />
                   </CardContent>
