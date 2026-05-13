@@ -92,8 +92,9 @@ export function CredentialCard(props: CredentialCardProps) {
         // (status 504/502/500) so the body isn't JSON. Read as text first, try
         // to parse, treat unparseable >=500 as a transient hiccup and retry.
         const raw = await res.text();
-        let json: { ok?: boolean; error?: string; customers?: { hasMore?: boolean; finishedAt?: number }; products?: { hasMore?: boolean; finishedAt?: number } } | null = null;
-        try { json = JSON.parse(raw) as typeof json; } catch { /* not JSON */ }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let json: any = null;
+        try { json = JSON.parse(raw); } catch { /* not JSON */ }
         if (!json) {
           if (res.status >= 500 && transientFailures < 3) {
             transientFailures++;
@@ -106,7 +107,7 @@ export function CredentialCard(props: CredentialCardProps) {
           throw new Error(json.error ?? "sync failed");
         }
         transientFailures = 0;
-        setSyncProgress({ customers: json.customers as never, products: json.products as never });
+        setSyncProgress({ customers: json.customers, products: json.products });
         const customersMore = json.customers?.hasMore;
         const productsMore  = json.products?.hasMore;
         if (!customersMore && !productsMore) break;
