@@ -51,14 +51,18 @@ export async function POST(req: Request) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (!(session?.user as any)?.id) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
 
-  const body = await req.json().catch(() => ({} as { storeSlug?: string }));
+  const body = await req.json().catch(() => ({} as { storeSlug?: string; batch?: number }));
   const storeSlug = body.storeSlug ?? "divain-europa";
+  // Hobby plan caps functions at 60s. 2 previews fit comfortably; the UI loops
+  // a second call for the remaining pair.
+  const batch = Math.max(0, Math.min(1, body.batch ?? 0));
+  const batched = SAMPLE_BRIEFS.slice(batch * 2, batch * 2 + 2);
 
   // Run all 4 in parallel with a 350ms stagger so we don't slam the image
   // provider's rpm cap at the same instant. Each generation takes 15-35s
   // depending on whether the image provider routes to OpenAI or Gemini; the
   // wall-clock for the batch is ~max(individual) + (3 × 0.35s) ≈ 35s.
-  const results = await Promise.all(SAMPLE_BRIEFS.map(async (sample, i) => {
+  const results = await Promise.all(batched.map(async (sample, i) => {
     if (i > 0) await new Promise((r) => setTimeout(r, i * 350));
     try {
       const generated = await generateTemplate({
@@ -95,5 +99,12 @@ export async function POST(req: Request) {
     }
   }));
 
-  return NextResponse.json({ ok: true, storeSlug, samples: results });
+  const totalBatches = Math.ceil(SAMPLE_BRIEFS.length / 2);
+  return NextResponse.json({
+    ok: true,
+    storeSlug,
+    samples: results,
+    batch,
+    hasMore: batch + 1 < totalBatches,
+  });
 }

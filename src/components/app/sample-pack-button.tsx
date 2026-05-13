@@ -26,21 +26,40 @@ export function SamplePackButton({ stores }: { stores: { slug: string; name: str
   const [activeId, setActiveId] = useState<string | null>(null);
   const [device, setDevice] = useState<"mobile" | "desktop">("desktop");
 
+  async function fetchBatch(batch: number) {
+    const res = await fetch("/api/templates/sample-pack", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ storeSlug, batch }),
+    });
+    const raw = await res.text();
+    let json: (SamplePackResult & { batch?: number; hasMore?: boolean }) | null = null;
+    try { json = JSON.parse(raw); } catch { /* not JSON */ }
+    if (!json) {
+      throw new Error(`server returned non-JSON (${res.status}): ${raw.slice(0, 160).replace(/\s+/g, " ")}`);
+    }
+    return json;
+  }
+
   async function run() {
     setBusy(true);
     setOpen(true);
     setResult(null);
     setActiveId(null);
     try {
-      const res = await fetch("/api/templates/sample-pack", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storeSlug }),
-      });
-      const json = (await res.json()) as SamplePackResult;
-      setResult(json);
-      const firstOk = json.samples.find((s) => s.ok);
-      if (firstOk) setActiveId(firstOk.id);
+      // Hobby caps each function at 60s, so we run 2 batches of 2 sequentially.
+      const accum: Sample[] = [];
+      let batch = 0;
+      while (true) {
+        const json = await fetchBatch(batch);
+        accum.push(...json.samples);
+        setResult({ ok: true, storeSlug, samples: [...accum] });
+        const firstOk = accum.find((s) => s.ok);
+        if (firstOk && !activeId) setActiveId(firstOk.id);
+        if (!json.hasMore) break;
+        batch++;
+        if (batch > 4) break; // safety
+      }
     } catch (e) {
       setResult({
         ok: false, storeSlug,
