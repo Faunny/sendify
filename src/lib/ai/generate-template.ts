@@ -238,7 +238,7 @@ ${FEW_SHOT_EXAMPLES}
 Respond with ONLY a JSON object — no commentary, no markdown fences:
 {
   "layoutPattern": "<one of: ${LAYOUT_LIBRARY.map((p) => p.id).join(" | ")}>",
-  "bannerPrompt": "<50-80 word prompt suitable for Nano Banana / Gemini image gen. Describe a photograph: subject, setting, mood, lighting. NO text in image. NO logos. Aspect 16:9 or 4:3. Match divain's aesthetic — refined, editorial, lifestyle photography (NOT product packshots unless premium-launch).>",
+  "bannerPrompt": "<50-80 word prompt for Gemini image gen. Describe ONLY what is in the photograph: subject, setting, mood, lighting, colors, composition. The image will be reused across 22 language translations, so it must contain ZERO text/letters/numbers/prices/percentages/dates/logos/watermarks/signage of any kind — those go in the MJML on top. Aspect 3:2. Match divain's aesthetic — refined, editorial, lifestyle photography (NOT product packshots unless premium-launch). Example: 'A young woman in her thirties seated on warm sand at golden hour, white linen dress, looking pensively toward the sea. Soft warm light, shallow depth of field, muted ochre and ivory palette.'>",
   "subject": "<60 chars, no emojis, sentence case>",
   "preheader": "<90-120 chars, complements subject>",
   "mjml": "<full valid <mjml> document following the chosen pattern's visual language>"

@@ -26,10 +26,20 @@ export async function generateBanner(args: GenerateBannerArgs): Promise<{ base64
   const paletteHint = args.brandHints?.palette?.length
     ? ` Palette: ${args.brandHints.palette.join(", ")}.`
     : "";
-  const noTextHint = args.brandHints?.avoidText !== false
-    ? " No text or typography in the image."
-    : "";
-  const prompt = `${args.prompt}. Style: ${styleHint}.${paletteHint}${noTextHint} Aspect ratio: ${args.aspectRatio ?? "3:2"}.`;
+  // NEVER bake text into the image — the same image is reused across 22-language
+  // translations. Letters, numbers, prices, percentages, dates, brand names and
+  // logos must all live in the surrounding MJML where they can be translated.
+  const noTextRule = args.brandHints?.avoidText === false
+    ? ""
+    : ` STRICT RULE: the image must contain ZERO text, ZERO letters, ZERO numbers,
+ZERO prices, ZERO percentages, ZERO dates, ZERO logos, ZERO watermarks, ZERO
+captions, ZERO signage. Pure photographic content only — people, objects,
+nature, surfaces, textures. If you cannot honour this rule, return an error.`;
+  // Phrasing matters: Gemini honours negatives best when stated as part of the
+  // subject description rather than as a separate constraint paragraph. Prepend
+  // a leading "Photograph: " framing too.
+  const subject = args.prompt.replace(/^(photo of |photograph of |image of )/i, "");
+  const prompt = `Photograph: ${subject}. Style: ${styleHint}.${paletteHint}${noTextRule} Aspect ratio: ${args.aspectRatio ?? "3:2"}. The composition must be clean, editorial, and suitable as a hero banner background with text overlaid LATER in the email template.`;
 
   // Direct REST call (no SDK) so we can read the key dynamically per request.
   const model = (cred.meta?.model as string) ?? "gemini-2.5-flash-image";
