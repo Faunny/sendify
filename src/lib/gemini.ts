@@ -1,8 +1,13 @@
 // Gemini 2.5 Flash Image (a.k.a. Nano Banana) adapter for banner generation.
 //
-// The API key lives in ProviderCredential (provider=IMAGE_GEMINI), not in env. The Settings
-// UI is the only writer. Swap providers (DALL-E via OpenAI) by disabling this row and
-// enabling the OpenAI image row. Same banner pipeline, different engine.
+// Why Gemini for this: gemini-2.5-flash-image is the strongest open production
+// model for preserving REFERENCE OBJECTS — when you pass it a product photo
+// + a scene description, it composes a new image where the product is kept
+// pixel-faithful (label, shape, glass color). gpt-image-2/edits invents bottle
+// designs regardless of references, which is why we route bottle-in-scene
+// generations here first.
+//
+// The API key lives in ProviderCredential (provider=IMAGE_GEMINI), not in env.
 
 import { getCredential } from "./credentials";
 
@@ -14,6 +19,10 @@ export type GenerateBannerArgs = {
     style?: string;            // "luxury minimal" etc.
     avoidText?: boolean;       // true by default — text in banners breaks 22-lang fan-out
   };
+  // Product photos to inject into the scene. The model composes a new image
+  // that preserves the objects in these images (label, shape, color, cap)
+  // while building the surrounding scene from the prompt.
+  referenceImageUrls?: string[];
 };
 
 export async function generateBanner(args: GenerateBannerArgs): Promise<{ base64: string; mimeType: string }> {
@@ -35,11 +44,36 @@ export async function generateBanner(args: GenerateBannerArgs): Promise<{ base64
 ZERO prices, ZERO percentages, ZERO dates, ZERO logos, ZERO watermarks, ZERO
 captions, ZERO signage. Pure photographic content only — people, objects,
 nature, surfaces, textures. If you cannot honour this rule, return an error.`;
+
+  const refUrls = (args.referenceImageUrls ?? []).slice(0, 4);
+  const refsBlock = refUrls.length > 0
+    ? ` REFERENCE IMAGES ATTACHED: you have ${refUrls.length === 1 ? "1 reference image" : `${refUrls.length} reference images`} of the actual product. CRITICAL: the product in the final image must look EXACTLY like the reference — preserve the bottle/object's exact shape, glass color, cap design, label, proportions, and any branding visible on it. Do NOT redesign, restyle, or reinterpret the product. Place it naturally into the scene as if photographed there with the rest of the composition built around it.`
+    : "";
   // Phrasing matters: Gemini honours negatives best when stated as part of the
-  // subject description rather than as a separate constraint paragraph. Prepend
-  // a leading "Photograph: " framing too.
+  // subject description rather than as a separate constraint paragraph.
   const subject = args.prompt.replace(/^(photo of |photograph of |image of )/i, "");
-  const prompt = `Photograph: ${subject}. Style: ${styleHint}.${paletteHint}${noTextRule} Aspect ratio: ${args.aspectRatio ?? "3:2"}. The composition must be clean, editorial, and suitable as a hero banner background with text overlaid LATER in the email template.`;
+  const promptText = `Photograph: ${subject}. Style: ${styleHint}.${paletteHint}${refsBlock}${noTextRule} Aspect ratio: ${args.aspectRatio ?? "3:2"}. The composition must be clean, editorial, and suitable as a hero banner background with text overlaid LATER in the email template.`;
+
+  // Build the multimodal parts array: prompt text first, then each reference
+  // image as inlineData. The model uses these to constrain the product
+  // appearance.
+  const parts: Array<{ text?: string; inlineData?: { mimeType: string; data: string } }> = [
+    { text: promptText },
+  ];
+  for (const url of refUrls) {
+    try {
+      const r = await fetch(url, { redirect: "follow" });
+      if (!r.ok) continue;
+      const ab = await r.arrayBuffer();
+      const base64 = Buffer.from(ab).toString("base64");
+      const mimeType = r.headers.get("content-type")?.split(";")[0] ?? "image/jpeg";
+      parts.push({ inlineData: { mimeType, data: base64 } });
+    } catch {
+      // Reference fetch failures shouldn't kill the generation — just continue
+      // without that ref. The prompt still mentions "reference attached" but
+      // the model will fall back to its own product synthesis.
+    }
+  }
 
   // Direct REST call (no SDK) so we can read the key dynamically per request.
   const model = (cred.meta?.model as string) ?? "gemini-2.5-flash-image";
@@ -49,7 +83,7 @@ nature, surfaces, textures. If you cannot honour this rule, return an error.`;
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
+        contents: [{ parts }],
         generationConfig: { responseModalities: ["IMAGE"] },
       }),
     },

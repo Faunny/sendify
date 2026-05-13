@@ -38,32 +38,43 @@ export async function generateBannerAny(args: BannerArgs): Promise<BannerResult>
   const hasOpenai = !!(await getCredential("IMAGE_OPENAI") ?? await getCredential("TRANSLATION_OPENAI"));
   const hasGemini = !!(await getCredential("IMAGE_GEMINI"));
 
-  if (hasOpenai) {
-    try {
-      const img = await generateImageWithOpenAI({
-        prompt: args.prompt,
-        aspectRatio: mapAspect(args.aspectRatio),
-        brandHints: args.brandHints,
-        quality: args.quality ?? "medium",
-        modelOverride: args.preferredModel,
-        referenceImageUrls: args.referenceImageUrls,
-      });
-      return { ...img, provider: "openai-image" };
-    } catch (e) {
-      errors.push(`openai: ${e instanceof Error ? e.message : "failed"}`);
-    }
-  }
+  const hasRefs = (args.referenceImageUrls ?? []).length > 0;
 
-  if (hasGemini) {
-    try {
-      const img = await generateBannerGemini({
-        prompt: args.prompt,
-        aspectRatio: args.aspectRatio,
-        brandHints: args.brandHints,
-      });
-      return { ...img, provider: "gemini-flash-image" };
-    } catch (e) {
-      errors.push(`gemini: ${e instanceof Error ? e.message : "failed"}`);
+  // When references are provided we route to Gemini FIRST. Gemini 2.5 Flash
+  // Image (Nano Banana) preserves reference-object appearance much better than
+  // gpt-image-2/edits, which has a habit of inventing bottle designs even when
+  // shown a reference. Without references, OpenAI gpt-image-2 produces nicer
+  // model photography on average, so we keep that as the default.
+  const order: Array<"gemini" | "openai"> = hasRefs ? ["gemini", "openai"] : ["openai", "gemini"];
+
+  for (const provider of order) {
+    if (provider === "openai" && hasOpenai) {
+      try {
+        const img = await generateImageWithOpenAI({
+          prompt: args.prompt,
+          aspectRatio: mapAspect(args.aspectRatio),
+          brandHints: args.brandHints,
+          quality: args.quality ?? "medium",
+          modelOverride: args.preferredModel,
+          referenceImageUrls: args.referenceImageUrls,
+        });
+        return { ...img, provider: "openai-image" };
+      } catch (e) {
+        errors.push(`openai: ${e instanceof Error ? e.message : "failed"}`);
+      }
+    }
+    if (provider === "gemini" && hasGemini) {
+      try {
+        const img = await generateBannerGemini({
+          prompt: args.prompt,
+          aspectRatio: args.aspectRatio,
+          brandHints: args.brandHints,
+          referenceImageUrls: args.referenceImageUrls,
+        });
+        return { ...img, provider: "gemini-flash-image" };
+      } catch (e) {
+        errors.push(`gemini: ${e instanceof Error ? e.message : "failed"}`);
+      }
     }
   }
 

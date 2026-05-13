@@ -241,48 +241,66 @@ Return the JSON object now.`;
 // invents bottle shapes regardless of references, so we just don't include
 // them in the hero at all.
 
-const NO_PRODUCTS_RULE = "The scene MUST NOT contain any perfume bottles, products, packaging, boxes, labels, brand names, text overlays, logos, captions, numbers, prices, percentages or written words anywhere in the frame. No cosmetic containers of any kind. Just the human subject and the setting.";
+// Universal rule for every hero: zero text, zero numbers, zero captions, zero
+// logos. The bottle has Divain's branding on its label — that's allowed (it
+// comes from the reference image and the model preserves it as-is). What's
+// forbidden is fabricated text in the scene: signage, captions, overlays.
+const NO_TEXT_RULE = "The image MUST NOT contain any captions, overlay text, signage, hashtags, written prices, percentages, numbers, dates, or fabricated brand names anywhere in the scene. Any text on the actual product bottle (from the reference) is fine and must be preserved exactly as shown.";
 
-function buildHeroPrompt(layoutPattern: string, llmPrompt: string): string {
+// When a real product photo is provided as a reference, the prompt instructs
+// the model (Gemini Nano Banana / gpt-image-2 edits) to compose the scene
+// AROUND that exact bottle — preserve its shape, label, glass color, cap. Per
+// user explicit ask: the real Divain bottle must appear in the hero.
+const KEEP_PRODUCT_RULE = "The perfume bottle from the attached reference image MUST appear in this scene. Preserve it EXACTLY: same glass shape, same color, same label artwork, same cap. Do NOT redesign, restyle, recolor, or reinterpret the bottle. Compose the rest of the scene (person, surface, props, lighting) around the bottle as if it were photographed in place.";
+
+function buildHeroPrompt(layoutPattern: string, llmPrompt: string, hasProductRef: boolean): string {
   const seed = (llmPrompt || "").trim();
 
+  // With a real product reference (the user's actual Divain bottle), every
+  // pattern places that bottle into a scene matched to the layout's mood.
+  if (hasProductRef) {
+    switch (layoutPattern) {
+      case "lifestyle-hero":
+        return `Editorial luxury perfume advertising photograph. ${seed}. A real woman model interacts naturally with the perfume bottle (holds it, looks at it, sets it down on a surface near her). Magazine-cover quality, 85mm lens, shallow depth of field, soft natural light, warm refined mood. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+
+      case "big-number-hero":
+        return `Minimalist editorial still life: the perfume bottle from the reference placed on ${seed || "a warm-toned surface with soft natural light, perhaps with a single bloom or a length of silk nearby"}. Clean composition with negative space on one side (text will overlay there in the email). Magazine quality, soft directional light. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+
+      case "premium-launch":
+        return `Premium editorial product photograph: the perfume bottle from the reference held in a model's hand, or resting on a refined surface (marble, dark velvet, polished wood). Close-crop framing showing the bottle prominently with a human element (a hand, a sleeve, a strand of hair). ${seed}. Magazine campaign aesthetic, directional light, refined. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+
+      case "countdown-urgency":
+        return `Cinematic editorial photograph with subtle tension: the perfume bottle from the reference at the heart of the composition — on a table being approached, in a hand mid-motion, or in dramatic golden-hour light. ${seed}. Magazine quality, slight motion or anticipation. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+
+      case "app-promo-gradient":
+        return `Modern lifestyle photograph: a model's hand holding a smartphone next to (or just behind) the perfume bottle from the reference, both resting on a refined surface. Soft natural daylight, minimal aesthetic, the phone screen is blank/dark. ${seed}. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+
+      case "product-grid-editorial":
+        return `Wide editorial environmental photograph: a real woman model in a refined setting (interior, garden, terrace), with the perfume bottle from the reference visible on a surface in the scene (vanity, table, bedside). ${seed}. Magazine quality, soft natural light. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+
+      case "brand-anthology":
+        return `Cinematic editorial portrait: a real woman model in a slow contemplative moment, with the perfume bottle from the reference resting nearby (on a windowsill, dresser, or in her hand). Beautifully lit (window light, golden hour, candlelight). Magazine quality, refined and timeless. ${seed}. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+
+      case "winback-empathic":
+        return `Warm intimate editorial photograph: a real woman model in a quiet personal moment at home, with the perfume bottle from the reference visible nearby (on a vanity, on a side table, in her hand). Soft golden light, emotional warmth, magazine quality. ${seed}. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+
+      default:
+        return `Editorial luxury perfume advertising photograph: ${seed}. Real model interacting with the perfume bottle from the reference image. Magazine quality, soft natural light, refined mood. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+    }
+  }
+
+  // No product reference available — generate a clean editorial scene without
+  // any fabricated bottle (since AI-invented bottles look generic and don't
+  // match the brand). Person + setting only.
   switch (layoutPattern) {
     case "lifestyle-hero":
-      return `Editorial fashion photograph in the style of high-end perfume brand advertising. ${seed}. Real woman model, natural skin, candid expression, magazine-cover quality, shot on full-frame 85mm lens, shallow depth of field, soft natural light, refined and aspirational mood. ${NO_PRODUCTS_RULE}`;
+      return `Editorial fashion photograph in the style of high-end perfume brand advertising. ${seed}. Real woman model, natural skin, candid expression, magazine-cover quality, 85mm lens, shallow depth of field, soft natural light, refined mood. No products in frame. ${NO_TEXT_RULE}`;
 
     case "big-number-hero":
-      // Big-number layouts show a giant offer number ON THE EMAIL — the hero
-      // image should be abstract or texture-based, not narrative. Avoid faces
-      // because the number competes with them for attention.
-      return `Minimalist editorial photograph: ${seed}. Abstract or textural composition — silk fabric, marble surface, soft floral arrangement, warm sunlight on linen, or a stylized still life of natural materials (NO bottles, NO containers). Muted palette, magazine-quality, soft natural light, shallow depth of field. ${NO_PRODUCTS_RULE}`;
-
-    case "premium-launch":
-      // Premium launch = aspirational close crop. Hand, neck, shoulder, fabric.
-      return `Premium editorial close-crop photograph: ${seed}. Tight crop on a model — neck, collarbone, hand, shoulder, or hair detail — luxury fashion campaign aesthetic, magazine-grade, soft directional light, refined and quiet. ${NO_PRODUCTS_RULE}`;
-
-    case "countdown-urgency":
-      // Countdown emails need tension and movement, not stillness.
-      return `Cinematic editorial photograph with subtle tension: ${seed}. Real model in mid-action — walking, glancing, reaching — golden-hour light, magazine quality, slight motion blur, modern wardrobe. ${NO_PRODUCTS_RULE}`;
-
-    case "app-promo-gradient":
-      // App promo specifically calls for a phone. The bottle of perfume is
-      // wrong here — it's an APP promo. Override hard.
-      return `Modern lifestyle photograph: stylish woman's hand holding a sleek smartphone, soft natural daylight, minimal aesthetic, manicured nails, the phone screen is clean and blank (NO app interface, NO text on the screen — just a black or off-white screen), refined and aspirational. Background is a softly blurred neutral surface (linen, marble, or pale gradient). ${NO_PRODUCTS_RULE}`;
-
-    case "product-grid-editorial":
-      // Editorial product grid emails — the hero is a wide environmental shot.
-      return `Wide editorial environmental photograph: ${seed}. A real woman model in a refined interior or natural setting, full-body or three-quarter framing, magazine-cover quality, soft natural light, aspirational lifestyle aesthetic. ${NO_PRODUCTS_RULE}`;
-
-    case "brand-anthology":
-      // Brand storytelling — slow, considered, romantic.
-      return `Cinematic editorial portrait: ${seed}. Real woman model, slow contemplative mood, beautifully lit (window light, golden hour, or candlelight), magazine quality, refined and timeless. ${NO_PRODUCTS_RULE}`;
-
-    case "winback-empathic":
-      // Winback emails want warmth and intimacy — recognize the customer.
-      return `Warm intimate editorial photograph: ${seed}. Real woman model in a quiet personal moment — at home, reading, looking out a window — soft golden light, candid emotional warmth, magazine quality. ${NO_PRODUCTS_RULE}`;
+      return `Minimalist editorial still life: ${seed}. Abstract textural composition — silk, marble, blooms, warm linen — refined and quiet, with negative space for text overlay. ${NO_TEXT_RULE}`;
 
     default:
-      return `Editorial fashion photograph: ${seed}. Real model, natural skin, magazine-cover quality, soft natural light, refined and aspirational mood. ${NO_PRODUCTS_RULE}`;
+      return `Editorial fashion photograph: ${seed}. Real model, magazine quality, soft natural light, refined mood. ${NO_TEXT_RULE}`;
   }
 }
 
@@ -387,12 +405,15 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
   if (shouldGenBanner) {
     try {
       // 0) Library-first reuse. Strict matching: the asset MUST be tagged with
-      // BOTH the exact layoutPattern AND a version marker. The version marker
-      // ("v3-no-products") means the asset was generated under the current
-      // rules (model only, no bottles, no products visible). Pre-v3 assets are
-      // bottle photos that don't match what we want, so excluding them via
-      // hasEvery filters them out automatically — no DB migration needed.
-      const PROMPT_VERSION = "v3-no-products";
+      // BOTH the exact layoutPattern AND a version marker. Bumping the marker
+      // when we change prompt rules invalidates the old library automatically
+      // (no DB migration needed) because hasEvery requires the current tag to
+      // be present and old assets don't have it.
+      //
+      // v4 = bottle FROM the real Shopify product photo is composed into the
+      // hero scene via Gemini Nano Banana. Pre-v4 assets either had no bottle
+      // or had an AI-invented bottle, neither of which we want anymore.
+      const PROMPT_VERSION = "v4-with-product";
       const libraryTags = [layoutPattern, input.storeSlug ?? "global", PROMPT_VERSION];
       const reusable = await prisma.asset.findFirst({
         where: {
@@ -412,26 +433,26 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
           data: { usedCount: { increment: 1 }, lastUsedAt: new Date() },
         }).catch(() => {});
       } else {
-      // Build a pattern-aware hero prompt. The same email layout produces
-      // visually different photos depending on what it's selling — an app
-      // promo wants a phone, a premium launch wants a close model crop,
-      // countdown urgency wants tension. None of them should ever show a
-      // bottle (we tried, gpt-image-2 invents wrong bottles every time).
-      const heroOnlyPrompt = buildHeroPrompt(layoutPattern, bannerPrompt);
+      // Pick the real Divain product photo to use as a reference. The first
+      // product hint coming from the catalog already matches the email's
+      // pillar/store, so it's the right bottle to show. Without a reference
+      // we fall back to a model-only scene (no fabricated bottle).
+      const productRefUrl = products[0]?.imageUrl?.trim() || undefined;
+      const heroOnlyPrompt = buildHeroPrompt(layoutPattern, bannerPrompt, !!productRefUrl);
 
       const img = await generateBannerAny({
         prompt: heroOnlyPrompt,
         aspectRatio: "3:2",
         brandHints: {
           palette: [palette.primary, palette.bg, palette.text].filter(Boolean),
-          style: "editorial fashion photography",
+          style: "editorial luxury perfume photography",
           avoidText: true,
         },
         quality: input.imageQuality ?? "medium",
         preferredModel: input.imageModelOverride,
-        // Intentionally NO references — generating from scratch keeps it fast,
-        // text-free, and skips the unreliable bottle-compositing.
-        referenceImageUrls: [],
+        // Pass the real product photo so Gemini composes the scene AROUND it
+        // while preserving the bottle's exact shape, label, glass color, cap.
+        referenceImageUrls: productRefUrl ? [productRefUrl] : [],
       });
       const bytes = Buffer.from(img.base64, "base64");
       const asset = await prisma.asset.create({
