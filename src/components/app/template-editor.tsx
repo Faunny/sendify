@@ -20,14 +20,17 @@ type TemplateProp = {
   storeSlug: string | null;
 };
 
-export function TemplateEditor({ template }: { template: TemplateProp }) {
+export function TemplateEditor({ template, initialHtml = "" }: { template: TemplateProp; initialHtml?: string }) {
   const router = useRouter();
   const [name, setName] = useState(template.name);
   const [mjml, setMjml] = useState(template.mjml);
   const [device, setDevice] = useState<"mobile" | "desktop">("desktop");
-  const [html, setHtml] = useState<string>("");
+  const [html, setHtml] = useState<string>(initialHtml);
   const [rendering, setRendering] = useState(false);
   const [renderErrors, setRenderErrors] = useState<string[]>([]);
+  // Track whether the MJML has been edited since mount so we don't refire
+  // the render API immediately on first paint (we already have initialHtml).
+  const [touched, setTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const [savedTick, setSavedTick] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -35,9 +38,11 @@ export function TemplateEditor({ template }: { template: TemplateProp }) {
   const [sendBusy, setSendBusy] = useState(false);
   const [sendResult, setSendResult] = useState<{ ok: boolean; detail: string } | null>(null);
 
-  // Debounced render — 500ms after last keystroke.
+  // Debounced render — 500ms after last keystroke. Skip on first mount when
+  // we already have a server-side compiled initialHtml.
   const renderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
+    if (!touched) return;
     if (renderTimer.current) clearTimeout(renderTimer.current);
     renderTimer.current = setTimeout(async () => {
       setRendering(true);
@@ -61,7 +66,7 @@ export function TemplateEditor({ template }: { template: TemplateProp }) {
       }
     }, 500);
     return () => { if (renderTimer.current) clearTimeout(renderTimer.current); };
-  }, [mjml, template.id]);
+  }, [mjml, template.id, touched]);
 
   async function save() {
     setSaving(true); setSavedTick(false); setSaveError(null);
@@ -145,7 +150,7 @@ export function TemplateEditor({ template }: { template: TemplateProp }) {
           </div>
           <textarea
             value={mjml}
-            onChange={(e) => setMjml(e.target.value)}
+            onChange={(e) => { setMjml(e.target.value); setTouched(true); }}
             spellCheck={false}
             className="flex-1 p-3 font-mono text-[12px] bg-[color:var(--bg)] text-foreground resize-none focus:outline-none"
             style={{ lineHeight: 1.55, tabSize: 2 }}
