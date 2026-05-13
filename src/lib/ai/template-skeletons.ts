@@ -86,19 +86,25 @@ function render(template: string, slots: Record<string, string>): string {
 
 function lifestyleHero(s: SkeletonSlots): string {
   const headlineHtml = escapeHtml(s.headline).replace(/\n/g, "<br/>");
-  // Real divain Klaviyo aesthetic: FULL-BLEED MODEL PHOTO that fills the
-  // canvas, with the wordmark + tag + headline + body LAYERED BELOW (not
-  // overlaid on the photo). The photo IS the email; the typography is the
-  // contemplative caption underneath. Matches NOVEDAD-1104 / PRIMERS series.
+  // Real divain Klaviyo aesthetic: BACKGROUND PHOTO with text overlaid on top.
+  // The headline + subhead sit ON the photo (white type, text-shadow for
+  // legibility against any background). Matches the divain campaign style
+  // where the offer reads against the model photo.
   const heroSection = s.heroUrl
-    ? `<mj-section padding="0">
+    ? `<mj-section background-url="${s.heroUrl}" background-size="cover" background-position="center center" background-repeat="no-repeat" padding="180px 30px 180px">
         <mj-column>
-          <mj-image src="${s.heroUrl}" alt="" padding="0" fluid-on-mobile="true" />
+          ${s.subhead ? `<mj-text align="center" color="#FFFFFF" font-size="13px" letter-spacing="5px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" css-class="sf-hero-text" padding-bottom="14px">${escapeHtml(s.subhead)}</mj-text>` : ""}
+          <mj-text align="center" color="#FFFFFF" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="54px" font-weight="600" line-height="1.05" css-class="sf-hero-text">${headlineHtml}</mj-text>
+          <mj-spacer height="24px" />
+          ${PILL_BUTTON(s.ctaLabel, s.bgColor, s.primaryColor, s.ctaUrl ?? "#")}
         </mj-column>
       </mj-section>`
     : `<mj-section background-color="${s.primaryColor}" padding="180px 30px 180px">
         <mj-column>
+          ${s.subhead ? `<mj-text align="center" color="${s.bgColor}" font-size="13px" letter-spacing="5px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" padding-bottom="14px">${escapeHtml(s.subhead)}</mj-text>` : ""}
           <mj-text align="center" color="${s.bgColor}" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="48px" font-weight="600" line-height="1.05">${headlineHtml}</mj-text>
+          <mj-spacer height="24px" />
+          ${PILL_BUTTON(s.ctaLabel, s.bgColor, s.primaryColor, s.ctaUrl ?? "#")}
         </mj-column>
       </mj-section>`;
 
@@ -145,20 +151,16 @@ function lifestyleHero(s: SkeletonSlots): string {
     </mj-section>
   `;
 
-  // Caption block sits BELOW the hero photo, matching the NOVEDAD-1104 style:
-  // small all-caps tag, big headline, short tagline. Generous bottom padding.
-  const captionBlock = `
-    <mj-section padding="36px 24px 8px" background-color="${s.bgColor}">
+  // Caption block sits BELOW the hero photo with the body paragraph (the
+  // headline + subhead are now overlaid on the hero photo, so we just need
+  // the supporting editorial copy here).
+  const captionBlock = s.body ? `
+    <mj-section padding="44px 32px 16px" background-color="${s.bgColor}">
       <mj-column>
-        ${s.subhead ? `<mj-text align="center" color="${s.textColor}" font-size="11px" letter-spacing="5px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" opacity="0.7">${escapeHtml(s.subhead)}</mj-text>` : ""}
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="34px" font-weight="500" color="${s.textColor}" line-height="1.15" padding-top="${s.subhead ? "12px" : "0"}">${headlineHtml}</mj-text>
-        ${s.body ? `<mj-text align="center" font-size="14px" line-height="1.65" color="${s.textColor}" padding="14px 30px 0" opacity="0.85">${escapeHtml(s.body)}</mj-text>` : ""}
+        <mj-text align="center" font-size="15px" line-height="1.7" color="${s.textColor}" opacity="0.88">${escapeHtml(s.body)}</mj-text>
       </mj-column>
     </mj-section>
-    <mj-section padding="22px 24px 40px" background-color="${s.bgColor}">
-      <mj-column>${PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#")}</mj-column>
-    </mj-section>
-  `;
+  ` : "";
 
   return `<mjml>${HEAD}<mj-body background-color="${s.bgColor}">
 ${PREHEADER(s.preheader, s.bgColor)}

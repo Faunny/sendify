@@ -2,9 +2,33 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Loader2, Smartphone, Monitor, Send, AlertTriangle, Check, RefreshCw } from "lucide-react";
+import { Save, Loader2, Smartphone, Monitor, Send, AlertTriangle, Check, RefreshCw, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
+const PREVIEW_LANGS: Array<{ code: string; label: string; flag: string }> = [
+  { code: "es-ES", label: "Español (España)", flag: "🇪🇸" },
+  { code: "es-MX", label: "Español (México)", flag: "🇲🇽" },
+  { code: "en-GB", label: "English (UK)",     flag: "🇬🇧" },
+  { code: "en-US", label: "English (US)",     flag: "🇺🇸" },
+  { code: "fr-FR", label: "Français",          flag: "🇫🇷" },
+  { code: "de-DE", label: "Deutsch",           flag: "🇩🇪" },
+  { code: "it-IT", label: "Italiano",          flag: "🇮🇹" },
+  { code: "pt-PT", label: "Português (PT)",    flag: "🇵🇹" },
+  { code: "nl-NL", label: "Nederlands",        flag: "🇳🇱" },
+  { code: "pl-PL", label: "Polski",            flag: "🇵🇱" },
+  { code: "sv-SE", label: "Svenska",           flag: "🇸🇪" },
+  { code: "da-DK", label: "Dansk",             flag: "🇩🇰" },
+  { code: "fi-FI", label: "Suomi",             flag: "🇫🇮" },
+  { code: "no-NO", label: "Norsk",             flag: "🇳🇴" },
+  { code: "cs-CZ", label: "Čeština",           flag: "🇨🇿" },
+  { code: "ro-RO", label: "Română",            flag: "🇷🇴" },
+  { code: "hu-HU", label: "Magyar",            flag: "🇭🇺" },
+  { code: "bg-BG", label: "Български",         flag: "🇧🇬" },
+  { code: "el-GR", label: "Ελληνικά",          flag: "🇬🇷" },
+  { code: "sk-SK", label: "Slovenčina",        flag: "🇸🇰" },
+  { code: "sl-SI", label: "Slovenščina",       flag: "🇸🇮" },
+];
 
 // Real template editor: MJML source on the left, live compiled preview on
 // the right (debounced re-render after each edit), test-send to your inbox
@@ -37,6 +61,42 @@ export function TemplateEditor({ template, initialHtml = "" }: { template: Templ
   const [testTo, setTestTo] = useState("divain@divainparfums.com");
   const [sendBusy, setSendBusy] = useState(false);
   const [sendResult, setSendResult] = useState<{ ok: boolean; detail: string } | null>(null);
+
+  // Translated previews cache. Keyed by lang code → translated MJML.
+  const [previewLang, setPreviewLang] = useState("es-ES");
+  const [translationCache, setTranslationCache] = useState<Record<string, string>>({});
+  const [translatingLang, setTranslatingLang] = useState(false);
+  const [translateError, setTranslateError] = useState<string | null>(null);
+
+  async function loadTranslation(target: string) {
+    if (target === "es-ES") { setPreviewLang("es-ES"); return; }
+    if (translationCache[target]) { setPreviewLang(target); return; }
+    setTranslatingLang(true);
+    setTranslateError(null);
+    try {
+      const res = await fetch(`/api/templates/${template.id}/translate-preview`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mjml, targetLang: target, sourceLang: "es-ES" }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "translation failed");
+      setTranslationCache((cur) => ({ ...cur, [target]: json.translatedMjml }));
+      setPreviewLang(target);
+      // Trigger preview re-render with translated MJML.
+      const r2 = await fetch(`/api/templates/${template.id}/render`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mjml: json.translatedMjml }),
+      });
+      const r2j = await r2.json();
+      if (r2j.ok) setHtml(r2j.html);
+    } catch (e) {
+      setTranslateError(e instanceof Error ? e.message : "translation failed");
+    } finally {
+      setTranslatingLang(false);
+    }
+  }
 
   // Debounced render — 500ms after last keystroke. Skip on first mount when
   // we already have a server-side compiled initialHtml.
@@ -164,11 +224,22 @@ export function TemplateEditor({ template, initialHtml = "" }: { template: Templ
 
         {/* Right: rendered preview */}
         <div className="rounded-md border border-border bg-card/40 overflow-hidden flex flex-col">
-          <div className="px-3 py-2 border-b border-border flex items-center justify-between bg-card">
+          <div className="px-3 py-2 border-b border-border flex items-center justify-between bg-card gap-2 flex-wrap">
             <span className="text-[11px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              Preview {rendering && <RefreshCw className="h-3 w-3 animate-spin" />}
+              Preview {(rendering || translatingLang) && <RefreshCw className="h-3 w-3 animate-spin" />}
             </span>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
+              <Languages className="h-3.5 w-3.5 text-muted-foreground" />
+              <select
+                value={previewLang}
+                onChange={(e) => loadTranslation(e.target.value)}
+                disabled={translatingLang}
+                className="rounded border border-border bg-card px-2 py-1 text-[12px]"
+              >
+                {PREVIEW_LANGS.map((l) => (
+                  <option key={l.code} value={l.code}>{l.flag} {l.label}{translationCache[l.code] ? " ✓" : ""}</option>
+                ))}
+              </select>
               <Button variant={device === "mobile" ? "secondary" : "ghost"} size="icon-sm" onClick={() => setDevice("mobile")}>
                 <Smartphone className="h-3.5 w-3.5" />
               </Button>
@@ -177,6 +248,12 @@ export function TemplateEditor({ template, initialHtml = "" }: { template: Templ
               </Button>
             </div>
           </div>
+          {translateError && (
+            <div className="px-3 py-1.5 text-[11px] text-[color:var(--danger)] bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] border-b border-[color:var(--danger)]/30 flex items-start gap-1">
+              <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+              {translateError}
+            </div>
+          )}
           <div className="flex-1 overflow-auto p-3 bg-[color:var(--muted)] flex justify-center">
             <div className="bg-white rounded-md shadow" style={{ width: device === "desktop" ? 620 : 380, maxWidth: "100%" }}>
               <iframe
