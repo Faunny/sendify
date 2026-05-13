@@ -157,6 +157,19 @@ export function SamplePackButton({ stores }: { stores: { slug: string; name: str
                         </Button>
                       </div>
                     </div>
+                    {active.bannerError && (
+                      <div className="px-3 py-2 text-[12px] text-[color:var(--danger)] bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] border-b border-[color:var(--danger)]/30 flex items-start gap-1.5">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                        <div>
+                          <strong>Imagen no generada:</strong> {active.bannerError}
+                        </div>
+                      </div>
+                    )}
+                    {active.bannerUrl && (
+                      <div className="px-3 py-1.5 text-[11px] text-[color:var(--positive)] bg-[color-mix(in_oklch,var(--positive)_6%,transparent)] border-b border-[color:var(--positive)]/30">
+                        ✓ Hero: <a href={active.bannerUrl} target="_blank" className="underline break-all">{active.bannerUrl}</a>
+                      </div>
+                    )}
                     <div className="flex-1 overflow-auto p-4 bg-[color:var(--muted)] flex justify-center">
                       <div
                         className="bg-white rounded-md shadow"
@@ -179,20 +192,6 @@ export function SamplePackButton({ stores }: { stores: { slug: string; name: str
                           {active.bannerPrompt}
                         </div>
                       </details>
-                    )}
-                    {active.bannerError && (
-                      <div className="border-t border-border bg-[color-mix(in_oklch,var(--danger)_6%,transparent)] px-3 py-2 text-[12px] text-[color:var(--danger)] flex items-start gap-1.5">
-                        <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                        <div>
-                          <div className="font-medium">Banner Gemini falló:</div>
-                          <div className="opacity-90 break-all">{active.bannerError}</div>
-                        </div>
-                      </div>
-                    )}
-                    {active.bannerUrl && (
-                      <div className="border-t border-border bg-[color-mix(in_oklch,var(--positive)_5%,transparent)] px-3 py-2 text-[12px] text-[color:var(--positive)]">
-                        ✓ Hero generado: <a href={active.bannerUrl} target="_blank" className="underline break-all">{active.bannerUrl}</a>
-                      </div>
                     )}
                     {active.mjmlErrors.length > 0 && (
                       <div className="border-t border-border bg-[color-mix(in_oklch,var(--warning)_5%,transparent)] px-3 py-2 text-[12px] text-[color:var(--warning)]">
