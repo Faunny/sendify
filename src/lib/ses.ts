@@ -85,8 +85,9 @@ export async function sendEmail(args: SendArgs) {
     // If SES rejects the configuration set (most common: the env var pointed
     // to a set that was never created in AWS) retry without it. Engagement-
     // tracking event publishing simply won't happen, but the email goes out.
+    // Real error from SES looks like: "Configuration set <name> does not exist."
     const msg = e instanceof Error ? e.message : "";
-    const configSetMissing = /ConfigurationSet[^s]*does not exist|ConfigurationSetDoesNotExist/i.test(msg);
+    const configSetMissing = /configuration set.*does not exist|ConfigurationSetDoesNotExist/i.test(msg);
     if (requestedConfigSet && configSetMissing) {
       console.warn(`[ses] configuration set "${requestedConfigSet}" missing — retrying send without it`);
       const res = await client.send(buildCommand(undefined));
