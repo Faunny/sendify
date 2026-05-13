@@ -54,9 +54,11 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({} as { storeSlug?: string }));
   const storeSlug = body.storeSlug ?? "divain-europa";
 
-  // Run all 4 in parallel — each ~10-15s on GPT-4o, ~6-10s on DeepSeek. With
-  // maxDuration=60s and 4-way parallel we comfortably fit.
-  const results = await Promise.all(SAMPLE_BRIEFS.map(async (sample) => {
+  // Run sequentially with a 1.5s gap between Gemini calls — the free tier of
+  // Gemini Flash Image throttles aggressively on parallel bursts (429 per-minute
+  // even when daily quota is fine). Serial keeps us under the rpm cap.
+  const results: Array<Record<string, unknown>> = [];
+  for (const sample of SAMPLE_BRIEFS) {
     try {
       const generated = await generateTemplate({
         brief: sample.brief,
@@ -65,10 +67,10 @@ export async function POST(req: Request) {
         tone: sample.tone,
       });
       const compiled = renderMjml(generated.mjml);
-      return {
+      results.push({
         id: sample.id,
         label: sample.label,
-        ok: true as const,
+        ok: true,
         subject: generated.subject,
         preheader: generated.preheader,
         layoutPattern: generated.layoutPattern,
@@ -81,16 +83,18 @@ export async function POST(req: Request) {
         mjmlErrors: compiled.errors,
         tokensIn:  generated.promptTokens,
         tokensOut: generated.completionTokens,
-      };
+      });
     } catch (e) {
-      return {
+      results.push({
         id: sample.id,
         label: sample.label,
-        ok: false as const,
+        ok: false,
         error: e instanceof Error ? e.message.slice(-400) : "generation failed",
-      };
+      });
     }
-  }));
+    // Throttle between iterations so Gemini's per-minute quota doesn't burn.
+    await new Promise((r) => setTimeout(r, 1500));
+  }
 
   return NextResponse.json({ ok: true, storeSlug, samples: results });
 }
