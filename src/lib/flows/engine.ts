@@ -275,6 +275,7 @@ async function runStep(step: FlowStep, enrollment: FlowEnrollment & {
         name: true, storefrontUrl: true, brandPalette: true, defaultLanguage: true,
         legalName: true, legalAddress: true, legalCity: true, legalCountry: true,
         privacyUrl: true, supportEmail: true,
+        brandLogoUrl: true, brandLogoDarkUrl: true,
       },
     }),
     prisma.sender.findFirst({
@@ -287,23 +288,34 @@ async function runStep(step: FlowStep, enrollment: FlowEnrollment & {
   if (!sender) throw new Error(`no verified+active sender for store ${storeId}`);
 
   const palette = (store.brandPalette as { bg?: string; text?: string; primary?: string; accent?: string } | null) ?? {};
+  const storefront = store.storefrontUrl ?? "https://divainparfums.com";
+  const textColor  = palette.text ?? "#0E0E0E";
+
+  // Compute the header logo block here so preset MJML can stay generic. If
+  // the store uploaded a brand logo we inject an <mj-image>; otherwise we
+  // fall back to the divain. text wordmark.
+  const logoBlock = store.brandLogoUrl
+    ? `<mj-image src="${store.brandLogoUrl}" alt="" width="120px" align="center" href="${storefront}" padding="0" />`
+    : `<mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="24px" font-weight="700" color="${textColor}" letter-spacing="-0.5px"><a href="${storefront}" style="color:${textColor};text-decoration:none;">divain.</a></mj-text>`;
+
   const ctx: Record<string, string> = {
     "customer.firstName": enrollment.customer.firstName ?? "",
     "customer.lastName":  enrollment.customer.lastName ?? "",
     "customer.email":     enrollment.customer.email,
     "store.name":             store.name,
-    "store.storefrontUrl":    store.storefrontUrl ?? "https://divainparfums.com",
+    "store.storefrontUrl":    storefront,
     "store.bgColor":          palette.bg ?? "#FBF8F3",
-    "store.textColor":        palette.text ?? "#0E0E0E",
+    "store.textColor":        textColor,
     "store.primaryColor":     palette.primary ?? "#0E0E0E",
     "store.legalName":        store.legalName ?? "",
     "store.legalAddress":     store.legalAddress ?? "",
     "store.legalCity":        store.legalCity ?? "",
     "store.legalCountry":     store.legalCountry ?? "",
     "store.privacyUrl":       store.privacyUrl ?? "",
+    "store.logoBlock":        logoBlock,
     "unsubscribeUrl":         `${process.env.NEXT_PUBLIC_APP_URL ?? "https://sendify.divain.space"}/api/unsubscribe?t=${encodeURIComponent(enrollment.customer.email)}`,
     "discountCode":           (enrollment.context as Record<string, string> | null)?.discountCode ?? "DIVAIN10",
-    "abandonedCart.checkoutUrl": (enrollment.context as Record<string, string> | null)?.checkoutUrl ?? (store.storefrontUrl ?? "https://divainparfums.com"),
+    "abandonedCart.checkoutUrl": (enrollment.context as Record<string, string> | null)?.checkoutUrl ?? storefront,
   };
 
   // Resolve subject + MJML via dotted-key mustache.

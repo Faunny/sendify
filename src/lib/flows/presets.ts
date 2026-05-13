@@ -121,8 +121,20 @@ const FOOTER = `
   </mj-section>
 `;
 
+// Top-of-email header. {{store.logoBlock}} is resolved at send-time by the
+// flow engine: if the store has a brandLogoUrl it injects an <mj-image>;
+// otherwise it falls back to the "divain." wordmark in text. Either way the
+// header links to the storefront so a header click goes to the homepage.
+const HEADER = `
+  <mj-section background-color="{{store.bgColor}}" padding="28px 24px 6px">
+    <mj-column>
+      {{store.logoBlock}}
+    </mj-column>
+  </mj-section>
+`;
+
 function tpl(body: string): string {
-  return `<mjml><mj-head>${headerStyle}</mj-head><mj-body background-color="{{store.bgColor}}">${body}${FOOTER}</mj-body></mjml>`;
+  return `<mjml><mj-head>${headerStyle}</mj-head><mj-body background-color="{{store.bgColor}}">${HEADER}${body}${FOOTER}</mj-body></mjml>`;
 }
 
 // ── Reusable section helpers ─────────────────────────────────────────────────

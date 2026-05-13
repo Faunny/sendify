@@ -237,13 +237,15 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
   let legalCity: string | null = null;
   let legalCountry: string | null = null;
   let privacyUrl: string | null = null;
+  let brandLogoUrl: string | null = null;
+  let brandLogoDarkUrl: string | null = null;
   if (input.storeSlug) {
     const store = await prisma.store.findUnique({
       where: { slug: input.storeSlug },
       select: {
         name: true, brandPalette: true, storefrontUrl: true,
         legalName: true, legalAddress: true, legalCity: true, legalCountry: true,
-        privacyUrl: true,
+        privacyUrl: true, brandLogoUrl: true, brandLogoDarkUrl: true,
       },
     }).catch(() => null);
     storefrontUrl = (store?.storefrontUrl ?? "").replace(/\/$/, "");
@@ -253,6 +255,8 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
     legalCity    = store?.legalCity    ?? null;
     legalCountry = store?.legalCountry ?? null;
     privacyUrl   = store?.privacyUrl   ?? null;
+    brandLogoUrl     = store?.brandLogoUrl     ?? null;
+    brandLogoDarkUrl = store?.brandLogoDarkUrl ?? null;
     const p = (store?.brandPalette ?? {}) as StorePalette;
     palette = {
       primary: p.primary ?? DEFAULT_PALETTE.primary,
@@ -433,6 +437,8 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
     legalCity: legalCity ?? undefined,
     legalCountry: legalCountry ?? undefined,
     privacyUrl: privacyUrl ?? undefined,
+    brandLogoUrl: brandLogoUrl ?? undefined,
+    brandLogoDarkUrl: brandLogoDarkUrl ?? undefined,
     // Generic unsubscribe stub — Send-time the campaign worker swaps this for a
     // per-recipient token. Placeholder URL keeps the link valid in previews.
     unsubscribeUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://sendify.divain.space"}/api/unsubscribe`,

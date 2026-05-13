@@ -44,6 +44,11 @@ export type SkeletonSlots = {
   legalCountry?: string;
   privacyUrl?: string;
   unsubscribeUrl?: string;     // defaults to a generic /unsubscribe stub when missing
+  // Brand logo URLs — when present, the WORDMARK helper renders an image
+  // instead of the "divain." text. brandLogoDarkUrl is used inside dark hero
+  // sections so the logo doesn't disappear.
+  brandLogoUrl?: string;
+  brandLogoDarkUrl?: string;
 };
 
 const BRAND_BAR = (textOnDark = "#FFFFFF") => `
@@ -87,13 +92,30 @@ const PREHEADER = (text: string, bg: string) => `
   <mj-raw><div style="display:none;font-size:1px;color:${bg};line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(text)}</div></mj-raw>
 `;
 
-const WORDMARK = (color: string) => `
-  <mj-section padding="28px 24px 0">
-    <mj-column>
-      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="24px" font-weight="700" color="${color}" letter-spacing="-0.5px">divain.</mj-text>
-    </mj-column>
-  </mj-section>
-`;
+// Top-of-email brand mark. Uses the store's uploaded logo image when set
+// (Store.brandLogoUrl), falls back to the divain. wordmark in text otherwise.
+// Linked to the storefront so clicks from the header land on the homepage.
+const WORDMARK = (color: string, logoUrl?: string, href?: string) => {
+  const link = href ?? "#";
+  if (logoUrl) {
+    return `
+      <mj-section padding="28px 24px 8px">
+        <mj-column>
+          <mj-image src="${logoUrl}" alt="" width="120px" align="center" href="${link}" padding="0" />
+        </mj-column>
+      </mj-section>
+    `;
+  }
+  return `
+    <mj-section padding="28px 24px 0">
+      <mj-column>
+        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="24px" font-weight="700" color="${color}" letter-spacing="-0.5px">
+          <a href="${link}" style="color:${color};text-decoration:none;">divain.</a>
+        </mj-text>
+      </mj-column>
+    </mj-section>
+  `;
+};
 
 const PILL_BUTTON = (label: string, bg: string, color: string, href: string) => `
   <mj-button background-color="${bg}" color="${color}" border-radius="40px" font-family="Inter, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="1.5px" font-weight="500" inner-padding="14px 36px" text-transform="uppercase" href="${href}">${escapeHtml(label)}</mj-button>
@@ -214,7 +236,7 @@ function lifestyleHero(s: SkeletonSlots): string {
 
   return `<mjml>${HEAD}<mj-body background-color="${s.bgColor}">
 ${PREHEADER(s.preheader, s.bgColor)}
-${WORDMARK(s.textColor)}
+${WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl)}
 ${heroSection}
 ${captionBlock}
 ${productSection}
@@ -230,7 +252,7 @@ ${BRAND_BAR()}
 function bigNumberHero(s: SkeletonSlots): string {
   const slots: Record<string, string> = {
     preheader: PREHEADER(s.preheader, s.bgColor),
-    wordmark: WORDMARK(s.textColor),
+    wordmark: WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
     offerNumber: escapeHtml(s.offerNumber ?? s.headline),
     offerLabel: escapeHtml(s.offerLabel ?? s.subhead ?? "de descuento"),
     body: escapeHtml(s.body ?? "Solo este fin de semana. Hasta agotar existencias."),
@@ -284,7 +306,7 @@ function productGridEditorial(s: SkeletonSlots): string {
 
   const slots: Record<string, string> = {
     preheader: PREHEADER(s.preheader, s.bgColor),
-    wordmark: WORDMARK(s.textColor),
+    wordmark: WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
     headline: escapeHtml(s.headline),
     subhead: s.subhead ? `<mj-text align="center" font-size="14px" letter-spacing="3px" text-transform="uppercase" color="${s.textColor}" opacity="0.65" padding-top="10px">${escapeHtml(s.subhead)}</mj-text>` : "",
     bigHero: s.heroUrl ? `<mj-section padding="20px 24px"><mj-column><mj-image src="${s.heroUrl}" alt="" border-radius="6px" /></mj-column></mj-section>` : "",
@@ -317,7 +339,7 @@ function productGridEditorial(s: SkeletonSlots): string {
 function premiumLaunch(s: SkeletonSlots): string {
   const slots: Record<string, string> = {
     preheader: PREHEADER(s.preheader, s.bgColor),
-    wordmark: WORDMARK(s.textColor),
+    wordmark: WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
     headline: escapeHtml(s.headline),
     productImage: (s.productImageUrl ?? s.heroUrl)
       ? `<mj-image src="${s.productImageUrl ?? s.heroUrl}" alt="${escapeHtml(s.productName ?? "")}" padding="0" href="${s.productPageUrl ?? s.ctaUrl ?? "#"}" />`
@@ -424,7 +446,7 @@ function brandAnthology(s: SkeletonSlots): string {
 
   const slots: Record<string, string> = {
     preheader: PREHEADER(s.preheader, s.bgColor),
-    wordmark: WORDMARK(s.textColor),
+    wordmark: WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
     headline: escapeHtml(s.headline),
     heroImage: s.heroUrl ? `<mj-section padding="0 24px 16px"><mj-column><mj-image src="${s.heroUrl}" alt="" border-radius="6px" /></mj-column></mj-section>` : "",
     pillarSections,
@@ -450,7 +472,7 @@ function brandAnthology(s: SkeletonSlots): string {
 function winbackEmpathic(s: SkeletonSlots): string {
   const slots: Record<string, string> = {
     preheader: PREHEADER(s.preheader, "#F5F1EA"),
-    wordmark: WORDMARK(s.textColor),
+    wordmark: WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
     headline: escapeHtml(s.headline),
     body: escapeHtml(s.body ?? "Hemos seguido trabajando estos meses. Pensamos que quizá quieras volver a oler lo que hemos hecho. Si te apetece volver, tu próxima compra lleva un detalle nuestro."),
     heroImage: s.heroUrl ? `<mj-image src="${s.heroUrl}" alt="" padding="0 24px" /></mj-column></mj-section><mj-section padding="20px 24px"><mj-column>` : "",
