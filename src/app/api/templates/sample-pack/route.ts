@@ -67,9 +67,12 @@ export async function POST(req: Request) {
         pillar: sample.pillar,
         storeSlug,
         tone: sample.tone,
-        // Pro plan has plenty of headroom — use medium quality for realistic
-        // preview fidelity. Model defaults to gpt-image-2 (auto-fallback -1).
-        imageQuality: "medium",
+        // Previews prioritise SPEED over fidelity:
+        // - low quality (~6-10s/image vs 30-40s medium)
+        // - no product /edits round-trip (~3x faster)
+        // The auto-planner + manual generate-with-AI use full quality.
+        imageQuality: "low",
+        skipProductReferences: true,
       });
       const compiled = renderMjml(generated.mjml);
       return {

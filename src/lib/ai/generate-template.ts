@@ -27,6 +27,7 @@ export type TemplateGenInput = {
   generateBanner?: boolean;
   imageQuality?: "low" | "medium" | "high";    // previews use low to keep within Hobby 60s
   imageModelOverride?: string;                  // e.g. force gpt-image-1 to avoid the -2 fallback dance
+  skipProductReferences?: boolean;              // previews skip the /edits path for ~3x speed
 };
 
 type StorePalette = { primary?: string; accent?: string; bg?: string; text?: string };
@@ -311,9 +312,13 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
       // perfume bottle is visible — held in her hand, placed beside her, or
       // somewhere prominent in the frame. Pass the hero product as a reference
       // so gpt-image-2 composes that exact bottle into the scene.
+      // For previews (skipProductReferences=true) we skip the /edits round-
+      // trip and just generate from scratch — ~3x faster, suitable for
+      // validating layout/copy before committing to a real send.
       const heroProduct = products.find((p) => !!p.imageUrl);
-      // Use just one bottle (the hero product) for cleanest composition.
-      const referenceImageUrls = heroProduct?.imageUrl ? [heroProduct.imageUrl] : [];
+      const referenceImageUrls = (!input.skipProductReferences && heroProduct?.imageUrl)
+        ? [heroProduct.imageUrl]
+        : [];
 
       // Hard-direct the model toward fashion-editorial output WITH the bottle
       // composed in. If there's no product to compose, fall back to model-only.
