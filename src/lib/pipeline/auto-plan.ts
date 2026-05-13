@@ -11,6 +11,29 @@ import { prisma } from "../db";
 import { generateTemplate } from "../ai/generate-template";
 import { MARKETING_CALENDAR_2026, dateForStore, STORE_COUNTRY, type CalendarEvent } from "../calendar/marketing-events";
 
+// Bridge: a Promotion row coming in via webhook gets wrapped as a CalendarEvent
+// so the rest of the planner doesn't care where the event came from.
+function promotionToEvent(p: {
+  externalId: string | null;
+  name: string;
+  kind: "GLOBAL" | "REGIONAL" | "STORE";
+  dateByCountry: unknown;
+  leadDays: number;
+  briefForLlm: string | null;
+  bannerPrompt: string | null;
+}): CalendarEvent {
+  return {
+    slug: p.externalId ?? `promo-${p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30)}`,
+    name: p.name,
+    kind: p.kind === "STORE" ? "BRAND_OWN" : p.kind,
+    pillar: "ALL",
+    dateByCountry: (p.dateByCountry ?? {}) as Record<string, string>,
+    brief: p.briefForLlm ?? `${p.name} — drafted from the marketing calendar webhook.`,
+    tone: "editorial-cálido",
+    leadDays: p.leadDays,
+  };
+}
+
 export type AutoPlanResult = {
   planned: Array<{
     storeSlug: string;
@@ -40,6 +63,21 @@ export async function autoPlan(opts?: { horizonDays?: number; onlyStoreSlug?: st
     select: { id: true, slug: true, name: true, defaultLanguage: true, currency: true },
   });
 
+  // Load every active Promotion row (webhook-pushed events) and treat each one
+  // as a CalendarEvent for the planner. The seeded MARKETING_CALENDAR_2026
+  // entries provide a fallback when the upstream is silent.
+  const promotionEvents: CalendarEvent[] = (await prisma.promotion.findMany({
+    where: { active: true, autoDraft: true },
+    select: { externalId: true, name: true, kind: true, dateByCountry: true, leadDays: true, briefForLlm: true, bannerPrompt: true },
+  }).catch(() => [])).map(promotionToEvent);
+
+  const allEvents: CalendarEvent[] = [...promotionEvents, ...MARKETING_CALENDAR_2026];
+  // Dedupe by slug so a webhook-supplied event with the same slug as a seeded
+  // one wins (upstream is the source of truth).
+  const eventsBySlug = new Map<string, CalendarEvent>();
+  for (const e of allEvents) eventsBySlug.set(e.slug, e);
+  const events = [...eventsBySlug.values()];
+
   for (const store of stores) {
     // Pick the first verified sender for the store, if any. Drafts without a sender
     // can't actually go out — log as skipped.
@@ -48,7 +86,7 @@ export async function autoPlan(opts?: { horizonDays?: number; onlyStoreSlug?: st
       select: { id: true, fromEmail: true, fromName: true },
     });
 
-    for (const event of MARKETING_CALENDAR_2026) {
+    for (const event of events) {
       const sendDateIso = dateForStore(event, store.slug);
       if (!sendDateIso) {
         // Event doesn't apply to this store's countries.
