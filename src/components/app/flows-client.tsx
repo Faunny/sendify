@@ -80,31 +80,31 @@ export function FlowsClient({ initialFlows, stores }: { initialFlows: FlowRow[];
   return (
     <>
       <div className="flex items-center justify-between">
-        <div className="text-[12px] text-muted-foreground">
+        <div className="text-[14px] text-muted-foreground">
           {flows.length === 0 ? "Sin flows configurados todavía." : `${flows.filter((f) => f.active).length} activos · ${flows.length} totales`}
         </div>
-        <Button size="sm" onClick={() => setNewFlowOpen(true)}>
-          <Plus className="h-3.5 w-3.5" /> Nuevo flow
+        <Button size="default" onClick={() => setNewFlowOpen(true)}>
+          <Plus className="h-4 w-4" /> Nuevo flow
         </Button>
       </div>
 
       {flows.length === 0 ? (
         <EmptyHero onCreate={() => setNewFlowOpen(true)} />
       ) : (
-        <div className="grid grid-cols-1 gap-2">
+        <div className="grid grid-cols-1 gap-3">
           {flows.map((f) => (
             <div
               key={f.id}
-              className={`group rounded-md border p-3 transition-colors ${f.active ? "border-[color:var(--accent)]/30 bg-[color-mix(in_oklch,var(--accent)_4%,transparent)]" : "border-border bg-card/30"}`}
+              className={`group rounded-md border p-4 transition-colors ${f.active ? "border-foreground/30 bg-foreground/[0.04]" : "border-border bg-card/30"}`}
             >
-              <div className="flex items-center gap-3">
-                <div className={`grid h-9 w-9 place-items-center rounded-full shrink-0 ${f.active ? "bg-[color:var(--accent)] text-[color:var(--accent-fg)]" : "bg-secondary text-muted-foreground"}`}>
-                  {f.active ? <Power className="h-4 w-4" /> : <PowerOff className="h-4 w-4" />}
+              <div className="flex items-center gap-4">
+                <div className={`grid h-11 w-11 place-items-center rounded-full shrink-0 ${f.active ? "bg-foreground text-background" : "bg-secondary text-muted-foreground"}`}>
+                  {f.active ? <Power className="h-5 w-5" /> : <PowerOff className="h-5 w-5" />}
                 </div>
                 <Link href={`/flows/${f.id}`} className="flex-1 min-w-0">
-                  <div className="text-[14px] font-medium truncate">{f.name}</div>
-                  <div className="text-[11px] text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
-                    <span className="uppercase tracking-wider">{TRIGGER_LABEL[f.trigger] ?? f.trigger}</span>
+                  <div className="text-[16px] font-medium truncate">{f.name}</div>
+                  <div className="text-[13px] text-muted-foreground flex items-center gap-2 flex-wrap mt-1">
+                    <span className="uppercase tracking-wider text-foreground/70">{TRIGGER_LABEL[f.trigger] ?? f.trigger}</span>
                     <span>·</span>
                     <span>{f.storeName}</span>
                     <span>·</span>
@@ -115,22 +115,22 @@ export function FlowsClient({ initialFlows, stores }: { initialFlows: FlowRow[];
                 </Link>
                 <div className="flex items-center gap-2 shrink-0">
                   <Button
-                    size="sm"
+                    size="default"
                     variant={f.active ? "outline" : "default"}
                     onClick={() => toggleActive(f.id, !f.active)}
                   >
-                    {f.active ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
+                    {f.active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                     {f.active ? "Pausar" : "Activar"}
                   </Button>
-                  <Link href={`/flows/${f.id}`} className="text-muted-foreground hover:text-foreground transition-colors p-1.5">
-                    <ArrowRight className="h-3.5 w-3.5" />
+                  <Link href={`/flows/${f.id}`} className="text-muted-foreground hover:text-foreground transition-colors p-2">
+                    <ArrowRight className="h-4 w-4" />
                   </Link>
                   <button
                     onClick={() => remove(f.id)}
-                    className="text-muted-foreground hover:text-[color:var(--danger)] transition-colors p-1.5"
+                    className="text-muted-foreground hover:text-[color:var(--danger)] transition-colors p-2"
                     title="Eliminar"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
               </div>
@@ -151,17 +151,17 @@ export function FlowsClient({ initialFlows, stores }: { initialFlows: FlowRow[];
 
 function EmptyHero({ onCreate }: { onCreate: () => void }) {
   return (
-    <div className="rounded-md border border-border bg-card/40 p-10 text-center">
-      <div className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-muted text-muted-foreground mb-4">
-        <Workflow className="h-5 w-5" />
+    <div className="rounded-md border border-border bg-card/40 p-12 text-center">
+      <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-muted text-muted-foreground mb-5">
+        <Workflow className="h-6 w-6" />
       </div>
-      <div className="text-[15px] font-medium">Sin flows configurados</div>
-      <div className="text-[12px] text-muted-foreground mt-1.5 max-w-md mx-auto leading-relaxed">
+      <div className="text-[18px] font-medium">Sin flows configurados</div>
+      <div className="text-[14px] text-muted-foreground mt-2 max-w-lg mx-auto leading-relaxed">
         Crea welcome series, recuperación de carritos abandonados, post-compra o win-back en un click. Una vez activos, se enrolan solos con los webhooks de Shopify que ya están corriendo.
       </div>
-      <div className="mt-5">
-        <Button size="sm" onClick={onCreate}>
-          <Plus className="h-3.5 w-3.5" /> Crear primer flow
+      <div className="mt-6">
+        <Button size="default" onClick={onCreate}>
+          <Plus className="h-4 w-4" /> Crear primer flow
         </Button>
       </div>
     </div>
@@ -239,23 +239,25 @@ function NewFlowDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-5xl">
         <DialogHeader>
-          <DialogTitle>Nuevo flow</DialogTitle>
-          <DialogDescription>Elige una plantilla pre-construida. Se crea desactivada — la activas cuando estés listo.</DialogDescription>
+          <DialogTitle className="text-[22px]">Nuevo flow</DialogTitle>
+          <DialogDescription className="text-[14px]">
+            Elige una plantilla pre-construida. Se crea desactivada — la activas cuando estés listo.
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="max-h-[60vh] overflow-y-auto pr-1 -mr-1 space-y-4">
+        <div className="space-y-5">
+          <div className="max-h-[55vh] overflow-y-auto pr-2 -mr-2 space-y-5">
             {CATEGORY_ORDER.map((cat) => {
               const list = PRESETS_BY_CATEGORY[cat];
               if (list.length === 0) return null;
               return (
                 <div key={cat}>
-                  <div className="text-[10px] uppercase tracking-[2.5px] text-muted-foreground/80 mb-2 sticky top-0 bg-background/95 backdrop-blur py-1 z-10">
-                    {CATEGORY_LABEL[cat]} <span className="text-muted-foreground/40">· {list.length}</span>
+                  <div className="text-[13px] font-medium uppercase tracking-[2px] text-foreground/80 mb-3 sticky top-0 bg-background/95 backdrop-blur py-2 z-10">
+                    {CATEGORY_LABEL[cat]} <span className="text-muted-foreground/60 font-normal">· {list.length}</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {list.map((p) => {
                       const Icon = ICON_MAP[p.icon] ?? Workflow;
                       const selected = p.id === presetId;
@@ -265,16 +267,16 @@ function NewFlowDialog({
                           key={p.id}
                           type="button"
                           onClick={() => setPresetId(p.id)}
-                          className={`text-left rounded-md border p-3 transition-colors ${selected ? "border-[color:var(--accent)] bg-[color-mix(in_oklch,var(--accent)_8%,transparent)]" : "border-border bg-card/40 hover:bg-secondary/40"}`}
+                          className={`text-left rounded-md border p-4 transition-colors ${selected ? "border-foreground bg-foreground/[0.06]" : "border-border bg-card/40 hover:bg-secondary/50"}`}
                         >
-                          <div className="flex items-start gap-2.5">
-                            <Icon className="h-4 w-4 mt-0.5 text-[color:var(--accent)]" />
+                          <div className="flex items-start gap-3">
+                            <Icon className={`h-5 w-5 mt-0.5 shrink-0 ${selected ? "text-foreground" : "text-foreground/70"}`} />
                             <div className="flex-1 min-w-0">
-                              <div className="text-[13px] font-medium">{p.name}</div>
-                              <div className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{p.description}</div>
-                              <div className="text-[10px] text-muted-foreground/70 mt-1.5 uppercase tracking-wider">
+                              <div className="text-[15px] font-medium">{p.name}</div>
+                              <div className="text-[13px] text-muted-foreground mt-1 leading-relaxed">{p.description}</div>
+                              <div className="text-[12px] text-muted-foreground/80 mt-2 uppercase tracking-wider">
                                 {sendCount} email{sendCount === 1 ? "" : "s"} · {p.estDuration}
-                                {p.entryFilter && <span className="text-[color:var(--accent)] ml-1.5">· con filtro</span>}
+                                {p.entryFilter && <span className="text-foreground/90 ml-2">· con filtro</span>}
                               </div>
                             </div>
                           </div>
@@ -287,47 +289,47 @@ function NewFlowDialog({
             })}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label className="block">
-              <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Store</span>
+              <span className="text-[13px] font-medium text-foreground/80">Store</span>
               <Select value={storeId} onValueChange={setStoreId}>
-                <SelectTrigger className="mt-1"><SelectValue placeholder="elige una store" /></SelectTrigger>
+                <SelectTrigger className="mt-1.5 h-10 text-[14px]"><SelectValue placeholder="elige una store" /></SelectTrigger>
                 <SelectContent>
                   {stores.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    <SelectItem key={s.id} value={s.id} className="text-[14px]">{s.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </label>
             <label className="block">
-              <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Nombre (opcional)</span>
+              <span className="text-[13px] font-medium text-foreground/80">Nombre (opcional)</span>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={preset && stores.find((s) => s.id === storeId) ? `${preset.name} · ${stores.find((s) => s.id === storeId)!.name}` : "Welcome series · Divain Europa"}
-                className="mt-1"
+                className="mt-1.5 h-10 text-[14px]"
               />
             </label>
           </div>
 
           {preset && PresetIcon && (
-            <div className="rounded-md border border-border bg-card/30 p-3 text-[12px] text-muted-foreground">
-              <div className="flex items-center gap-2 mb-1.5">
-                <PresetIcon className="h-3.5 w-3.5 text-[color:var(--accent)]" />
-                <span className="font-medium text-foreground">Pasos</span>
+            <div className="rounded-md border border-border bg-card/30 p-4 text-[14px] text-muted-foreground">
+              <div className="flex items-center gap-2 mb-3">
+                <PresetIcon className="h-4 w-4 text-foreground" />
+                <span className="font-medium text-foreground text-[14px]">Pasos del flow</span>
               </div>
-              <ol className="space-y-1 ml-5 list-decimal">
+              <ol className="space-y-1.5 ml-5 list-decimal text-[13px]">
                 {preset.graph.steps.map((s, i) => (
                   <li key={i}>
-                    {s.type === "delay" && <>Espera <strong>{s.hours < 24 ? `${s.hours}h` : `${Math.round(s.hours / 24)}d`}</strong></>}
-                    {s.type === "send"  && <>Email · &ldquo;{s.subject}&rdquo;</>}
+                    {s.type === "delay" && <>Espera <strong className="text-foreground">{s.hours < 24 ? `${s.hours}h` : `${Math.round(s.hours / 24)}d`}</strong></>}
+                    {s.type === "send"  && <>Email · &ldquo;<span className="text-foreground/90">{s.subject}</span>&rdquo;</>}
                     {s.type === "condition" && <em className="text-muted-foreground">Sólo si: {s.label}</em>}
                   </li>
                 ))}
               </ol>
               {preset.entryFilter && (
-                <div className="mt-2.5 pt-2.5 border-t border-border text-[11px]">
-                  <span className="text-muted-foreground">Filtro de entrada · </span>
+                <div className="mt-3 pt-3 border-t border-border text-[13px]">
+                  <span className="text-foreground/80 font-medium">Filtro de entrada · </span>
                   {preset.entryFilter.ordersCountGte !== undefined && <span>ordersCount ≥ {preset.entryFilter.ordersCountGte} </span>}
                   {preset.entryFilter.ordersCountLte !== undefined && <span>ordersCount ≤ {preset.entryFilter.ordersCountLte} </span>}
                   {preset.entryFilter.totalSpentGte !== undefined && <span>totalSpent ≥ {preset.entryFilter.totalSpentGte}€ </span>}
@@ -337,13 +339,13 @@ function NewFlowDialog({
           )}
 
           {error && (
-            <div className="rounded-md border border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] p-2 text-[12px] text-[color:var(--danger)]">
+            <div className="rounded-md border border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] p-3 text-[14px] text-[color:var(--danger)]">
               {error}
             </div>
           )}
 
-          <Button onClick={submit} disabled={busy || !storeId || !presetId} className="w-full">
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+          <Button onClick={submit} disabled={busy || !storeId || !presetId} size="lg" className="w-full text-[14px]">
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             Crear flow (desactivado)
           </Button>
         </div>

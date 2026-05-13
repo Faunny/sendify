@@ -80,14 +80,14 @@ export function FlowDetailClient({ flow }: { flow: FlowDetail }) {
   return (
     <>
       {/* Master on/off */}
-      <div className={`rounded-md border p-4 flex items-center justify-between gap-4 ${active ? "border-[color:var(--accent)]/40 bg-[color-mix(in_oklch,var(--accent)_6%,transparent)]" : "border-border bg-card/40"}`}>
-        <div className="flex items-center gap-3">
-          <div className={`grid h-10 w-10 place-items-center rounded-full ${active ? "bg-[color:var(--accent)] text-[color:var(--accent-fg)]" : "bg-secondary text-muted-foreground"}`}>
-            {active ? <Power className="h-4.5 w-4.5" /> : <PowerOff className="h-4.5 w-4.5" />}
+      <div className={`rounded-md border p-5 flex items-center justify-between gap-4 ${active ? "border-foreground/40 bg-foreground/[0.05]" : "border-border bg-card/40"}`}>
+        <div className="flex items-center gap-4">
+          <div className={`grid h-12 w-12 place-items-center rounded-full ${active ? "bg-foreground text-background" : "bg-secondary text-muted-foreground"}`}>
+            {active ? <Power className="h-5 w-5" /> : <PowerOff className="h-5 w-5" />}
           </div>
           <div>
-            <div className="text-[14px] font-medium">{active ? "Flow activo" : "Flow pausado"}</div>
-            <div className="text-[12px] text-muted-foreground">
+            <div className="text-[17px] font-medium">{active ? "Flow activo" : "Flow pausado"}</div>
+            <div className="text-[14px] text-muted-foreground mt-1">
               {active
                 ? "Los webhooks de Shopify están enrolando clientes en este momento."
                 : "Los webhooks llegan pero no enrolan a nadie. Reactiva cuando quieras."}
@@ -99,31 +99,31 @@ export function FlowDetailClient({ flow }: { flow: FlowDetail }) {
         </div>
         <div className="flex items-center gap-2">
           <Button
-            size="sm"
+            size="default"
             variant={active ? "outline" : "default"}
             onClick={toggleFlowActive}
             disabled={busy}
           >
-            {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : active ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : active ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
             {active ? "Pausar" : "Activar"}
           </Button>
-          <Button size="sm" variant="outline" onClick={deleteFlow} disabled={busy} className="text-[color:var(--danger)] hover:text-[color:var(--danger)]">
-            <Trash2 className="h-3.5 w-3.5" /> Eliminar
+          <Button size="default" variant="outline" onClick={deleteFlow} disabled={busy} className="text-[color:var(--danger)] hover:text-[color:var(--danger)]">
+            <Trash2 className="h-4 w-4" /> Eliminar
           </Button>
         </div>
       </div>
 
       {/* Metrics row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <MetricCard icon={<Mailbox className="h-3.5 w-3.5" />} label="Inscritos" value={flow.stats.enrolledTotal} sub={`${flow.stats.enrolledActive} activos`} />
-        <MetricCard icon={<SendIcon className="h-3.5 w-3.5" />} label="Enviados" value={flow.stats.sendsTotal} sub={`${flow.stats.sentFailed} fallidos`} subDanger={flow.stats.sentFailed > 0} />
-        <MetricCard icon={<Eye className="h-3.5 w-3.5" />} label="Aperturas" value={`${openRate}%`} sub={`${flow.stats.sentOpened} totales`} />
-        <MetricCard icon={<MousePointerClick className="h-3.5 w-3.5" />} label="Clicks" value={`${clickRate}%`} sub={`${flow.stats.sentClicked} totales`} />
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <MetricCard icon={<Mailbox className="h-4 w-4" />} label="Inscritos" value={flow.stats.enrolledTotal} sub={`${flow.stats.enrolledActive} activos`} />
+        <MetricCard icon={<SendIcon className="h-4 w-4" />} label="Enviados" value={flow.stats.sendsTotal} sub={`${flow.stats.sentFailed} fallidos`} subDanger={flow.stats.sentFailed > 0} />
+        <MetricCard icon={<Eye className="h-4 w-4" />} label="Aperturas" value={`${openRate}%`} sub={`${flow.stats.sentOpened} totales`} />
+        <MetricCard icon={<MousePointerClick className="h-4 w-4" />} label="Clicks" value={`${clickRate}%`} sub={`${flow.stats.sentClicked} totales`} />
       </div>
 
       {/* Steps */}
-      <div className="space-y-2">
-        <div className="text-[11px] uppercase tracking-[2px] text-muted-foreground/80">Pasos del flow</div>
+      <div className="space-y-3">
+        <div className="text-[14px] font-medium uppercase tracking-[2px] text-foreground/80">Pasos del flow</div>
         {steps.map((step, i) => (
           <StepCard
             key={i}
@@ -142,13 +142,13 @@ function MetricCard({
   icon, label, value, sub, subDanger,
 }: { icon: React.ReactNode; label: string; value: string | number; sub?: string; subDanger?: boolean }) {
   return (
-    <div className="rounded-md border border-border bg-card/40 p-3">
-      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-md border border-border bg-card/40 p-4">
+      <div className="flex items-center gap-1.5 text-[13px] uppercase tracking-wider text-muted-foreground">
         {icon}{label}
       </div>
-      <div className="text-[22px] font-light tabular-nums mt-1">{value}</div>
+      <div className="text-[30px] font-light tabular-nums mt-1.5">{value}</div>
       {sub && (
-        <div className={`text-[11px] mt-0.5 ${subDanger ? "text-[color:var(--danger)]" : "text-muted-foreground"}`}>
+        <div className={`text-[13px] mt-1 ${subDanger ? "text-[color:var(--danger)]" : "text-muted-foreground"}`}>
           {sub}
         </div>
       )}
@@ -168,32 +168,32 @@ function StepCard({
 
   if (step.type === "delay") {
     return (
-      <div className={`rounded-md border p-3 flex items-center gap-3 ${enabled ? "border-border bg-card/30" : "border-border bg-card/10 opacity-60"}`}>
-        <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+      <div className={`rounded-md border p-4 flex items-center gap-4 ${enabled ? "border-border bg-card/30" : "border-border bg-card/10 opacity-60"}`}>
+        <Clock className="h-5 w-5 text-muted-foreground shrink-0" />
         <div className="flex-1">
-          <div className="text-[13px] font-medium">
+          <div className="text-[15px] font-medium">
             Esperar {step.hours < 24 ? `${step.hours} hora${step.hours === 1 ? "" : "s"}` : `${Math.round(step.hours / 24)} día${step.hours / 24 === 1 ? "" : "s"}`}
           </div>
-          <div className="text-[11px] text-muted-foreground">Paso #{index + 1} · delay</div>
+          <div className="text-[13px] text-muted-foreground mt-0.5">Paso #{index + 1} · delay</div>
         </div>
         {/* Delays are always on — disabling a delay would skip the wait, which is rarely what you want. */}
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground/60">siempre activo</span>
+        <span className="text-[12px] uppercase tracking-wider text-muted-foreground/70">siempre activo</span>
       </div>
     );
   }
 
   if (step.type === "condition") {
     return (
-      <div className={`rounded-md border p-3 flex items-center gap-3 ${enabled ? "border-border bg-card/30" : "border-border bg-card/10 opacity-60"}`}>
-        <GitBranch className="h-4 w-4 text-muted-foreground shrink-0" />
+      <div className={`rounded-md border p-4 flex items-center gap-4 ${enabled ? "border-border bg-card/30" : "border-border bg-card/10 opacity-60"}`}>
+        <GitBranch className="h-5 w-5 text-muted-foreground shrink-0" />
         <div className="flex-1">
-          <div className="text-[13px] font-medium">Sólo si: {step.label}</div>
-          <div className="text-[11px] text-muted-foreground">
-            Paso #{index + 1} · condition · <code className="text-[10px] bg-secondary/60 px-1 rounded">{step.field} {step.op} {String(step.value)}</code>
+          <div className="text-[15px] font-medium">Sólo si: {step.label}</div>
+          <div className="text-[13px] text-muted-foreground mt-0.5">
+            Paso #{index + 1} · condition · <code className="text-[12px] bg-secondary/60 px-1.5 py-0.5 rounded">{step.field} {step.op} {String(step.value)}</code>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{enabled ? "ON" : "OFF"}</span>
+        <div className="flex items-center gap-2.5">
+          <span className="text-[12px] font-medium uppercase tracking-wider text-foreground/80">{enabled ? "ON" : "OFF"}</span>
           <Switch checked={enabled} onCheckedChange={onToggle} disabled={toggling} />
         </div>
       </div>
@@ -202,15 +202,15 @@ function StepCard({
 
   // type === "send"
   return (
-    <div className={`rounded-md border p-3 flex items-start gap-3 ${enabled ? "border-border bg-card/30" : "border-border bg-card/10 opacity-60"}`}>
-      <Mail className={`h-4 w-4 shrink-0 mt-0.5 ${enabled ? "text-[color:var(--accent)]" : "text-muted-foreground"}`} />
+    <div className={`rounded-md border p-4 flex items-start gap-4 ${enabled ? "border-border bg-card/30" : "border-border bg-card/10 opacity-60"}`}>
+      <Mail className={`h-5 w-5 shrink-0 mt-0.5 ${enabled ? "text-foreground" : "text-muted-foreground"}`} />
       <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-medium truncate">{step.subject}</div>
-        <div className="text-[11px] text-muted-foreground truncate">{step.preheader}</div>
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground/70 mt-1">Paso #{index + 1} · email</div>
+        <div className="text-[15px] font-medium truncate">{step.subject}</div>
+        <div className="text-[13px] text-muted-foreground truncate mt-0.5">{step.preheader}</div>
+        <div className="text-[12px] uppercase tracking-wider text-muted-foreground/80 mt-1.5">Paso #{index + 1} · email</div>
       </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{enabled ? "ON" : "OFF"}</span>
+      <div className="flex items-center gap-2.5 shrink-0">
+        <span className="text-[12px] font-medium uppercase tracking-wider text-foreground/80">{enabled ? "ON" : "OFF"}</span>
         <Switch checked={enabled} onCheckedChange={onToggle} disabled={toggling} />
       </div>
     </div>
