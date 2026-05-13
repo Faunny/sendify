@@ -81,7 +81,7 @@ export function SamplePackButton({ stores }: { stores: { slug: string; name: str
           {busy && (
             <div className="py-16 flex items-center justify-center gap-2 text-[14px] text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
-              4 emails en paralelo · GPT-4o · ~15-25s…
+              Generando 4 previews · copy + heros · ~30-50s…
             </div>
           )}
 
