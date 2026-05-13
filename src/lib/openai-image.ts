@@ -130,7 +130,10 @@ async function runEditWithReferences(
     form.append("size", sizeForAspect(args.aspectRatio));
     form.append("quality", args.quality ?? "medium");
     form.append("n", "1");
-    for (const { blob, filename } of blobs) form.append("image", blob, filename);
+    // OpenAI requires the bracket syntax for multi-image uploads. Sending
+    // "image" multiple times triggers a 400 "Duplicate parameter" error.
+    const fieldName = blobs.length > 1 ? "image[]" : "image";
+    for (const { blob, filename } of blobs) form.append(fieldName, blob, filename);
     return fetch("https://api.openai.com/v1/images/edits", {
       method: "POST",
       headers: { "Authorization": `Bearer ${apiKey}` },
