@@ -11,6 +11,7 @@
 // of which model writes the copy — and translation downstream only has to
 // fan-out the slots, not re-parse MJML structure.
 
+import type { Prisma } from "@prisma/client";
 import { getCredential } from "../credentials";
 import { prisma } from "../db";
 import { generateBannerAny } from "../banner-provider";
@@ -90,15 +91,15 @@ async function loadProductHints(storeSlug: string | undefined, pillar: string | 
   // Products whose ALL variants have an SKU in the excluded list are filtered
   // out. Products with at least one non-excluded variant are kept (rare edge,
   // but safer). Also exclude gift cards explicitly via productType.
-  const baseWhere = {
+  const baseWhere: Prisma.ProductWhereInput = {
     storeId: store.id,
     status: "active",
     NOT: [
       { variants: { every: { sku: { in: excludedSkus } } } },
-      { productType: { contains: "gift", mode: "insensitive" as const } },
-      { handle: { contains: "gift-card", mode: "insensitive" as const } },
+      { productType: { contains: "gift", mode: "insensitive" } },
+      { handle: { contains: "gift-card", mode: "insensitive" } },
     ],
-  } as const;
+  };
 
   // Tier 1: pillar match + has image
   let products = keywords.length > 0
