@@ -78,24 +78,38 @@ async function loadProductHints(storeSlug: string | undefined, pillar: string | 
 
   // Strategy: prefer products WITH an image AND matching the pillar, then with
   // an image (regardless of pillar), then anything active. Exclusion is by SKU
-  // (more reliable than handle for stores that rebuild SKUs but rename handles).
-  // Reads SENDIFY_AI_EXCLUDED_SKUS env var (comma-separated) — defaults to the
-  // known divain non-perfume SKUs spotted in the divain-europa catalog.
-  const DEFAULT_EXCLUDED_SKUS = ["BOLSAS DIVAIN STORE", "GOMINOLAS"];
-  const envExcluded = (process.env.SENDIFY_AI_EXCLUDED_SKUS ?? "")
+  // PATTERN (case-insensitive `contains`): a product is excluded if any of its
+  // variants has an SKU containing any of the patterns. Configure via env var:
+  //   SENDIFY_AI_EXCLUDED_SKU_PATTERNS=DIV-,SAMPLE,MUESTRA,BOLSA,GOMINOLAS
+  // Each entry is a substring; pasting "DIV-" excludes every SKU containing
+  // "DIV-" anywhere in the string. Empty/whitespace entries are ignored.
+  const DEFAULT_EXCLUDED_PATTERNS = ["BOLSA", "GOMINOLAS", "MUESTRA", "SAMPLE"];
+  const envExcluded = (process.env.SENDIFY_AI_EXCLUDED_SKU_PATTERNS ?? process.env.SENDIFY_AI_EXCLUDED_SKUS ?? "")
     .split(",").map((s) => s.trim()).filter(Boolean);
-  const excludedSkus = envExcluded.length > 0 ? envExcluded : DEFAULT_EXCLUDED_SKUS;
+  const excludedPatterns = envExcluded.length > 0 ? envExcluded : DEFAULT_EXCLUDED_PATTERNS;
 
   const keywords = pillar && pillar !== "ALL" ? (PILLAR_KEYWORDS[pillar] ?? []) : [];
 
-  // Products whose ALL variants have an SKU in the excluded list are filtered
-  // out. Products with at least one non-excluded variant are kept (rare edge,
-  // but safer). Also exclude gift cards explicitly via productType.
+  // Exclude products where any variant SKU matches any pattern (case-insensitive
+  // substring match). Also belt-and-suspenders on gift cards via productType /
+  // handle since those tend to have empty SKUs that patterns can't catch.
+  const skuExclusionNot: Prisma.ProductWhereInput[] = excludedPatterns.length > 0
+    ? [{
+        variants: {
+          some: {
+            OR: excludedPatterns.map((p) => ({
+              sku: { contains: p, mode: "insensitive" as const },
+            })),
+          },
+        },
+      }]
+    : [];
+
   const baseWhere: Prisma.ProductWhereInput = {
     storeId: store.id,
     status: "active",
     NOT: [
-      { variants: { every: { sku: { in: excludedSkus } } } },
+      ...skuExclusionNot,
       { productType: { contains: "gift", mode: "insensitive" } },
       { handle: { contains: "gift-card", mode: "insensitive" } },
     ],
