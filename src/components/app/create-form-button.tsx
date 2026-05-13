@@ -50,13 +50,13 @@ export function CreateFormButton({ stores }: { stores: { slug: string; name: str
 
           <div className="space-y-3">
             <label className="block">
-              <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Nombre interno</span>
+              <span className="text-[12px] uppercase tracking-wider text-muted-foreground">Nombre interno</span>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Newsletter homepage" autoFocus className="mt-1" />
             </label>
 
             <label className="block">
-              <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Tipo</span>
-              <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)} className="mt-1 w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[13px]">
+              <span className="text-[12px] uppercase tracking-wider text-muted-foreground">Tipo</span>
+              <select value={kind} onChange={(e) => setKind(e.target.value as typeof kind)} className="mt-1 w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[14px]">
                 <option value="EMBED">Embed (inline en cualquier página)</option>
                 <option value="POPUP">Popup (exit-intent / delay)</option>
                 <option value="INLINE">Inline permanente</option>
@@ -65,15 +65,15 @@ export function CreateFormButton({ stores }: { stores: { slug: string; name: str
             </label>
 
             <label className="block">
-              <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Tienda destino</span>
-              <select value={storeSlug} onChange={(e) => setStoreSlug(e.target.value)} className="mt-1 w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[13px]">
+              <span className="text-[12px] uppercase tracking-wider text-muted-foreground">Tienda destino</span>
+              <select value={storeSlug} onChange={(e) => setStoreSlug(e.target.value)} className="mt-1 w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[14px]">
                 <option value="">(Sin tienda — global)</option>
                 {stores.map((s) => <option key={s.slug} value={s.slug}>{s.name}</option>)}
               </select>
             </label>
 
             {err && (
-              <div className="rounded-md border border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] p-2 text-[12px] text-[color:var(--danger)] flex items-start gap-2">
+              <div className="rounded-md border border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] p-2 text-[13px] text-[color:var(--danger)] flex items-start gap-2">
                 <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />{err}
               </div>
             )}
@@ -82,7 +82,7 @@ export function CreateFormButton({ stores }: { stores: { slug: string; name: str
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
               Crear y configurar →
             </Button>
-            <div className="text-[11px] text-muted-foreground">
+            <div className="text-[12px] text-muted-foreground">
               Por defecto: campo Email + checkbox de consent + CTA &quot;Suscribirme&quot;. Editas todo en la siguiente pantalla.
             </div>
           </div>

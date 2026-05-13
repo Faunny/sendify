@@ -163,7 +163,7 @@ export function CredentialCard(props: CredentialCardProps) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-[13px] font-medium">{props.title}</h3>
+            <h3 className="text-[14px] font-medium">{props.title}</h3>
             {hasValue ? (
               lastTestStatus ? (
                 lastTestStatus.ok ? <Badge variant="positive"><Check className="h-2.5 w-2.5" /> Conectado</Badge>
@@ -175,10 +175,10 @@ export function CredentialCard(props: CredentialCardProps) {
               <Badge variant="warning">No configurado</Badge>
             )}
           </div>
-          <p className="text-[11px] text-muted-foreground mt-0.5">{props.hint}</p>
-          {props.detail && <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">{props.detail}</p>}
+          <p className="text-[12px] text-muted-foreground mt-0.5">{props.hint}</p>
+          {props.detail && <p className="text-[12px] text-muted-foreground mt-1.5 leading-relaxed">{props.detail}</p>}
           {props.helpUrl && (
-            <a href={props.helpUrl} target="_blank" rel="noopener noreferrer" className="text-[11px] text-[color:var(--accent)] hover:underline mt-1.5 inline-block">
+            <a href={props.helpUrl} target="_blank" rel="noopener noreferrer" className="text-[12px] text-[color:var(--accent)] hover:underline mt-1.5 inline-block">
               {props.helpUrlLabel ?? "Cómo conseguir la API key →"}
             </a>
           )}
@@ -220,12 +220,12 @@ export function CredentialCard(props: CredentialCardProps) {
       </div>
 
       {testResult && !testResult.ok && (
-        <div className="rounded-md border border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] p-2 text-[11px] text-[color:var(--danger)]">
+        <div className="rounded-md border border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] p-2 text-[12px] text-[color:var(--danger)]">
           {testResult.detail ?? "Test fallido"}
         </div>
       )}
       {testResult && testResult.ok && (
-        <div className="text-[11px] text-[color:var(--positive)]">
+        <div className="text-[12px] text-[color:var(--positive)]">
           ✓ Conexión verificada{testResult.latencyMs ? ` · ${testResult.latencyMs}ms` : ""}
         </div>
       )}
@@ -234,8 +234,8 @@ export function CredentialCard(props: CredentialCardProps) {
         <div className="border-t border-border pt-3 mt-1">
           <div className="flex items-center justify-between gap-2 mb-2">
             <div>
-              <div className="text-[12px] font-medium">Sync inicial</div>
-              <div className="text-[10px] text-muted-foreground">Importa customers (con historial de compras) + productos · ~5min para 100k clientes</div>
+              <div className="text-[13px] font-medium">Sync inicial</div>
+              <div className="text-[11px] text-muted-foreground">Importa customers (con historial de compras) + productos · ~5min para 100k clientes</div>
             </div>
             <Button onClick={startSync} disabled={syncing} size="sm" variant={syncing ? "outline" : "default"}>
               {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
@@ -249,7 +249,7 @@ export function CredentialCard(props: CredentialCardProps) {
                 <SyncTile label="Products"  fetched={syncProgress.products?.productsFetched ?? 0} upserted={syncProgress.products?.upserted ?? 0} failed={syncProgress.products?.failed ?? 0} done={!!syncProgress.products?.finishedAt} />
               </div>
               {(syncProgress.customers?.firstError || syncProgress.products?.firstError) && (
-                <div className="mt-2 rounded-md border border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] p-2 text-[10px] text-[color:var(--danger)] break-all">
+                <div className="mt-2 rounded-md border border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] p-2 text-[11px] text-[color:var(--danger)] break-all">
                   {syncProgress.customers?.firstError ?? syncProgress.products?.firstError}
                 </div>
               )}
@@ -263,17 +263,17 @@ export function CredentialCard(props: CredentialCardProps) {
 
 function SyncTile({ label, fetched, upserted, failed, done }: { label: string; fetched: number; upserted: number; failed: number; done: boolean }) {
   return (
-    <div className="rounded-md border border-border bg-card/40 p-2 text-[11px]">
+    <div className="rounded-md border border-border bg-card/40 p-2 text-[12px]">
       <div className="flex items-center justify-between">
-        <span className="text-muted-foreground uppercase tracking-wider text-[10px]">{label}</span>
+        <span className="text-muted-foreground uppercase tracking-wider text-[11px]">{label}</span>
         {done && <Check className="h-3 w-3 text-[color:var(--positive)]" />}
       </div>
       <div className="mt-1 flex items-baseline gap-1.5">
         <span className="font-medium tabular-nums">{upserted.toLocaleString()}</span>
-        <span className="text-muted-foreground text-[10px]">de {fetched.toLocaleString()} fetched</span>
+        <span className="text-muted-foreground text-[11px]">de {fetched.toLocaleString()} fetched</span>
       </div>
       {failed > 0 && (
-        <div className="mt-0.5 text-[10px] text-[color:var(--danger)]">
+        <div className="mt-0.5 text-[11px] text-[color:var(--danger)]">
           {failed.toLocaleString()} failed
         </div>
       )}

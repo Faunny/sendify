@@ -67,7 +67,7 @@ export default async function CampaignsPage() {
       <Card className="overflow-hidden p-0">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border bg-card text-[11px] uppercase tracking-wider text-muted-foreground">
+            <tr className="border-b border-border bg-card text-[12px] uppercase tracking-wider text-muted-foreground">
               <th className="text-left font-medium px-5 py-2.5">Campaign</th>
               <th className="text-left font-medium px-3 py-2.5">Store</th>
               <th className="text-left font-medium px-3 py-2.5">Status</th>
@@ -84,22 +84,22 @@ export default async function CampaignsPage() {
                 <tr key={c.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
                   <td className="px-5 py-3">
                     <Link href={`/campaigns/${c.id}`} className="block">
-                      <div className="text-[13px] font-medium hover:text-[color:var(--accent)]">{c.name}</div>
-                      <div className="text-[11px] text-muted-foreground truncate max-w-[400px]">{c.subject}</div>
+                      <div className="text-[14px] font-medium hover:text-[color:var(--accent)]">{c.name}</div>
+                      <div className="text-[12px] text-muted-foreground truncate max-w-[400px]">{c.subject}</div>
                     </Link>
                   </td>
-                  <td className="px-3 py-3 text-[12px] text-muted-foreground">{c.store.name.replace("divain · ", "")}</td>
+                  <td className="px-3 py-3 text-[13px] text-muted-foreground">{c.store.name.replace("divain · ", "")}</td>
                   <td className="px-3 py-3"><StatusBadge status={c.status} /></td>
                   <td className="px-3 py-3">
                     <Badge variant={c.draftSource === "MANUAL" ? "muted" : "accent"}>
                       <Icon className="h-2.5 w-2.5" /> {c.draftSource.toLowerCase().replace(/_/g, " ")}
                     </Badge>
                   </td>
-                  <td className="px-3 py-3 text-[12px] text-muted-foreground tabular-nums">
+                  <td className="px-3 py-3 text-[13px] text-muted-foreground tabular-nums">
                     {c.scheduledFor ? new Date(c.scheduledFor).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" }) : "—"}
                   </td>
-                  <td className="px-3 py-3 text-right text-[12px] tabular-nums">{formatNumber(c.estimatedRecipients)}</td>
-                  <td className="px-5 py-3 text-right text-[12px] tabular-nums">{formatCurrency(Number(c.estimatedCost))}</td>
+                  <td className="px-3 py-3 text-right text-[13px] tabular-nums">{formatNumber(c.estimatedRecipients)}</td>
+                  <td className="px-5 py-3 text-right text-[13px] tabular-nums">{formatCurrency(Number(c.estimatedCost))}</td>
                 </tr>
               );
             })}

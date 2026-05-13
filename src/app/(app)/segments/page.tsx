@@ -31,7 +31,7 @@ export default async function SegmentsPage() {
       {/* User-created segments */}
       {segments.length > 0 ? (
         <section>
-          <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Tus segmentos · {segments.length}</div>
+          <div className="text-[12px] uppercase tracking-wider text-muted-foreground mb-2">Tus segmentos · {segments.length}</div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {segments.map((s) => (
               <Card key={s.id} className="hover:border-border/80 transition-colors">
@@ -45,12 +45,12 @@ export default async function SegmentsPage() {
                 <CardContent className="pt-0">
                   <div className="flex items-end justify-between">
                     <div>
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Audience</div>
+                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Audience</div>
                       <div className="text-[22px] font-medium tabular-nums flex items-center gap-1.5">
                         <Users className="h-4 w-4 text-muted-foreground" />
                         {formatNumber(s.estimatedSize)}
                       </div>
-                      {s.lastEvaluatedAt && <div className="text-[10px] text-muted-foreground">recompute {new Date(s.lastEvaluatedAt).toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" })}</div>}
+                      {s.lastEvaluatedAt && <div className="text-[11px] text-muted-foreground">recompute {new Date(s.lastEvaluatedAt).toLocaleString("en-GB", { dateStyle: "short", timeStyle: "short" })}</div>}
                     </div>
                     <Button variant="ghost" size="sm" asChild>
                       <Link href={`/segments/${s.id}`}>Edit</Link>
@@ -65,15 +65,15 @@ export default async function SegmentsPage() {
         <Card>
           <CardContent className="p-6 text-center">
             <Filter className="h-5 w-5 text-muted-foreground mx-auto mb-2" />
-            <div className="text-[13px] font-medium">Aún no has creado segmentos</div>
-            <div className="text-[11px] text-muted-foreground mt-1">Clona uno de los presets de abajo o construye uno desde cero. El tamaño se calcula contra los clientes reales en Postgres.</div>
+            <div className="text-[14px] font-medium">Aún no has creado segmentos</div>
+            <div className="text-[12px] text-muted-foreground mt-1">Clona uno de los presets de abajo o construye uno desde cero. El tamaño se calcula contra los clientes reales en Postgres.</div>
           </CardContent>
         </Card>
       )}
 
       {/* Preset library */}
       <section>
-        <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Presets · clona y ajusta</div>
+        <div className="text-[12px] uppercase tracking-wider text-muted-foreground mb-2">Presets · clona y ajusta</div>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {SEGMENT_PRESETS.map((p) => (
             <Card key={p.id}>
@@ -85,7 +85,7 @@ export default async function SegmentsPage() {
                 <CardDescription className="line-clamp-3">{p.description}</CardDescription>
               </CardHeader>
               <CardContent className="pt-0 flex items-center justify-between">
-                <span className="text-[10px] text-muted-foreground font-mono">{p.id}</span>
+                <span className="text-[11px] text-muted-foreground font-mono">{p.id}</span>
                 <form action="/api/segments/clone" method="POST">
                   <input type="hidden" name="presetId" value={p.id} />
                   {stores.length > 0 && (

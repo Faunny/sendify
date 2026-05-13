@@ -88,15 +88,15 @@ export function CampaignActions({ campaignId, initialSubject, initialPreheader, 
     <div className="space-y-3">
       <div className="rounded-md border border-border bg-card/40 p-3 space-y-2">
         <div className="flex items-center justify-between">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Subject + preheader</div>
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Subject + preheader</div>
           {!editing ? (
-            <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => setEditing(true)}>
+            <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px]" onClick={() => setEditing(true)}>
               <Pencil className="h-3 w-3" /> Editar
             </Button>
           ) : (
             <div className="flex items-center gap-1">
-              <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => { setSubject(initialSubject); setPreheader(initialPreheader); setEditing(false); }}>Cancelar</Button>
-              <Button size="sm" className="h-6 px-2 text-[10px]" onClick={save} disabled={pending}>
+              <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px]" onClick={() => { setSubject(initialSubject); setPreheader(initialPreheader); setEditing(false); }}>Cancelar</Button>
+              <Button size="sm" className="h-6 px-2 text-[11px]" onClick={save} disabled={pending}>
                 {pending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />} Guardar
               </Button>
             </div>
@@ -109,8 +109,8 @@ export function CampaignActions({ campaignId, initialSubject, initialPreheader, 
           </>
         ) : (
           <>
-            <div className="text-[13px] font-medium">{subject}</div>
-            <div className="text-[11px] text-muted-foreground">{preheader || <em>sin preheader</em>}</div>
+            <div className="text-[14px] font-medium">{subject}</div>
+            <div className="text-[12px] text-muted-foreground">{preheader || <em>sin preheader</em>}</div>
           </>
         )}
       </div>
@@ -134,13 +134,13 @@ export function CampaignActions({ campaignId, initialSubject, initialPreheader, 
       </div>
 
       {error && (
-        <div className="rounded-md border border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] p-2.5 text-[11px] text-[color:var(--danger)] flex items-start gap-2">
+        <div className="rounded-md border border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] p-2.5 text-[12px] text-[color:var(--danger)] flex items-start gap-2">
           <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
           {error}
         </div>
       )}
       {info && (
-        <div className="rounded-md border border-[color:var(--positive)]/40 bg-[color-mix(in_oklch,var(--positive)_8%,transparent)] p-2.5 text-[11px] text-[color:var(--positive)]">
+        <div className="rounded-md border border-[color:var(--positive)]/40 bg-[color-mix(in_oklch,var(--positive)_8%,transparent)] p-2.5 text-[12px] text-[color:var(--positive)]">
           {info}
         </div>
       )}

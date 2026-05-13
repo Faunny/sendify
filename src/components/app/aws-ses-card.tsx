@@ -110,12 +110,12 @@ export function AwsSesCard() {
       <div className="flex items-start justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
-            <div className="text-[12px] font-medium">Amazon SES</div>
+            <div className="text-[13px] font-medium">Amazon SES</div>
             {hasValue
-              ? <span className="text-[10px] px-1.5 py-0.5 rounded bg-[color-mix(in_oklch,var(--positive)_15%,transparent)] text-[color:var(--positive)]">Guardado{result?.ok ? " · ✓" : result?.ok === false ? " · ✗" : " · sin test"}</span>
-              : <span className="text-[10px] px-1.5 py-0.5 rounded bg-[color-mix(in_oklch,var(--accent)_15%,transparent)] text-[color:var(--accent)]">No configurado</span>}
+              ? <span className="text-[11px] px-1.5 py-0.5 rounded bg-[color-mix(in_oklch,var(--positive)_15%,transparent)] text-[color:var(--positive)]">Guardado{result?.ok ? " · ✓" : result?.ok === false ? " · ✗" : " · sin test"}</span>
+              : <span className="text-[11px] px-1.5 py-0.5 rounded bg-[color-mix(in_oklch,var(--accent)_15%,transparent)] text-[color:var(--accent)]">No configurado</span>}
           </div>
-          <div className="text-[11px] text-muted-foreground mt-0.5">IAM user con SES SendEmail. 14 emails/sec aprobado · fuera de sandbox.</div>
+          <div className="text-[12px] text-muted-foreground mt-0.5">IAM user con SES SendEmail. 14 emails/sec aprobado · fuera de sandbox.</div>
         </div>
         {hasValue && (
           <Button variant="ghost" size="icon-sm" onClick={remove} disabled={removing} className="text-[color:var(--danger)]">
@@ -126,23 +126,23 @@ export function AwsSesCard() {
 
       <div className="space-y-2">
         <label className="block">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Access Key ID</span>
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Access Key ID</span>
           <Input
             value={accessKeyId}
             onChange={(e) => setAccessKeyId(e.target.value)}
             placeholder={hasValue ? "•••••••••••••••• (pega para reemplazar)" : "AKIA…"}
-            className="mt-1 font-mono text-[12px]"
+            className="mt-1 font-mono text-[13px]"
           />
         </label>
         <label className="block">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Secret Access Key</span>
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Secret Access Key</span>
           <div className="relative">
             <Input
               type={show ? "text" : "password"}
               value={secret}
               onChange={(e) => setSecret(e.target.value)}
               placeholder={hasValue ? "•••••••••••••••• (pega para reemplazar)" : "40 caracteres"}
-              className="mt-1 font-mono text-[12px] pr-9"
+              className="mt-1 font-mono text-[13px] pr-9"
             />
             <button type="button" onClick={() => setShow((s) => !s)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
               {show ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
@@ -150,11 +150,11 @@ export function AwsSesCard() {
           </div>
         </label>
         <label className="block">
-          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Region</span>
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">Region</span>
           <select
             value={region}
             onChange={(e) => setRegion(e.target.value)}
-            className="mt-1 w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[12px] font-mono"
+            className="mt-1 w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[13px] font-mono"
           >
             {SES_REGIONS.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
@@ -174,7 +174,7 @@ export function AwsSesCard() {
       </div>
 
       {result && (
-        <div className={`rounded-md border p-2 text-[11px] flex items-start gap-2 ${result.ok ? "border-[color:var(--positive)]/40 bg-[color-mix(in_oklch,var(--positive)_8%,transparent)] text-[color:var(--positive)]" : "border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] text-[color:var(--danger)]"}`}>
+        <div className={`rounded-md border p-2 text-[12px] flex items-start gap-2 ${result.ok ? "border-[color:var(--positive)]/40 bg-[color-mix(in_oklch,var(--positive)_8%,transparent)] text-[color:var(--positive)]" : "border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] text-[color:var(--danger)]"}`}>
           {!result.ok && <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />}
           <span className="break-all">{result.detail ?? (result.ok ? "OK" : "fallo")}</span>
         </div>

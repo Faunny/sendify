@@ -58,7 +58,7 @@ export function SamplePackButton({ stores }: { stores: { slug: string; name: str
         <select
           value={storeSlug}
           onChange={(e) => setStoreSlug(e.target.value)}
-          className="rounded-md border border-border bg-card px-2.5 py-1.5 text-[13px]"
+          className="rounded-md border border-border bg-card px-2.5 py-1.5 text-[14px]"
         >
           {stores.map((s) => <option key={s.slug} value={s.slug}>{s.name}</option>)}
         </select>
@@ -78,7 +78,7 @@ export function SamplePackButton({ stores }: { stores: { slug: string; name: str
           </DialogHeader>
 
           {busy && (
-            <div className="py-16 flex items-center justify-center gap-2 text-[13px] text-muted-foreground">
+            <div className="py-16 flex items-center justify-center gap-2 text-[14px] text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               4 emails en paralelo · GPT-4o · ~15-25s…
             </div>
@@ -99,14 +99,14 @@ export function SamplePackButton({ stores }: { stores: { slug: string; name: str
                         : "border-border bg-card/40 hover:bg-secondary/60"
                     } ${!s.ok ? "opacity-60" : ""}`}
                   >
-                    <div className="text-[12px] font-medium leading-tight">{s.label}</div>
+                    <div className="text-[13px] font-medium leading-tight">{s.label}</div>
                     {s.ok ? (
                       <>
-                        {s.layoutPattern && <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{s.layoutPattern}</div>}
-                        <div className="mt-1.5 text-[11px] italic text-muted-foreground line-clamp-2">{s.subject}</div>
+                        {s.layoutPattern && <div className="mt-1 text-[11px] uppercase tracking-wider text-muted-foreground">{s.layoutPattern}</div>}
+                        <div className="mt-1.5 text-[12px] italic text-muted-foreground line-clamp-2">{s.subject}</div>
                       </>
                     ) : (
-                      <div className="mt-1 text-[11px] text-[color:var(--danger)] flex items-start gap-1">
+                      <div className="mt-1 text-[12px] text-[color:var(--danger)] flex items-start gap-1">
                         <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
                         {s.error}
                       </div>
@@ -121,9 +121,9 @@ export function SamplePackButton({ stores }: { stores: { slug: string; name: str
                   <>
                     <div className="flex items-center justify-between gap-2 p-3 border-b border-border bg-card">
                       <div className="min-w-0">
-                        <div className="text-[13px] font-medium truncate">{active.subject}</div>
-                        <div className="text-[11px] text-muted-foreground truncate">{active.preheader}</div>
-                        <div className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+                        <div className="text-[14px] font-medium truncate">{active.subject}</div>
+                        <div className="text-[12px] text-muted-foreground truncate">{active.preheader}</div>
+                        <div className="mt-0.5 text-[11px] uppercase tracking-wider text-muted-foreground">
                           {active.layoutPattern} · {active.modelUsed}
                           {(active.tokensIn || active.tokensOut) && ` · ${active.tokensIn ?? "?"}→${active.tokensOut ?? "?"} tok`}
                         </div>
@@ -152,22 +152,22 @@ export function SamplePackButton({ stores }: { stores: { slug: string; name: str
                     </div>
                     {active.bannerPrompt && (
                       <details className="border-t border-border bg-card px-3 py-2">
-                        <summary className="cursor-pointer text-[11px] text-muted-foreground flex items-center gap-1.5">
+                        <summary className="cursor-pointer text-[12px] text-muted-foreground flex items-center gap-1.5">
                           <Code className="h-3 w-3" /> Banner prompt (para Gemini)
                         </summary>
-                        <div className="mt-2 text-[11px] font-mono leading-snug p-2 rounded bg-[color:var(--bg)] border border-border">
+                        <div className="mt-2 text-[12px] font-mono leading-snug p-2 rounded bg-[color:var(--bg)] border border-border">
                           {active.bannerPrompt}
                         </div>
                       </details>
                     )}
                     {active.mjmlErrors.length > 0 && (
-                      <div className="border-t border-border bg-[color-mix(in_oklch,var(--warning)_5%,transparent)] px-3 py-2 text-[10px] text-[color:var(--warning)]">
+                      <div className="border-t border-border bg-[color-mix(in_oklch,var(--warning)_5%,transparent)] px-3 py-2 text-[11px] text-[color:var(--warning)]">
                         MJML warnings ({active.mjmlErrors.length}): {active.mjmlErrors.slice(0, 3).join(" · ")}
                       </div>
                     )}
                   </>
                 ) : (
-                  <div className="flex-1 grid place-items-center text-[12px] text-muted-foreground">
+                  <div className="flex-1 grid place-items-center text-[13px] text-muted-foreground">
                     Selecciona una preview a la izquierda
                   </div>
                 )}

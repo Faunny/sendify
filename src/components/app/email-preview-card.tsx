@@ -86,8 +86,8 @@ export function EmailPreviewCard({ campaign, store, sender, language, products =
       <div className="px-4 py-2.5 border-b border-[#eee] flex items-start gap-2.5 bg-white">
         <div className="h-7 w-7 shrink-0 rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--gold-700)] grid place-items-center text-[9px] text-[var(--accent-fg)] font-bold">DP</div>
         <div className="flex-1 min-w-0">
-          <div className="text-[10px] text-black/60 truncate">{sender.fromName} &lt;{sender.fromEmail}&gt;</div>
-          <div className="text-[11px] font-medium text-black mt-0.5 truncate">{campaign.subject}</div>
+          <div className="text-[11px] text-black/60 truncate">{sender.fromName} &lt;{sender.fromEmail}&gt;</div>
+          <div className="text-[12px] font-medium text-black mt-0.5 truncate">{campaign.subject}</div>
         </div>
       </div>
 
@@ -98,23 +98,23 @@ export function EmailPreviewCard({ campaign, store, sender, language, products =
 
       {/* Big number hero */}
       <div className="px-4 pt-5 pb-7 text-center relative overflow-hidden" style={{ background: heroBg, color: "#FFFFFF" }}>
-        <div className="text-[11px] font-medium uppercase tracking-[3px] mb-1.5" style={{ fontFamily: "Outfit, sans-serif" }}>
+        <div className="text-[12px] font-medium uppercase tracking-[3px] mb-1.5" style={{ fontFamily: "Outfit, sans-serif" }}>
           {copy.sub}
         </div>
         <div className="text-[44px] leading-none font-bold mb-2.5" style={{ fontFamily: "Outfit, sans-serif", letterSpacing: "-0.02em" }}>
           {copy.offer}
         </div>
-        <div className="text-[12px] mb-4 opacity-90" style={{ fontFamily: "Outfit, sans-serif" }}>
+        <div className="text-[13px] mb-4 opacity-90" style={{ fontFamily: "Outfit, sans-serif" }}>
           {copy.tagline}
         </div>
-        <span className="inline-block px-6 py-2 text-[10px] uppercase tracking-[1px] font-medium" style={{ background: ctaBg, color: "#FFFFFF", borderRadius: 40, fontFamily: "Inter, sans-serif" }}>
+        <span className="inline-block px-6 py-2 text-[11px] uppercase tracking-[1px] font-medium" style={{ background: ctaBg, color: "#FFFFFF", borderRadius: 40, fontFamily: "Inter, sans-serif" }}>
           {copy.cta}
         </span>
       </div>
 
       {/* Body */}
       <div className="px-5 py-4 bg-white text-center">
-        <p className="text-[11px] leading-relaxed" style={{ color: "#1a1a1a", fontFamily: "Inter, sans-serif" }}>{copy.body}</p>
+        <p className="text-[12px] leading-relaxed" style={{ color: "#1a1a1a", fontFamily: "Inter, sans-serif" }}>{copy.body}</p>
       </div>
 
       {/* Product grid (only if real products are provided — no stock placeholders) */}

@@ -45,7 +45,7 @@ export default async function TemplatesPage() {
             </div>
             <div>
               <div className="text-[15px] font-medium">Empieza con una generación IA</div>
-              <p className="text-[12px] text-muted-foreground mt-1 max-w-md">
+              <p className="text-[13px] text-muted-foreground mt-1 max-w-md">
                 Describe un email (evento, audiencia, oferta, tono) y DeepSeek genera el MJML completo con la paleta + tipografía + footer de divain.
                 Tarda ~12s, cuesta ~$0.003.
               </p>
@@ -66,18 +66,18 @@ export default async function TemplatesPage() {
                 <div className="flex items-start justify-between gap-2">
                   <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-medium truncate">{t.name}</div>
+                    <div className="text-[14px] font-medium truncate">{t.name}</div>
                     <div className="flex items-center gap-1.5 mt-1">
-                      <Badge variant="muted" className="text-[10px]">{t.kind}</Badge>
-                      {t.store && <Badge variant="muted" className="text-[10px]">{t.store.name}</Badge>}
+                      <Badge variant="muted" className="text-[11px]">{t.kind}</Badge>
+                      {t.store && <Badge variant="muted" className="text-[11px]">{t.store.name}</Badge>}
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
                   <Clock className="h-3 w-3" /> {new Date(t.updatedAt).toLocaleDateString()}
                 </div>
                 <div className="flex items-center gap-2 pt-1">
-                  <Button size="sm" variant="outline" className="text-[12px]" asChild>
+                  <Button size="sm" variant="outline" className="text-[13px]" asChild>
                     <Link href={`/builder?templateId=${t.id}`}><Edit3 className="h-3 w-3" /> Editar</Link>
                   </Button>
                 </div>

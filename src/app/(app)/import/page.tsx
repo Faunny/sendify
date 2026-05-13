@@ -120,23 +120,23 @@ export default function ImportPage() {
               {file ? (
                 <div className="text-center">
                   <Check className="h-5 w-5 text-[color:var(--positive)] mx-auto mb-1.5" />
-                  <div className="text-[13px] font-medium">{file.name}</div>
-                  <div className="text-[11px] text-muted-foreground">{(file.size / 1024 / 1024).toFixed(1)} MB · {preview?.length ?? 0} rows previewed</div>
+                  <div className="text-[14px] font-medium">{file.name}</div>
+                  <div className="text-[12px] text-muted-foreground">{(file.size / 1024 / 1024).toFixed(1)} MB · {preview?.length ?? 0} rows previewed</div>
                 </div>
               ) : (
                 <div className="text-center">
                   <Upload className="h-5 w-5 text-muted-foreground mx-auto mb-1.5" />
-                  <div className="text-[13px]">Drop CSV here or click to browse</div>
-                  <div className="text-[11px] text-muted-foreground">UTF-8 · comma- or semicolon-separated · BOM ok</div>
+                  <div className="text-[14px]">Drop CSV here or click to browse</div>
+                  <div className="text-[12px] text-muted-foreground">UTF-8 · comma- or semicolon-separated · BOM ok</div>
                 </div>
               )}
             </label>
 
             {preview && headers.length > 0 && (
               <div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Preview · first {preview.length} rows</div>
+                <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Preview · first {preview.length} rows</div>
                 <div className="overflow-x-auto rounded-md border border-border">
-                  <table className="w-full text-[11px]">
+                  <table className="w-full text-[12px]">
                     <thead>
                       <tr className="bg-card border-b border-border">
                         {headers.slice(0, 8).map((h, i) => (
@@ -148,7 +148,7 @@ export default function ImportPage() {
                       {preview.map((row, i) => (
                         <tr key={i} className="border-b border-border last:border-0">
                           {row.slice(0, 8).map((cell, j) => (
-                            <td key={j} className="px-2 py-1.5 font-mono text-[10px] truncate max-w-[160px]">{cell}</td>
+                            <td key={j} className="px-2 py-1.5 font-mono text-[11px] truncate max-w-[160px]">{cell}</td>
                           ))}
                         </tr>
                       ))}
@@ -172,7 +172,7 @@ export default function ImportPage() {
                 {STORES.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
               </SelectContent>
             </Select>
-            <div className="text-[11px] text-muted-foreground space-y-1">
+            <div className="text-[12px] text-muted-foreground space-y-1">
               <div>Default language: <span className="text-foreground">{store.defaultLanguage}</span></div>
               <div>Markets: <span className="text-foreground">{store.markets.slice(0, 5).join(", ")}{store.markets.length > 5 ? "…" : ""}</span></div>
               <div>Current customers: <span className="text-foreground tabular-nums">{formatNumber(store.customers)}</span></div>
@@ -180,8 +180,8 @@ export default function ImportPage() {
 
             <label className="flex items-center justify-between rounded-md border border-border bg-card/40 p-2.5 mt-4">
               <div>
-                <div className="text-[12px] font-medium">Dry run</div>
-                <div className="text-[10px] text-muted-foreground">Parse + map without writing to DB</div>
+                <div className="text-[13px] font-medium">Dry run</div>
+                <div className="text-[11px] text-muted-foreground">Parse + map without writing to DB</div>
               </div>
               <Switch checked={dryRun} onCheckedChange={setDryRun} />
             </label>
@@ -192,7 +192,7 @@ export default function ImportPage() {
             </Button>
 
             {error && (
-              <div className="rounded-md border border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] p-2.5 text-[11px] text-[color:var(--danger)] flex items-start gap-2">
+              <div className="rounded-md border border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] p-2.5 text-[12px] text-[color:var(--danger)] flex items-start gap-2">
                 <AlertCircle className="h-3 w-3 shrink-0 mt-0.5" />
                 {error}
               </div>
@@ -232,7 +232,7 @@ export default function ImportPage() {
           <CardTitle>How to export from Klaviyo</CardTitle>
           <CardDescription>1-time export for the initial 1.5M migration</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-2 text-[12px] text-muted-foreground">
+        <CardContent className="space-y-2 text-[13px] text-muted-foreground">
           <ol className="space-y-1.5 list-decimal pl-5">
             <li>Klaviyo dashboard → <span className="text-foreground">Profiles</span></li>
             <li>Filter: <span className="text-foreground font-mono">Email Consent = subscribed OR unsubscribed</span> (skip never-subscribed if you want to start clean)</li>
@@ -240,7 +240,7 @@ export default function ImportPage() {
             <li>For ≥100k rows: don't upload here. Run <span className="text-foreground font-mono bg-muted px-1 rounded">npm run import:klaviyo -- --csv path.csv --store {storeId}</span> from your laptop</li>
             <li>For each Shopify store run a separate export filtered to that store's list memberships</li>
           </ol>
-          <div className="rounded-md border border-border bg-card/40 p-2.5 mt-3 text-[11px]">
+          <div className="rounded-md border border-border bg-card/40 p-2.5 mt-3 text-[12px]">
             <span className="text-foreground font-medium">Columns we auto-map:</span> Email, First Name, Last Name, Phone Number, Country, Locale, Email Consent, Suppressions, Historic Number of Orders, Historic Customer Lifetime Value, Lists, Tags.<br />
             <span className="text-foreground font-medium">Consent inference:</span> Suppressions column wins (bounce → BOUNCED, spam → COMPLAINED). Otherwise Email Consent maps directly.
           </div>
@@ -257,7 +257,7 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: "po
     tone === "warning"  ? "var(--warning)" : undefined;
   return (
     <div className="rounded-md border border-border bg-card/40 p-2.5">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="mt-1 text-[18px] font-medium tabular-nums" style={color ? { color: `color-mix(in oklch, ${color} 90%, var(--fg))` } : undefined}>
         {value}
       </div>

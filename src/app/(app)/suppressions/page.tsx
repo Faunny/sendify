@@ -6,7 +6,7 @@ export default function SuppressionsPage() {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        meta={<div className="flex items-center gap-2 text-[11px] text-muted-foreground"><ShieldOff className="h-3 w-3" /> Cross-store: una entrada aquí bloquea los 4 senders</div>}
+        meta={<div className="flex items-center gap-2 text-[12px] text-muted-foreground"><ShieldOff className="h-3 w-3" /> Cross-store: una entrada aquí bloquea los 4 senders</div>}
         title="Suppression list"
         description="Emails a los que Sendify nunca enviará. Alimentada por bounces/complaints de SES (via SNS), unsubscribes de clientes (RFC 8058 one-click) y añadidos manuales."
       />

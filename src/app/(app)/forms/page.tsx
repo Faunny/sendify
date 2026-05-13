@@ -38,7 +38,7 @@ export default async function FormsPage() {
             </div>
             <div>
               <div className="text-[15px] font-medium">Sin formularios todavía</div>
-              <p className="text-[12px] text-muted-foreground mt-1 max-w-md">
+              <p className="text-[13px] text-muted-foreground mt-1 max-w-md">
                 Cada form se publica con un snippet JS que pegas en cualquier página HTML — Shopify theme.liquid, Webflow, WordPress, lo que sea. Las conversiones se atan al Customer correcto y suben tus métricas de subscripción.
               </p>
             </div>
@@ -62,8 +62,8 @@ export default async function FormsPage() {
 function FeatureMini({ icon, title, body }: { icon: React.ReactNode; title: string; body: string }) {
   return (
     <div className="rounded-md border border-border bg-card/40 p-3 text-left">
-      <div className="flex items-center gap-1.5 text-[12px] font-medium">{icon}{title}</div>
-      <div className="text-[11px] text-muted-foreground mt-1">{body}</div>
+      <div className="flex items-center gap-1.5 text-[13px] font-medium">{icon}{title}</div>
+      <div className="text-[12px] text-muted-foreground mt-1">{body}</div>
     </div>
   );
 }

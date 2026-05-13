@@ -83,23 +83,23 @@ export function AiTemplateGenerator({ stores }: { stores: { slug: string; name: 
           {!result ? (
             <div className="space-y-4">
               <div>
-                <label className="block text-[12px] uppercase tracking-wider text-muted-foreground mb-1.5">Brief</label>
+                <label className="block text-[13px] uppercase tracking-wider text-muted-foreground mb-1.5">Brief</label>
                 <textarea
                   value={brief}
                   onChange={(e) => setBrief(e.target.value)}
                   rows={4}
-                  className="w-full rounded-md border border-border bg-card px-3 py-2 text-[13px] resize-none focus:outline-none focus:border-[color:var(--accent)]"
+                  className="w-full rounded-md border border-border bg-card px-3 py-2 text-[14px] resize-none focus:outline-none focus:border-[color:var(--accent)]"
                   placeholder="Describe el email: evento, audiencia, oferta, tono..."
                   autoFocus
                 />
-                <div className="mt-2 text-[11px] text-muted-foreground">Ejemplos rápidos:</div>
+                <div className="mt-2 text-[12px] text-muted-foreground">Ejemplos rápidos:</div>
                 <div className="flex flex-wrap gap-1.5 mt-1">
                   {EXAMPLE_BRIEFS.map((b) => (
                     <button
                       key={b}
                       type="button"
                       onClick={() => setBrief(b)}
-                      className="text-[11px] px-2 py-1 rounded-md border border-border bg-card/40 hover:bg-secondary/60 text-left leading-snug max-w-[280px]"
+                      className="text-[12px] px-2 py-1 rounded-md border border-border bg-card/40 hover:bg-secondary/60 text-left leading-snug max-w-[280px]"
                       title={b}
                     >
                       {b.slice(0, 36)}…
@@ -110,15 +110,15 @@ export function AiTemplateGenerator({ stores }: { stores: { slug: string; name: 
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[12px] uppercase tracking-wider text-muted-foreground mb-1.5">Pilar de marca</label>
-                  <select value={pillar} onChange={(e) => setPillar(e.target.value as typeof pillar)} className="w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[13px]">
+                  <label className="block text-[13px] uppercase tracking-wider text-muted-foreground mb-1.5">Pilar de marca</label>
+                  <select value={pillar} onChange={(e) => setPillar(e.target.value as typeof pillar)} className="w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[14px]">
                     {PILLARS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
                   </select>
-                  <div className="text-[11px] text-muted-foreground mt-1">{PILLARS.find((p) => p.value === pillar)?.desc}</div>
+                  <div className="text-[12px] text-muted-foreground mt-1">{PILLARS.find((p) => p.value === pillar)?.desc}</div>
                 </div>
                 <div>
-                  <label className="block text-[12px] uppercase tracking-wider text-muted-foreground mb-1.5">Tono</label>
-                  <select value={tone} onChange={(e) => setTone(e.target.value)} className="w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[13px]">
+                  <label className="block text-[13px] uppercase tracking-wider text-muted-foreground mb-1.5">Tono</label>
+                  <select value={tone} onChange={(e) => setTone(e.target.value)} className="w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[14px]">
                     {TONES.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
@@ -126,26 +126,26 @@ export function AiTemplateGenerator({ stores }: { stores: { slug: string; name: 
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[12px] uppercase tracking-wider text-muted-foreground mb-1.5">Tienda destino (footer)</label>
-                  <select value={storeSlug} onChange={(e) => setStoreSlug(e.target.value)} className="w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[13px]">
+                  <label className="block text-[13px] uppercase tracking-wider text-muted-foreground mb-1.5">Tienda destino (footer)</label>
+                  <select value={storeSlug} onChange={(e) => setStoreSlug(e.target.value)} className="w-full rounded-md border border-border bg-card px-2.5 py-1.5 text-[14px]">
                     {stores.map((s) => <option key={s.slug} value={s.slug}>{s.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[12px] uppercase tracking-wider text-muted-foreground mb-1.5">Nombre (opcional)</label>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Auto-generado si vacío" className="text-[13px]" />
+                  <label className="block text-[13px] uppercase tracking-wider text-muted-foreground mb-1.5">Nombre (opcional)</label>
+                  <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Auto-generado si vacío" className="text-[14px]" />
                 </div>
               </div>
 
               {error && (
-                <div className="rounded-md border border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] p-2.5 text-[12px] text-[color:var(--danger)] flex items-start gap-2">
+                <div className="rounded-md border border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] p-2.5 text-[13px] text-[color:var(--danger)] flex items-start gap-2">
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                   {error}
                 </div>
               )}
 
               <div className="flex items-center justify-between border-t border-border pt-3">
-                <div className="text-[11px] text-muted-foreground">
+                <div className="text-[12px] text-muted-foreground">
                   Usa <strong className="text-foreground">DeepSeek</strong> (configurado) · ~$0.003 por generación · ~12 segundos
                 </div>
                 <Button onClick={generate} disabled={busy || brief.trim().length < 8}>
@@ -157,16 +157,16 @@ export function AiTemplateGenerator({ stores }: { stores: { slug: string; name: 
           ) : (
             <div className="space-y-4">
               <div className="rounded-md border border-[color:var(--positive)]/40 bg-[color-mix(in_oklch,var(--positive)_6%,transparent)] p-3">
-                <div className="text-[11px] uppercase tracking-wider text-[color:var(--positive)] mb-1">✓ Plantilla generada · {result.modelUsed}</div>
-                <div className="text-[13px] font-medium">{result.subject}</div>
-                <div className="text-[12px] text-muted-foreground mt-0.5">{result.preheader}</div>
+                <div className="text-[12px] uppercase tracking-wider text-[color:var(--positive)] mb-1">✓ Plantilla generada · {result.modelUsed}</div>
+                <div className="text-[14px] font-medium">{result.subject}</div>
+                <div className="text-[13px] text-muted-foreground mt-0.5">{result.preheader}</div>
               </div>
 
               <details className="rounded-md border border-border bg-card/40">
-                <summary className="cursor-pointer text-[12px] px-3 py-2 flex items-center gap-2">
+                <summary className="cursor-pointer text-[13px] px-3 py-2 flex items-center gap-2">
                   <Eye className="h-3.5 w-3.5" /> Ver MJML generado ({result.mjml.length.toLocaleString()} caracteres)
                 </summary>
-                <pre className="text-[11px] font-mono p-3 max-h-64 overflow-auto bg-[color:var(--bg)] border-t border-border whitespace-pre-wrap break-all">
+                <pre className="text-[12px] font-mono p-3 max-h-64 overflow-auto bg-[color:var(--bg)] border-t border-border whitespace-pre-wrap break-all">
                   {result.mjml}
                 </pre>
               </details>

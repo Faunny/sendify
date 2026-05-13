@@ -9,8 +9,24 @@
 
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/db";
 import { setCredential, deleteCredential } from "@/lib/credentials";
 import type { ProviderType } from "@prisma/client";
+
+export const maxDuration = 30;
+export const dynamic = "force-dynamic";
+
+// Wake Neon before the upsert so a cold-start doesn't surface as a stuck spinner.
+async function pingDb(maxAttempts = 4): Promise<void> {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      return;
+    } catch {
+      await new Promise((r) => setTimeout(r, Math.min(500 * 2 ** i, 3000)));
+    }
+  }
+}
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -28,6 +44,7 @@ export async function POST(req: Request) {
   }
 
   try {
+    await pingDb();
     await setCredential({ provider, scope, value, label, meta });
     return NextResponse.json({ ok: true });
   } catch (e) {

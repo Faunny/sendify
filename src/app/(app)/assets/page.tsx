@@ -56,16 +56,16 @@ export default function AssetsPage() {
                 <SelectItem value="bold">Bold · high contrast</SelectItem>
               </SelectContent>
             </Select>
-            <label className="flex items-center gap-1.5 text-[12px] text-muted-foreground ml-auto">
+            <label className="flex items-center gap-1.5 text-[13px] text-muted-foreground ml-auto">
               <input type="checkbox" defaultChecked className="accent-[color:var(--accent)]" />
               Sin texto en la imagen (mejor para fan-out a 22 idiomas)
             </label>
           </div>
-          <div className="rounded-md border border-dashed border-border bg-card/40 p-3 text-[11px] text-muted-foreground">
+          <div className="rounded-md border border-dashed border-border bg-card/40 p-3 text-[12px] text-muted-foreground">
             <span className="text-foreground font-medium">Prompt del sistema (se añade automáticamente):</span> Brand divain. Palette: #0E0E0E, #D99425. Editorial clean composition. No text or typography in the image.
           </div>
           <div className="flex items-center justify-end gap-2">
-            <span className="text-[10px] text-muted-foreground">Necesita GEMINI_API_KEY configurada en Settings → Integrations</span>
+            <span className="text-[11px] text-muted-foreground">Necesita GEMINI_API_KEY configurada en Settings → Integrations</span>
             <Button size="sm" disabled={!prompt}><Sparkles className="h-3.5 w-3.5" /> Generar 4 variantes</Button>
           </div>
         </CardContent>

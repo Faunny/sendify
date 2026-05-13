@@ -21,9 +21,9 @@ export function Topbar() {
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <input
             placeholder="Search campaigns, customers, products…"
-            className="h-9 w-full rounded-md border border-border bg-card px-8 text-[13px] placeholder:text-muted-foreground focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
+            className="h-9 w-full rounded-md border border-border bg-card px-8 text-[14px] placeholder:text-muted-foreground focus:outline-none focus:border-ring focus:ring-2 focus:ring-ring/30"
           />
-          <kbd className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+          <kbd className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 rounded border border-border bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">
             <Command className="h-2.5 w-2.5" /> K
           </kbd>
         </div>

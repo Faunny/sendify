@@ -50,7 +50,7 @@ export function ApproveButton({
         {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : done ? <Check className="h-3.5 w-3.5" /> : <Send className="h-3.5 w-3.5" />}
         {pending ? "Approving…" : done ? "Approved" : label}
       </Button>
-      {error && <span className="mt-1 text-[10px] text-[color:var(--danger)]">{error}</span>}
+      {error && <span className="mt-1 text-[11px] text-[color:var(--danger)]">{error}</span>}
     </div>
   );
 }

@@ -37,7 +37,7 @@ export default function TranslationsPage() {
         <CardContent className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {LANGUAGES.map((l) => (
             <div key={l.code} className="space-y-1.5">
-              <div className="flex items-center justify-between text-[12px]">
+              <div className="flex items-center justify-between text-[13px]">
                 <span className="flex items-center gap-2">
                   <span className="text-base leading-none">{l.flag}</span>
                   {l.label}
@@ -56,9 +56,9 @@ export default function TranslationsPage() {
 function Stat({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <Card className="p-4">
-      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-[12px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="mt-1 text-[22px] font-medium tabular-nums text-muted-foreground">{value}</div>
-      <div className="text-[10px] text-muted-foreground">{hint}</div>
+      <div className="text-[11px] text-muted-foreground">{hint}</div>
     </Card>
   );
 }

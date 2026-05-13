@@ -38,7 +38,7 @@ export default async function FormDetailPage({ params }: { params: Promise<{ slu
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <Link href="/forms" className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"><ArrowLeft className="h-3 w-3" /> Forms</Link>
+        <Link href="/forms" className="text-[12px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"><ArrowLeft className="h-3 w-3" /> Forms</Link>
       </div>
 
       <PageHeader
@@ -67,21 +67,21 @@ export default async function FormDetailPage({ params }: { params: Promise<{ slu
           </CardHeader>
           <CardContent className="space-y-4">
             <section>
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">1. HTML donde quieras renderizar el form</div>
+              <div className="text-[12px] uppercase tracking-wider text-muted-foreground mb-1.5">1. HTML donde quieras renderizar el form</div>
               <CopySnippet code={containerDiv} lang="html" />
             </section>
             <section>
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">2. Script que carga la lógica</div>
+              <div className="text-[12px] uppercase tracking-wider text-muted-foreground mb-1.5">2. Script que carga la lógica</div>
               <CopySnippet code={scriptTag} lang="html" />
             </section>
             <section>
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">Ambos juntos · pega-y-listo</div>
+              <div className="text-[12px] uppercase tracking-wider text-muted-foreground mb-1.5">Ambos juntos · pega-y-listo</div>
               <CopySnippet code={fullEmbed} lang="html" />
             </section>
 
             {form.store?.shopifyDomain && (
               <section className="border-t border-border pt-3">
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                <div className="text-[12px] uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center gap-1.5">
                   Shopify · pega en theme.liquid o sections/footer.liquid
                   <a href={`https://${form.store.shopifyDomain}/admin/themes/current/editor`} target="_blank" className="text-[color:var(--accent)] hover:underline inline-flex items-center gap-0.5">
                     Abrir editor de tema <ExternalLink className="h-2.5 w-2.5" />
@@ -92,7 +92,7 @@ export default async function FormDetailPage({ params }: { params: Promise<{ slu
             )}
 
             {form.status !== "PUBLISHED" && (
-              <div className="rounded-md border border-[color:var(--warning)]/40 bg-[color-mix(in_oklch,var(--warning)_8%,transparent)] p-2.5 text-[12px] text-[color:var(--warning)]">
+              <div className="rounded-md border border-[color:var(--warning)]/40 bg-[color-mix(in_oklch,var(--warning)_8%,transparent)] p-2.5 text-[13px] text-[color:var(--warning)]">
                 ⚠ El form está en <strong>DRAFT</strong>: el snippet servirá 404 en producción hasta que pulses <strong>Publicar</strong>.
               </div>
             )}
@@ -105,19 +105,19 @@ export default async function FormDetailPage({ params }: { params: Promise<{ slu
             <CardContent>
               <div className="rounded-md border border-border bg-card/40 p-4">
                 <div className="text-[16px] font-medium leading-tight">{design.headline ?? "Suscríbete"}</div>
-                {design.subheadline && <div className="text-[12px] text-muted-foreground mt-1">{design.subheadline}</div>}
+                {design.subheadline && <div className="text-[13px] text-muted-foreground mt-1">{design.subheadline}</div>}
                 <div className="space-y-2 mt-3">
                   {fields.map((f) => (
                     <div key={f.id}>
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{f.label}</div>
+                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{f.label}</div>
                       <div className="h-8 rounded border border-border mt-0.5" />
                     </div>
                   ))}
                 </div>
-                <div className="mt-3 inline-block rounded-full bg-foreground text-background text-[10px] uppercase tracking-wider px-4 py-1.5">{design.ctaLabel ?? "Suscribirme"}</div>
+                <div className="mt-3 inline-block rounded-full bg-foreground text-background text-[11px] uppercase tracking-wider px-4 py-1.5">{design.ctaLabel ?? "Suscribirme"}</div>
               </div>
-              <div className="mt-3 text-[11px] text-muted-foreground">
-                El builder visual editable llega en la siguiente iteración. Los campos + diseño se pueden editar vía <code className="text-[10px] bg-muted px-1 rounded">PUT /api/forms/{form.slug}</code> mientras tanto.
+              <div className="mt-3 text-[12px] text-muted-foreground">
+                El builder visual editable llega en la siguiente iteración. Los campos + diseño se pueden editar vía <code className="text-[11px] bg-muted px-1 rounded">PUT /api/forms/{form.slug}</code> mientras tanto.
               </div>
             </CardContent>
           </Card>
@@ -126,7 +126,7 @@ export default async function FormDetailPage({ params }: { params: Promise<{ slu
             <CardHeader><CardTitle className="text-[14px]">URL hospedada</CardTitle></CardHeader>
             <CardContent>
               <CopySnippet code={`${appUrl}/forms/${form.slug}`} lang="text" />
-              <div className="text-[11px] text-muted-foreground mt-2">
+              <div className="text-[12px] text-muted-foreground mt-2">
                 Si tu sitio no permite snippets, puedes mandar tráfico directo a esta URL.
               </div>
             </CardContent>
@@ -141,7 +141,7 @@ function StatBig({ label, value }: { label: string; value: string }) {
   return (
     <Card className="bg-card/40">
       <CardContent className="p-4">
-        <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
+        <div className="text-[12px] uppercase tracking-wider text-muted-foreground">{label}</div>
         <div className="text-[24px] font-medium tabular-nums mt-1">{value}</div>
       </CardContent>
     </Card>

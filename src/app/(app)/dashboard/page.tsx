@@ -30,18 +30,18 @@ export default async function DashboardPage() {
 
       {/* Static stores summary — these 4 are real config, not mock data */}
       <div>
-        <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Stores configured</div>
+        <div className="text-[12px] uppercase tracking-wider text-muted-foreground mb-2">Stores configured</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {STORES.map((s) => (
             <Card key={s.id} className="p-4">
               <div className="flex items-start justify-between">
                 <div className="min-w-0">
-                  <div className="text-[13px] font-medium truncate">{s.name}</div>
-                  <div className="text-[10px] text-muted-foreground truncate mt-0.5">{s.legal.legalName}</div>
+                  <div className="text-[14px] font-medium truncate">{s.name}</div>
+                  <div className="text-[11px] text-muted-foreground truncate mt-0.5">{s.legal.legalName}</div>
                 </div>
-                <span className="text-[10px] font-mono text-muted-foreground">{s.currency}</span>
+                <span className="text-[11px] font-mono text-muted-foreground">{s.currency}</span>
               </div>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]">
+              <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
                 <div>
                   <div className="uppercase tracking-wider text-muted-foreground">Customers</div>
                   <div className="tabular-nums text-foreground">—</div>
@@ -58,7 +58,7 @@ export default async function DashboardPage() {
 
       {/* Senders summary */}
       <div>
-        <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Sender identities</div>
+        <div className="text-[12px] uppercase tracking-wider text-muted-foreground mb-2">Sender identities</div>
         <Card className="p-0 overflow-hidden">
           <ul className="divide-y divide-border">
             {SENDERS.map((s) => (
@@ -66,12 +66,12 @@ export default async function DashboardPage() {
                 <div className="flex items-center gap-3 min-w-0">
                   <Mail className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                   <div className="min-w-0">
-                    <div className="text-[12px] font-medium">{s.fromEmail}</div>
-                    <div className="text-[10px] text-muted-foreground">{s.fromName} · daily cap {s.dailyCap.toLocaleString()}</div>
+                    <div className="text-[13px] font-medium">{s.fromEmail}</div>
+                    <div className="text-[11px] text-muted-foreground">{s.fromName} · daily cap {s.dailyCap.toLocaleString()}</div>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className={`text-[10px] uppercase tracking-wider ${s.verified ? "text-[color:var(--positive)]" : "text-[color:var(--warning)]"}`}>
+                  <span className={`text-[11px] uppercase tracking-wider ${s.verified ? "text-[color:var(--positive)]" : "text-[color:var(--warning)]"}`}>
                     {s.verified ? "Verified" : "Pending verification"}
                   </span>
                 </div>
@@ -80,7 +80,7 @@ export default async function DashboardPage() {
           </ul>
         </Card>
         {senderVerified < SENDERS.length && (
-          <p className="text-[10px] text-muted-foreground mt-2">
+          <p className="text-[11px] text-muted-foreground mt-2">
             Verifica DKIM/SPF/DMARC en cada dominio dentro de AWS SES. Hasta entonces, los envíos no salen.
           </p>
         )}
@@ -88,7 +88,7 @@ export default async function DashboardPage() {
 
       {/* Empty performance section */}
       <div>
-        <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Performance · last 30 days</div>
+        <div className="text-[12px] uppercase tracking-wider text-muted-foreground mb-2">Performance · last 30 days</div>
         <EmptyState
           icon={<Mail className="h-5 w-5" />}
           title="Sin envíos todavía"
@@ -100,7 +100,7 @@ export default async function DashboardPage() {
 
       {/* Quick next steps */}
       <div>
-        <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Próximos pasos</div>
+        <div className="text-[12px] uppercase tracking-wider text-muted-foreground mb-2">Próximos pasos</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           <NextStep icon={Plug}       title="Conectar Shopify"     hint="Sincroniza customers, products, orders en tiempo real"             href="/settings" />
           <NextStep icon={Upload}     title="Importar de Klaviyo"   hint="Bulk CSV de tus 1.5M clientes existentes a Sendify"               href="/import" />
@@ -121,8 +121,8 @@ function NextStep({ icon: Icon, title, hint, href }: { icon: React.ComponentType
             <Icon className="h-3.5 w-3.5" />
           </span>
           <div className="min-w-0">
-            <div className="text-[13px] font-medium">{title}</div>
-            <div className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">{hint}</div>
+            <div className="text-[14px] font-medium">{title}</div>
+            <div className="text-[11px] text-muted-foreground mt-0.5 leading-relaxed">{hint}</div>
           </div>
         </div>
       </Card>

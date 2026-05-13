@@ -118,7 +118,7 @@ export default function BrandKitEditorPage() {
                       <ColorField label="Text" hint="Body copy" value={draft.palette.text} onChange={(v) => setDraft((d) => ({ ...d, palette: { ...d.palette, text: v } }))} />
                     </div>
                     <div>
-                      <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Or start from a preset</div>
+                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Or start from a preset</div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {PALETTE_PRESETS.map((p) => (
                           <button
@@ -131,7 +131,7 @@ export default function BrandKitEditorPage() {
                                 <div key={i} className="h-5 flex-1 first:rounded-l-sm last:rounded-r-sm" style={{ background: c }} />
                               ))}
                             </div>
-                            <div className="text-[11px] font-medium">{p.name}</div>
+                            <div className="text-[12px] font-medium">{p.name}</div>
                           </button>
                         ))}
                       </div>
@@ -190,7 +190,7 @@ export default function BrandKitEditorPage() {
               {/* ── Live preview ── */}
               <div className="lg:sticky lg:top-20 self-start space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Live email preview</div>
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Live email preview</div>
                   <Badge variant="muted">{s.shopifyDomain}</Badge>
                 </div>
                 <EmailPreview brand={draft} legal={s.legal} storeName={s.name} />
@@ -206,7 +206,7 @@ export default function BrandKitEditorPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
       {children}
     </label>
   );
@@ -216,13 +216,13 @@ function ColorField({ label, hint, value, onChange }: { label: string; hint: str
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between">
-        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
-        <span className="text-[10px] text-muted-foreground">{hint}</span>
+        <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</span>
+        <span className="text-[11px] text-muted-foreground">{hint}</span>
       </div>
       <div className="flex items-center gap-2 rounded-md border border-border bg-card/40 p-1.5">
         <input type="color" value={value} onChange={(e) => onChange(e.target.value)} className="h-8 w-10 cursor-pointer rounded border border-border bg-transparent" />
-        <input value={value} onChange={(e) => onChange(e.target.value)} className="flex-1 bg-transparent text-[12px] font-mono focus:outline-none" spellCheck={false} />
-        <button onClick={() => navigator.clipboard?.writeText(value)} className="text-[10px] text-muted-foreground hover:text-foreground px-1.5">Copy</button>
+        <input value={value} onChange={(e) => onChange(e.target.value)} className="flex-1 bg-transparent text-[13px] font-mono focus:outline-none" spellCheck={false} />
+        <button onClick={() => navigator.clipboard?.writeText(value)} className="text-[11px] text-muted-foreground hover:text-foreground px-1.5">Copy</button>
       </div>
     </div>
   );
@@ -231,7 +231,7 @@ function ColorField({ label, hint, value, onChange }: { label: string; hint: str
 function LogoSlot({ label, url, swatch, onChange }: { label: string; url: string; swatch: string; onChange: (url: string) => void }) {
   return (
     <div className="space-y-1.5">
-      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">{label}</div>
       <label
         className="relative aspect-[2/1] rounded-md border-2 border-dashed border-border grid place-items-center cursor-pointer hover:border-[color:var(--accent)] transition-colors overflow-hidden group"
         style={{ background: swatch }}
@@ -239,13 +239,13 @@ function LogoSlot({ label, url, swatch, onChange }: { label: string; url: string
         {url ? (
           <Image src={url} alt="" fill className="object-contain p-6" sizes="240px" />
         ) : (
-          <div className="text-[11px] text-muted-foreground flex flex-col items-center gap-1">
+          <div className="text-[12px] text-muted-foreground flex flex-col items-center gap-1">
             <Upload className="h-4 w-4" />
             Drop file or click
           </div>
         )}
         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity grid place-items-center">
-          <div className="text-white text-[11px] flex items-center gap-1.5">
+          <div className="text-white text-[12px] flex items-center gap-1.5">
             <Upload className="h-3.5 w-3.5" /> Replace
           </div>
         </div>
@@ -257,7 +257,7 @@ function LogoSlot({ label, url, swatch, onChange }: { label: string; url: string
           reader.readAsDataURL(file);
         }} />
       </label>
-      <Input value={url} onChange={(e) => onChange(e.target.value)} placeholder="Or paste URL…" className="h-7 text-[11px]" />
+      <Input value={url} onChange={(e) => onChange(e.target.value)} placeholder="Or paste URL…" className="h-7 text-[12px]" />
     </div>
   );
 }
@@ -265,7 +265,7 @@ function LogoSlot({ label, url, swatch, onChange }: { label: string; url: string
 function EmailPreview({ brand, legal, storeName }: { brand: BrandDraft; legal: LegalEntity; storeName: string }) {
   return (
     <div className="rounded-lg border border-border bg-card overflow-hidden shadow-2xl">
-      <div className="border-b border-border bg-card/60 px-3 py-2 flex items-center gap-2 text-[10px] text-muted-foreground">
+      <div className="border-b border-border bg-card/60 px-3 py-2 flex items-center gap-2 text-[11px] text-muted-foreground">
         <div className="flex gap-1">
           <span className="h-2 w-2 rounded-full bg-[color:var(--danger)]/40" />
           <span className="h-2 w-2 rounded-full bg-[color:var(--warning)]/40" />
@@ -284,9 +284,9 @@ function EmailPreview({ brand, legal, storeName }: { brand: BrandDraft; legal: L
               <div style={{ fontFamily: brand.fontHeading }} className="text-[18px] leading-tight">For her, what truly moves her</div>
             </div>
           </div>
-          <p style={{ fontFamily: brand.fontBody }} className="text-[12px] leading-relaxed mb-4 text-center">A curated edit of scents she'll fall for. Each one, 100ml of long-lasting fragrance.</p>
+          <p style={{ fontFamily: brand.fontBody }} className="text-[13px] leading-relaxed mb-4 text-center">A curated edit of scents she'll fall for. Each one, 100ml of long-lasting fragrance.</p>
           <div className="text-center mb-5">
-            <span className="inline-block px-5 py-2.5 text-[10px] tracking-wider uppercase font-medium" style={{ background: brand.palette.primary, color: brand.palette.primary === "#FFFFFF" ? brand.palette.bg : "#FFFFFF", borderRadius: 2 }}>
+            <span className="inline-block px-5 py-2.5 text-[11px] tracking-wider uppercase font-medium" style={{ background: brand.palette.primary, color: brand.palette.primary === "#FFFFFF" ? brand.palette.bg : "#FFFFFF", borderRadius: 2 }}>
               Shop the edit
             </span>
           </div>
@@ -307,7 +307,7 @@ function EmailPreview({ brand, legal, storeName }: { brand: BrandDraft; legal: L
           </div>
         </div>
       </div>
-      <div className="border-t border-border bg-card/40 px-3 py-2 flex items-center justify-between text-[10px]">
+      <div className="border-t border-border bg-card/40 px-3 py-2 flex items-center justify-between text-[11px]">
         <span className="text-muted-foreground">Updates live as you edit</span>
         <span className="text-[color:var(--positive)] flex items-center gap-1"><Check className="h-2.5 w-2.5" /> Auto-saved 2s ago</span>
       </div>

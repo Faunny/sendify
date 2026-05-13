@@ -36,7 +36,7 @@ export function EmailPreviewSwitcher({
                 key={code}
                 onClick={() => setActiveLang(code)}
                 title={lang?.label ?? code}
-                className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[11px] transition-colors ${
+                className={`inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12px] transition-colors ${
                   isActive
                     ? "bg-[color:var(--accent)] text-[color:var(--accent-fg)] font-medium"
                     : "bg-card border border-border hover:bg-secondary/60 text-foreground"
@@ -48,7 +48,7 @@ export function EmailPreviewSwitcher({
             );
           })}
           {availableLanguages.length > 12 && (
-            <span className="text-[10px] text-muted-foreground ml-2">
+            <span className="text-[11px] text-muted-foreground ml-2">
               +{availableLanguages.length - 12} más
             </span>
           )}
@@ -73,7 +73,7 @@ export function EmailPreviewSwitcher({
         />
       </div>
 
-      <div className="flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground">
+      <div className="flex items-center justify-center gap-1.5 text-[12px] text-muted-foreground">
         <Globe className="h-3 w-3" />
         Previsualización en <strong className="text-foreground">{LANGUAGES.find((l) => l.code === activeLang)?.label ?? activeLang}</strong>
         · usando datos del store {store.legal.legalName}

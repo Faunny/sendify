@@ -106,12 +106,12 @@ export default function NewCampaignPage() {
               !active && "hover:bg-secondary/40"
             )} onClick={() => setStep(i)}>
               <span className={cn(
-                "grid h-5 w-5 place-items-center rounded-full text-[10px] font-medium",
+                "grid h-5 w-5 place-items-center rounded-full text-[11px] font-medium",
                 done ? "bg-[color:var(--accent)] text-[color:var(--accent-fg)]" : active ? "bg-foreground text-background" : "bg-muted text-muted-foreground"
               )}>
                 {done ? <Check className="h-3 w-3" /> : i + 1}
               </span>
-              <span className={cn("text-[12px]", active && "font-medium")}>{s}</span>
+              <span className={cn("text-[13px]", active && "font-medium")}>{s}</span>
             </li>
           );
         })}
@@ -161,13 +161,13 @@ export default function NewCampaignPage() {
                   <CardDescription>Selecciona segmentos a unir para construir la audiencia. Suppressions y app-recent se eliminan automáticamente.</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <div className="rounded-md border border-dashed border-border bg-card/40 p-4 text-center text-[12px] text-muted-foreground">
+                  <div className="rounded-md border border-dashed border-border bg-card/40 p-4 text-center text-[13px] text-muted-foreground">
                     Aún no hay segmentos creados. Crea uno en <Link href="/segments" className="text-[color:var(--accent)] underline">/segments</Link> y vuelve.
                   </div>
                   <label className="flex items-center justify-between gap-3 rounded-md border border-border bg-card/40 p-2.5 mt-3">
                     <div>
-                      <div className="text-[12px] font-medium">Excluir clientes con push en últimas 24h</div>
-                      <div className="text-[10px] text-muted-foreground">Source: Shopify customer metafield <code className="text-[10px]">app.last_push_at</code>.</div>
+                      <div className="text-[13px] font-medium">Excluir clientes con push en últimas 24h</div>
+                      <div className="text-[11px] text-muted-foreground">Source: Shopify customer metafield <code className="text-[11px]">app.last_push_at</code>.</div>
                     </div>
                     <Switch checked={excludeApp} onCheckedChange={setExcludeApp} />
                   </label>
@@ -189,7 +189,7 @@ export default function NewCampaignPage() {
                 <Field label="Preheader (preview text)">
                   <Input value={preheader} onChange={(e) => setPreheader(e.target.value)} placeholder="ej: Selección Día de la Madre · envío gratis +30€" />
                 </Field>
-                <div className="rounded-md border border-dashed border-border bg-card/40 p-3 text-[11px] text-muted-foreground">
+                <div className="rounded-md border border-dashed border-border bg-card/40 p-3 text-[12px] text-muted-foreground">
                   Para diseñar el cuerpo del email, abre el <Link href="/builder" className="text-[color:var(--accent)] underline">builder</Link> y guarda como template.
                 </div>
               </CardContent>
@@ -211,7 +211,7 @@ export default function NewCampaignPage() {
                         key={l.code}
                         onClick={() => setSelectedLangs((c) => on ? c.filter((x) => x !== l.code) : [...c, l.code])}
                         className={cn(
-                          "flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] transition-colors",
+                          "flex items-center gap-2 rounded-full border px-3 py-1.5 text-[13px] transition-colors",
                           on ? "border-[color:var(--accent)] bg-[color-mix(in_oklch,var(--accent)_10%,transparent)] text-foreground" : "border-border bg-card/40 text-muted-foreground hover:bg-secondary/40"
                         )}
                       >
@@ -235,13 +235,13 @@ export default function NewCampaignPage() {
                 <Summary label="Idiomas" value={`${selectedLangs.length} idiomas`} />
                 <Summary label="Subject" value={subject || "—"} />
                 <Summary label="Coste estimado" value={formatCurrency(cost.total)} />
-                {error && <div className="rounded-md border border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] p-3 text-[11px] text-[color:var(--danger)]">{error}</div>}
+                {error && <div className="rounded-md border border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] p-3 text-[12px] text-[color:var(--danger)]">{error}</div>}
                 {savedDraftId && (
-                  <div className="rounded-md border border-[color:var(--positive)]/40 bg-[color-mix(in_oklch,var(--positive)_8%,transparent)] p-3 text-[11px] text-[color:var(--positive)]">
+                  <div className="rounded-md border border-[color:var(--positive)]/40 bg-[color-mix(in_oklch,var(--positive)_8%,transparent)] p-3 text-[12px] text-[color:var(--positive)]">
                     ✓ Draft guardado · id <code className="font-mono">{savedDraftId}</code>
                   </div>
                 )}
-                <div className="rounded-md border border-[color:var(--warning)]/40 bg-[color-mix(in_oklch,var(--warning)_10%,transparent)] p-3 text-[11px]">
+                <div className="rounded-md border border-[color:var(--warning)]/40 bg-[color-mix(in_oklch,var(--warning)_10%,transparent)] p-3 text-[12px]">
                   Aprobación obligatoria antes de enviar. Tú eres el aprobador. El envío se encola en BullMQ y se libera a SES en la fecha programada.
                 </div>
               </CardContent>
@@ -266,15 +266,15 @@ export default function NewCampaignPage() {
           <CardContent className="pt-0 space-y-3">
             <Stat label="Destinatarios"><span className="tabular-nums">{formatNumber(audience)}</span></Stat>
             <Stat label="Idiomas"><Badge variant="muted">{selectedLangs.length}</Badge></Stat>
-            <Stat label="Caracteres a traducir"><span className="tabular-nums text-[12px]">{formatNumber(cost.charsToTranslate)}</span></Stat>
+            <Stat label="Caracteres a traducir"><span className="tabular-nums text-[13px]">{formatNumber(cost.charsToTranslate)}</span></Stat>
             <Stat label="SES"><span className="tabular-nums">{formatCurrency(cost.ses)}</span></Stat>
             <Stat label="DeepL"><span className="tabular-nums">{formatCurrency(cost.deepl)}</span></Stat>
             <Stat label="Gemini"><span className="tabular-nums">{formatCurrency(cost.gemini)}</span></Stat>
             <div className="flex items-center justify-between border-t border-border pt-3">
-              <span className="text-[12px] font-medium">Total</span>
+              <span className="text-[13px] font-medium">Total</span>
               <span className="text-[16px] font-medium tabular-nums">{formatCurrency(cost.total)}</span>
             </div>
-            <div className="text-[10px] text-muted-foreground">
+            <div className="text-[11px] text-muted-foreground">
               <Globe className="inline h-2.5 w-2.5 mr-1" />
               Cache hit asumido: 0% (sin envíos previos)
             </div>
@@ -288,7 +288,7 @@ export default function NewCampaignPage() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
+      <span className="text-[12px] font-medium text-muted-foreground uppercase tracking-wider">{label}</span>
       {children}
     </label>
   );
@@ -296,7 +296,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Stat({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between text-[12px]">
+    <div className="flex items-center justify-between text-[13px]">
       <span className="text-muted-foreground">{label}</span>
       <span>{children}</span>
     </div>
@@ -306,8 +306,8 @@ function Stat({ label, children }: { label: string; children: React.ReactNode })
 function Summary({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 border-b border-border pb-2.5 last:border-0">
-      <span className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</span>
-      <span className="text-[13px] text-right max-w-[60%]">{value}</span>
+      <span className="text-[12px] uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className="text-[14px] text-right max-w-[60%]">{value}</span>
     </div>
   );
 }

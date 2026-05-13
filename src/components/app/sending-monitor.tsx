@@ -90,7 +90,7 @@ export function SendingMonitor({ campaignId, initialStatus }: { campaignId: stri
       </CardHeader>
       <CardContent className="pt-0 space-y-4">
         <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-[12px]">
+          <div className="flex items-center justify-between text-[13px]">
             <span className="font-medium">{formatNumber(p?.sent ?? 0)} / {formatNumber(p?.total ?? data?.campaign.estimatedRecipients ?? 0)} sent</span>
             <span className="tabular-nums text-muted-foreground">{pct}%</span>
           </div>
@@ -105,7 +105,7 @@ export function SendingMonitor({ campaignId, initialStatus }: { campaignId: stri
           <Tile icon={ShieldOff}     label="Failed"      value={p?.failed ?? 0}    tone={p && p.failed > 0 ? "danger" : undefined} />
         </div>
 
-        <div className="rounded-md border border-border bg-card/40 p-3 text-[11px] flex items-center justify-between">
+        <div className="rounded-md border border-border bg-card/40 p-3 text-[12px] flex items-center justify-between">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Activity className="h-3 w-3" />
             BullMQ depth: <span className="font-mono text-foreground">{queue?.active ?? 0} active</span> · <span className="font-mono text-foreground">{queue?.waiting ?? 0} waiting</span>
@@ -114,7 +114,7 @@ export function SendingMonitor({ campaignId, initialStatus }: { campaignId: stri
         </div>
 
         {p && (p.suppressedConsent > 0 || p.suppressedApp > 0) && (
-          <div className="rounded-md border border-border bg-card/40 p-2.5 text-[11px] text-muted-foreground">
+          <div className="rounded-md border border-border bg-card/40 p-2.5 text-[12px] text-muted-foreground">
             Skipped at send time: {formatNumber(p.suppressedConsent)} consent · {formatNumber(p.suppressedApp)} app-recent
           </div>
         )}
@@ -130,7 +130,7 @@ function Tile({ icon: Icon, label, value, tone }: { icon: React.ComponentType<{ 
     tone === "danger"   ? "var(--danger)"   : undefined;
   return (
     <div className="rounded-md border border-border bg-card/40 p-2.5">
-      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
         <Icon className="h-3 w-3" /> {label}
       </div>
       <div className="mt-1 text-[18px] font-medium tabular-nums" style={color ? { color: `color-mix(in oklch, ${color} 90%, var(--fg))` } : undefined}>

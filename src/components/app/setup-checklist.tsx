@@ -58,7 +58,7 @@ export async function SetupChecklist() {
               <h2 className="text-[15px] font-medium">Setup pendiente</h2>
               {blockers > 0 && <Badge variant="warning">{blockers} bloqueantes</Badge>}
             </div>
-            <p className="text-[12px] text-muted-foreground">
+            <p className="text-[13px] text-muted-foreground">
               Hasta completar las piezas bloqueantes, los botones de envío y aprobación no pueden persistir nada.
               Todo lo demás de Sendify (builder, calendario, preview) ya funciona y se queda igual cuando conectes.
             </p>
@@ -79,19 +79,19 @@ export async function SetupChecklist() {
                     ? "bg-[color:var(--positive)]/15 text-[color:var(--positive)]"
                     : "bg-[color:var(--warning)]/15 text-[color:var(--warning)]"
                 }`}>
-                  {s.ok ? <Check className="h-3 w-3" /> : <span className="text-[10px]">!</span>}
+                  {s.ok ? <Check className="h-3 w-3" /> : <span className="text-[11px]">!</span>}
                 </span>
                 <div className="min-w-0">
-                  <div className={`text-[12px] ${s.ok ? "text-muted-foreground line-through" : "text-foreground font-medium"}`}>
+                  <div className={`text-[13px] ${s.ok ? "text-muted-foreground line-through" : "text-foreground font-medium"}`}>
                     {s.label}
                   </div>
-                  <div className="text-[10px] text-muted-foreground">{s.hint}</div>
+                  <div className="text-[11px] text-muted-foreground">{s.hint}</div>
                 </div>
               </div>
               {!s.ok && (
                 <Link
                   href={s.action.href}
-                  className="text-[11px] text-[color:var(--accent)] hover:underline flex items-center gap-0.5 shrink-0"
+                  className="text-[12px] text-[color:var(--accent)] hover:underline flex items-center gap-0.5 shrink-0"
                 >
                   {s.action.label} <ArrowRight className="h-3 w-3" />
                 </Link>

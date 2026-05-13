@@ -88,7 +88,7 @@ export default async function CampaignDetail({ params }: { params: Promise<{ id:
         </Button>
         <PageHeader
           meta={
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+            <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
               <span className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono">{campaign.id}</span>
               <span>·</span>
               <span>{campaign.store.name}</span>
@@ -162,10 +162,10 @@ export default async function CampaignDetail({ params }: { params: Promise<{ id:
             <CardContent className="space-y-2 pt-0">
               <Row icon={<Clock className="h-3 w-3" />} label="Status"><StatusBadge status={campaign.status} /></Row>
               <Row icon={<CalendarIcon className="h-3 w-3" />} label="Scheduled">
-                {campaign.scheduledFor ? <span className="text-[12px] tabular-nums">{new Date(campaign.scheduledFor).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</span> : <span className="text-muted-foreground text-[12px]">no schedule</span>}
+                {campaign.scheduledFor ? <span className="text-[13px] tabular-nums">{new Date(campaign.scheduledFor).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })}</span> : <span className="text-muted-foreground text-[13px]">no schedule</span>}
               </Row>
               <Row icon={<Users className="h-3 w-3" />} label="Audience">
-                <span className="text-[12px] tabular-nums">{formatNumber(campaign.estimatedRecipients)}</span>
+                <span className="text-[13px] tabular-nums">{formatNumber(campaign.estimatedRecipients)}</span>
               </Row>
               <Row icon={<LanguagesIcon className="h-3 w-3" />} label="Languages">
                 <div className="flex items-center gap-0.5">
@@ -173,11 +173,11 @@ export default async function CampaignDetail({ params }: { params: Promise<{ id:
                     const lang = LANGUAGES.find((l) => l.code === code);
                     return <span key={code} title={lang?.label} className="text-sm leading-none">{lang?.flag ?? "🏳️"}</span>;
                   })}
-                  {availableLanguages.length > 6 && <span className="text-[10px] text-muted-foreground">+{availableLanguages.length - 6}</span>}
+                  {availableLanguages.length > 6 && <span className="text-[11px] text-muted-foreground">+{availableLanguages.length - 6}</span>}
                 </div>
               </Row>
               <Row icon={<Mail className="h-3 w-3" />} label="From">
-                <span className="text-[11px]">{campaign.sender.fromEmail}</span>
+                <span className="text-[12px]">{campaign.sender.fromEmail}</span>
               </Row>
             </CardContent>
           </Card>
@@ -190,10 +190,10 @@ export default async function CampaignDetail({ params }: { params: Promise<{ id:
               <CostRow label="Translation"     value={formatCurrency(cost.deepl)} />
               <CostRow label="Banner generation" value={formatCurrency(cost.gemini)} />
               <div className="flex items-center justify-between border-t border-border pt-2.5 mt-1.5">
-                <span className="text-[12px] font-medium">Total</span>
+                <span className="text-[13px] font-medium">Total</span>
                 <span className="text-[15px] font-medium tabular-nums">{formatCurrency(cost.total)}</span>
               </div>
-              <div className="text-[10px] text-muted-foreground">
+              <div className="text-[11px] text-muted-foreground">
                 ≈ {formatCurrency(cost.recipients ? cost.total / cost.recipients * 1000 : 0)} por 1k recipients
               </div>
             </CardContent>
@@ -223,13 +223,13 @@ export default async function CampaignDetail({ params }: { params: Promise<{ id:
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Sparkles className="h-3.5 w-3.5 text-[color:var(--accent)]" /> Origen del draft</CardTitle>
               </CardHeader>
-              <CardContent className="pt-0 text-[11px] text-muted-foreground space-y-1">
+              <CardContent className="pt-0 text-[12px] text-muted-foreground space-y-1">
                 <div><strong className="text-foreground">Source</strong>: {campaign.draftSource.toLowerCase().replace(/_/g, " ")}</div>
                 {campaign.draftReason && <div><strong className="text-foreground">Reason</strong>: {campaign.draftReason}</div>}
                 {campaign.draftLlmPrompt && (
                   <details>
                     <summary className="cursor-pointer text-[color:var(--accent)]">Ver prompt LLM</summary>
-                    <pre className="mt-2 text-[10px] bg-card/40 rounded p-2 whitespace-pre-wrap font-mono">{campaign.draftLlmPrompt}</pre>
+                    <pre className="mt-2 text-[11px] bg-card/40 rounded p-2 whitespace-pre-wrap font-mono">{campaign.draftLlmPrompt}</pre>
                   </details>
                 )}
               </CardContent>
@@ -243,7 +243,7 @@ export default async function CampaignDetail({ params }: { params: Promise<{ id:
 
 function Row({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between text-[12px]">
+    <div className="flex items-center justify-between text-[13px]">
       <span className="flex items-center gap-2 text-muted-foreground">{icon}{label}</span>
       {children}
     </div>
@@ -252,7 +252,7 @@ function Row({ icon, label, children }: { icon: React.ReactNode; label: string; 
 
 function CostRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex items-center justify-between text-[12px]">
+    <div className="flex items-center justify-between text-[13px]">
       <span className="text-muted-foreground">{label}</span>
       <span className="tabular-nums">{value}</span>
     </div>
@@ -268,8 +268,8 @@ function CheckRow({ ok, label, hint }: { ok: boolean; label: string; hint: strin
         {ok ? <Check className="h-2.5 w-2.5" /> : <span className="text-[8px]">!</span>}
       </span>
       <div className="min-w-0">
-        <div className={`text-[11px] ${ok ? "text-foreground" : "text-foreground font-medium"}`}>{label}</div>
-        <div className="text-[10px] text-muted-foreground">{hint}</div>
+        <div className={`text-[12px] ${ok ? "text-foreground" : "text-foreground font-medium"}`}>{label}</div>
+        <div className="text-[11px] text-muted-foreground">{hint}</div>
       </div>
     </div>
   );

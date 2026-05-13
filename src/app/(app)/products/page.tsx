@@ -85,7 +85,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       />
 
       <form method="GET" className="flex items-center gap-2 flex-wrap">
-        <select name="store" defaultValue={storeFilter} className="h-9 rounded-md border border-border bg-card px-3 text-[12px]">
+        <select name="store" defaultValue={storeFilter} className="h-9 rounded-md border border-border bg-card px-3 text-[13px]">
           <option value="all">All stores</option>
           {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
@@ -113,18 +113,18 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                 </div>
               </div>
               <div className="p-3 space-y-1">
-                <div className="text-[13px] font-medium leading-tight line-clamp-2 min-h-[2.5em]">{p.title}</div>
+                <div className="text-[14px] font-medium leading-tight line-clamp-2 min-h-[2.5em]">{p.title}</div>
                 <div className="flex items-end justify-between pt-1">
                   <div>
                     {price ? (
                       <div className="text-[15px] font-medium tabular-nums">{formatCurrency(Number(price.price), price.currency)}</div>
                     ) : (
-                      <div className="text-[11px] text-muted-foreground italic">no price yet</div>
+                      <div className="text-[12px] text-muted-foreground italic">no price yet</div>
                     )}
                   </div>
                   <div className="text-right">
-                    <div className="text-[10px] text-muted-foreground">stock</div>
-                    <div className="text-[11px] tabular-nums">{variant?.inventoryQty ?? "—"}</div>
+                    <div className="text-[11px] text-muted-foreground">stock</div>
+                    <div className="text-[12px] tabular-nums">{variant?.inventoryQty ?? "—"}</div>
                   </div>
                 </div>
               </div>
@@ -134,7 +134,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       </div>
 
       {lowStock > 0 && (
-        <div className="rounded-md border border-[color:var(--warning)]/40 bg-[color-mix(in_oklch,var(--warning)_5%,transparent)] p-3 text-[11px]">
+        <div className="rounded-md border border-[color:var(--warning)]/40 bg-[color-mix(in_oklch,var(--warning)_5%,transparent)] p-3 text-[12px]">
           {lowStock} producto{lowStock > 1 ? "s" : ""} con stock bajo (≤50). Considera generar un flow de restock alert.
         </div>
       )}

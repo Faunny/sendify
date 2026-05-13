@@ -130,11 +130,11 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input name="q" defaultValue={q} placeholder="Buscar por email, nombre…" className="pl-8" />
         </div>
-        <select name="store" defaultValue={storeId} className="h-9 rounded-md border border-border bg-card px-3 text-[12px]">
+        <select name="store" defaultValue={storeId} className="h-9 rounded-md border border-border bg-card px-3 text-[13px]">
           <option value="all">All stores</option>
           {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
         </select>
-        <select name="status" defaultValue={status} className="h-9 rounded-md border border-border bg-card px-3 text-[12px]">
+        <select name="status" defaultValue={status} className="h-9 rounded-md border border-border bg-card px-3 text-[13px]">
           <option value="all">All status</option>
           <option value="SUBSCRIBED">Subscribed</option>
           <option value="UNSUBSCRIBED">Unsubscribed</option>
@@ -150,7 +150,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-card text-[11px] uppercase tracking-wider text-muted-foreground">
+              <tr className="border-b border-border bg-card text-[12px] uppercase tracking-wider text-muted-foreground">
                 <th className="text-left font-medium px-5 py-2.5">Customer</th>
                 <th className="text-left font-medium px-3 py-2.5">Store</th>
                 <th className="text-left font-medium px-3 py-2.5">Lang</th>
@@ -169,21 +169,21 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                   <tr key={c.id} className="border-b border-border last:border-0 hover:bg-secondary/30 transition-colors">
                     <td className="px-5 py-2.5">
                       <Link href={`/customers/${c.id}`} className="block">
-                        <div className="text-[13px] font-medium hover:text-[color:var(--accent)]">{c.firstName} {c.lastName}</div>
-                        <div className="text-[11px] text-muted-foreground truncate max-w-[260px]">{c.email}</div>
+                        <div className="text-[14px] font-medium hover:text-[color:var(--accent)]">{c.firstName} {c.lastName}</div>
+                        <div className="text-[12px] text-muted-foreground truncate max-w-[260px]">{c.email}</div>
                       </Link>
                     </td>
-                    <td className="px-3 py-2.5 text-[12px] text-muted-foreground">{store?.name.replace("divain · ", "") ?? "—"}</td>
-                    <td className="px-3 py-2.5 text-[12px]">{lang?.flag ?? ""} {c.language}</td>
-                    <td className="px-3 py-2.5 text-[12px]">{c.country ?? "—"}</td>
+                    <td className="px-3 py-2.5 text-[13px] text-muted-foreground">{store?.name.replace("divain · ", "") ?? "—"}</td>
+                    <td className="px-3 py-2.5 text-[13px]">{lang?.flag ?? ""} {c.language}</td>
+                    <td className="px-3 py-2.5 text-[13px]">{c.country ?? "—"}</td>
                     <td className="px-3 py-2.5">
                       <Badge variant={STATUS_VARIANT[c.consentStatus] ?? "muted"}>{c.consentStatus.toLowerCase()}</Badge>
                     </td>
                     <td className="px-3 py-2.5 text-center">
-                      {c.hasApp ? <Smartphone className="h-3.5 w-3.5 inline text-[color:var(--accent)]" /> : <span className="text-muted-foreground text-[10px]">—</span>}
+                      {c.hasApp ? <Smartphone className="h-3.5 w-3.5 inline text-[color:var(--accent)]" /> : <span className="text-muted-foreground text-[11px]">—</span>}
                     </td>
-                    <td className="px-3 py-2.5 text-right text-[12px] tabular-nums">{c.ordersCount}</td>
-                    <td className="px-5 py-2.5 text-right text-[12px] tabular-nums">{formatCurrency(Number(c.totalSpent), store?.currency ?? "EUR")}</td>
+                    <td className="px-3 py-2.5 text-right text-[13px] tabular-nums">{c.ordersCount}</td>
+                    <td className="px-5 py-2.5 text-right text-[13px] tabular-nums">{formatCurrency(Number(c.totalSpent), store?.currency ?? "EUR")}</td>
                   </tr>
                 );
               })}
@@ -192,7 +192,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         </div>
 
         {/* Pagination */}
-        <div className="border-t border-border px-4 py-2.5 flex items-center justify-between text-[11px] text-muted-foreground">
+        <div className="border-t border-border px-4 py-2.5 flex items-center justify-between text-[12px] text-muted-foreground">
           <span>Showing {Math.min((page - 1) * PAGE_SIZE + 1, total)}–{Math.min(page * PAGE_SIZE, total)} of {formatNumber(total)}</span>
           <div className="flex items-center gap-1">
             {page > 1 && (
@@ -212,7 +212,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
 function Stat({ label, value, tone }: { label: string; value: string; tone?: "positive" | "danger" }) {
   return (
     <Card className="p-4">
-      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className="text-[12px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div
         className={`mt-1 text-[22px] font-medium tabular-nums ${
           tone === "positive" ? "text-[color:var(--positive)]" : tone === "danger" ? "text-[color:var(--danger)]" : ""

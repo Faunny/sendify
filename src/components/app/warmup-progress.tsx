@@ -16,7 +16,7 @@ export function WarmupProgress({ sender }: { sender: WarmupSender }) {
   if (stage === "warmed") {
     return (
       <div className="rounded-md border border-border bg-card/40 p-2.5 flex items-center justify-between">
-        <div className="flex items-center gap-2 text-[11px]">
+        <div className="flex items-center gap-2 text-[12px]">
           <Check className="h-3 w-3 text-[color:var(--positive)]" />
           <span className="font-medium">Fully warmed</span>
           <span className="text-muted-foreground">· today's limit {formatNumber(cap)}</span>
@@ -29,7 +29,7 @@ export function WarmupProgress({ sender }: { sender: WarmupSender }) {
   return (
     <div className="rounded-md border border-[color:var(--accent)]/30 bg-[color-mix(in_oklch,var(--accent)_5%,transparent)] p-2.5">
       <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2 text-[11px]">
+        <div className="flex items-center gap-2 text-[12px]">
           <Flame className="h-3 w-3 text-[color:var(--accent)]" />
           <span className="font-medium">Warming up</span>
           <span className="text-muted-foreground">
@@ -62,7 +62,7 @@ export function WarmupProgress({ sender }: { sender: WarmupSender }) {
           );
         })}
       </div>
-      <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+      <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
         <span>Day 1</span>
         <span>
           {completion && `Fully warmed ${completion.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}`}

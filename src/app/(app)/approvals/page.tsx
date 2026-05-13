@@ -53,7 +53,7 @@ export default async function ApprovalsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         meta={
-          <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+          <div className="flex items-center gap-3 text-[12px] text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <Inbox className="h-3 w-3" />
               {pending.length} esperando tu revisión
@@ -100,7 +100,7 @@ export default async function ApprovalsPage() {
               </CardHeader>
               <CardContent className="pt-0 space-y-4">
                 {c.draftReason && (
-                  <div className="rounded-md border border-[color:var(--accent)]/30 bg-[color-mix(in_oklch,var(--accent)_6%,transparent)] p-2.5 text-[11px] flex items-start gap-2">
+                  <div className="rounded-md border border-[color:var(--accent)]/30 bg-[color-mix(in_oklch,var(--accent)_6%,transparent)] p-2.5 text-[12px] flex items-start gap-2">
                     <Sparkles className="h-3 w-3 shrink-0 mt-0.5 text-[color:var(--accent)]" />
                     <span className="text-foreground/90">{c.draftReason}</span>
                   </div>
@@ -109,7 +109,7 @@ export default async function ApprovalsPage() {
                 <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-5">
                   {/* Visual preview — what the customer actually sees in their inbox */}
                   <div>
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">
                       Email preview · {LANGUAGES.find((l) => l.code === c.store.defaultLanguage)?.nativeLabel ?? c.store.defaultLanguage}
                     </div>
                     <EmailPreviewCard
@@ -138,13 +138,13 @@ export default async function ApprovalsPage() {
 
                   {/* Metadata column */}
                   <div className="space-y-3 min-w-0">
-                    <div className="rounded-md border border-border bg-card/40 p-3 text-[13px]">
-                      <span className="text-muted-foreground text-[10px] uppercase tracking-wider mr-2">Subject</span>
+                    <div className="rounded-md border border-border bg-card/40 p-3 text-[14px]">
+                      <span className="text-muted-foreground text-[11px] uppercase tracking-wider mr-2">Subject</span>
                       {c.subject}
                     </div>
                     {c.preheader && (
-                      <div className="rounded-md border border-border bg-card/40 p-3 text-[12px]">
-                        <span className="text-muted-foreground text-[10px] uppercase tracking-wider mr-2">Preheader</span>
+                      <div className="rounded-md border border-border bg-card/40 p-3 text-[13px]">
+                        <span className="text-muted-foreground text-[11px] uppercase tracking-wider mr-2">Preheader</span>
                         {c.preheader}
                       </div>
                     )}
@@ -158,12 +158,12 @@ export default async function ApprovalsPage() {
 
                     {c.variants.length > 0 && (
                       <div>
-                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2">Variantes preparadas</div>
+                        <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Variantes preparadas</div>
                         <div className="flex flex-wrap gap-1.5">
                           {c.variants.map((v) => {
                             const lang = LANGUAGES.find((l) => l.code === v.language);
                             return (
-                              <span key={v.language} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[11px]">
+                              <span key={v.language} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[12px]">
                                 <span>{lang?.flag ?? "🏳️"}</span>
                                 {lang?.label ?? v.language}
                               </span>
@@ -192,8 +192,8 @@ export default async function ApprovalsPage() {
 function Stat({ label, value, small }: { label: string; value: string; small?: boolean }) {
   return (
     <div className="rounded-md border border-border bg-card/40 p-2.5">
-      <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className={`mt-1 font-medium ${small ? "text-[11px]" : "text-[15px] tabular-nums"}`}>{value}</div>
+      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
+      <div className={`mt-1 font-medium ${small ? "text-[12px]" : "text-[15px] tabular-nums"}`}>{value}</div>
     </div>
   );
 }
