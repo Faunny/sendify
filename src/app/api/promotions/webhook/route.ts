@@ -27,10 +27,11 @@
 import { NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/db";
-import { getCredential } from "@/lib/credentials";
 import type { Prisma } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 30; // Neon cold-start + upsert headroom
 
 type Payload = {
   externalId: string;
@@ -48,11 +49,10 @@ type Payload = {
   copyByLang?: Record<string, Record<string, string>>;
 };
 
-async function getWebhookSecret(): Promise<string | null> {
-  // Prefer the secret saved through Settings (encrypted in DB). Fall back to the
-  // raw env var so existing setups keep working.
-  const cred = await getCredential("PROMOTIONS_WEBHOOK_SECRET").catch(() => null);
-  if (cred?.value) return cred.value;
+function getWebhookSecret(): string | null {
+  // Read straight from env. We deliberately do NOT consult the DB here — this
+  // route is hit by an external system that doesn't tolerate latency from a
+  // Neon cold-start, and verifying a single signature must be near-instant.
   return process.env.PROMOTIONS_WEBHOOK_SECRET ?? null;
 }
 
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
   const raw = await req.text();
   const sig = req.headers.get("x-sendify-signature");
 
-  const secret = await getWebhookSecret();
+  const secret = getWebhookSecret();
   // If no secret is configured at all, allow the request through (bootstrap mode).
   // Once a secret is set, every request must pass HMAC verification.
   if (secret) {
@@ -168,14 +168,19 @@ export async function POST(req: Request) {
   });
 }
 
-// GET — useful for quick health-check from the upstream project's UI:
-//   GET /api/promotions/webhook  →  { ok, configured, count }
+// GET — health-check. Must respond in <3s even when Neon is cold, so we race
+// the DB count against a timeout and return null rather than stalling.
 export async function GET() {
-  const secret = await getWebhookSecret();
-  const count = await prisma.promotion.count({ where: { active: true } }).catch(() => 0);
+  const secret = getWebhookSecret();
+  const count = await Promise.race([
+    prisma.promotion.count({ where: { active: true } }).catch(() => null),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 2500)),
+  ]);
   return NextResponse.json({
     ok: true,
     endpoint: "promotions webhook",
+    method: "POST",
+    coldStart: count === null,
     secretConfigured: !!secret,
     activePromotions: count,
   });
