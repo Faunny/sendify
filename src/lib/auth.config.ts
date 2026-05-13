@@ -14,14 +14,25 @@ export const authConfig = {
   callbacks: {
     authorized({ auth: session, request }) {
       const { pathname } = request.nextUrl;
-      const isPublic =
-        pathname.startsWith("/login") ||
-        pathname.startsWith("/api/auth/") ||
-        pathname.startsWith("/api/shopify/webhook") ||
-        pathname.startsWith("/_next/") ||
-        pathname.startsWith("/favicon") ||
+      // Endpoints that intentionally accept anonymous traffic from external systems
+      // (their own auth is HMAC-signed bodies or token-in-URL, not session cookies).
+      const isPublicApi =
+        pathname.startsWith("/api/auth/")              ||
+        pathname.startsWith("/api/shopify/webhook")    ||
+        pathname.startsWith("/api/promotions/webhook") ||
+        pathname.startsWith("/api/ses/events")         ||
+        pathname.startsWith("/api/cron/")              ||
+        // Form submissions + the embed JS must be open so the storefront can POST.
+        // Routes look like /api/forms/{slug}/submit and /api/forms/{slug}/embed.js
+        (pathname.startsWith("/api/forms/") &&
+          (pathname.endsWith("/submit") || pathname.endsWith("/embed.js")));
+      const isPublicPage =
+        pathname.startsWith("/login")    ||
+        pathname.startsWith("/forms/")   ||   // hosted form pages
+        pathname.startsWith("/_next/")   ||
+        pathname.startsWith("/favicon")  ||
         pathname.startsWith("/robots");
-      if (isPublic) return true;
+      if (isPublicApi || isPublicPage) return true;
       return !!session?.user;
     },
   },
