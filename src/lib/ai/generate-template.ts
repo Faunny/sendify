@@ -189,7 +189,7 @@ OUTPUT — pure JSON, no markdown fences, no commentary:
   "productName": "<used only when premium-launch. Real product name from the catalog if available, otherwise invent a believable one tied to the brief>",
   "productCopy": "<used only when premium-launch. 4-8 word label below the product name — 'Edición limitada · 200 unidades', 'Disponible desde 12 mayo'>",
   "customerIncentive": "<used only when winback-empathic. The incentive as displayed: '-15%', 'envío gratis'>",
-  "bannerPrompt": "<REQUIRED for layouts lifestyle-hero, product-grid-editorial, app-promo-gradient, brand-anthology, winback-empathic. Empty string allowed ONLY for big-number-hero, countdown-urgency, premium-launch. A 50-80 word prompt for Gemini/gpt-image image generation. PHOTOGRAPH ONLY. The image is reused across 22 language translations, so it MUST contain ZERO text/letters/numbers/prices/percentages/dates/logos/watermarks/captions/signage. Pure photographic content — describe subject, setting, mood, light. Concrete example: 'A woman in her thirties on warm sand at golden hour, white linen dress, looking pensively at the sea. Soft warm light, shallow depth of field, muted ochre and ivory palette.'>"
+  "bannerPrompt": "<REQUIRED for layouts lifestyle-hero, product-grid-editorial, app-promo-gradient, brand-anthology, winback-empathic. Optional (empty string) for big-number-hero, countdown-urgency. REQUIRED with product focus for premium-launch.\\n\\nMUST be a portrait of a REAL-LOOKING WOMAN MODEL in a setting. NOT a product shot. NOT bottles arranged on a table. The actual divain Klaviyo aesthetic is editorial fashion photography — woman on a beach, in a forest, on sand dunes, by the sea, in a garden, etc., dressed naturally (linen, swimsuit, sundress, knitwear depending on season).\\n\\n50-80 words. Describe: who the woman is, what she's wearing, the setting, the mood, the light, the colour palette. NO text. NO products. NO logos. ZERO numbers/letters.\\n\\nGood examples:\\n - 'A woman in her late twenties in a white bikini standing on warm sand, looking calmly out to sea, long brown hair sun-bleached at the ends, soft golden hour light, shallow depth of field, neutral sandy and turquoise palette.'\\n - 'A woman in her thirties walking through a pine forest in a knit cardigan, autumn light filtering through trees, contemplative expression, warm browns and forest greens, magazine fashion editorial style.'\\n - 'A young woman in a flowing linen dress reclining on white dunes at sunset, peaceful expression, hair pulled back, soft pastel sky, minimal styling, refined and aspirational.'>"
 }
 
 DECISION HEURISTIC:
@@ -306,24 +306,28 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
   const shouldGenBanner = input.generateBanner !== false && bannerPrompt.length > 10;
   if (shouldGenBanner) {
     try {
-      // Pass up to 3 real product image URLs as references — the image model
-      // will COMPOSE these actual bottles into the editorial scene instead of
-      // inventing generic perfumes. Skip references for premium-launch since
-      // that pattern has its own dedicated product showcase.
-      const referenceImageUrls = layoutPattern === "premium-launch" ? [] :
-        products
-          .filter((p) => !!p.imageUrl)
-          .slice(0, 3)
-          .map((p) => p.imageUrl!) as string[];
+      // The real divain emails use EDITORIAL FASHION PHOTOGRAPHY — a single
+      // model in a setting (beach, forest, dunes), shot like a magazine cover.
+      // NOT a composition of perfume bottles. Only premium-launch and gift-
+      // guide use product references because those layouts feature the
+      // product itself as the subject.
+      const productRefPatterns = new Set(["premium-launch"]);
+      const referenceImageUrls = productRefPatterns.has(layoutPattern)
+        ? products.filter((p) => !!p.imageUrl).slice(0, 3).map((p) => p.imageUrl!) as string[]
+        : [];
+
+      // Wrap the LLM-supplied scene description with hard direction toward
+      // fashion-editorial output. This is what gets the divain aesthetic.
+      const editorialWrap = `Editorial fashion photograph in the style of high-end perfume brand advertising. ${bannerPrompt}. Real woman model, natural skin, candid expression, magazine-cover quality, shot on full-frame camera 85mm lens, shallow depth of field, soft natural light, refined and aspirational mood. The image is FOR a perfume brand but contains NO products — only the model and the setting.`;
 
       const img = await generateBannerAny({
         prompt: referenceImageUrls.length > 0
-          ? `${bannerPrompt} The composition MUST feature the perfume bottles from the provided reference photos as the main subject — those are real divain products. Arrange them naturally in the scene.`
-          : bannerPrompt,
+          ? `${bannerPrompt} The composition MUST feature the products from the provided reference photos as the main subject.`
+          : editorialWrap,
         aspectRatio: "3:2",
         brandHints: {
           palette: [palette.primary, palette.bg, palette.text].filter(Boolean),
-          style: "editorial lifestyle photography for divain perfume brand",
+          style: "editorial fashion photography",
           avoidText: true,
         },
         quality: input.imageQuality ?? "medium",

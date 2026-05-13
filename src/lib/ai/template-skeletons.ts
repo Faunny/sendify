@@ -86,23 +86,21 @@ function render(template: string, slots: Record<string, string>): string {
 
 function lifestyleHero(s: SkeletonSlots): string {
   const headlineHtml = escapeHtml(s.headline).replace(/\n/g, "<br/>");
-  // When Gemini didn't produce a hero we degrade gracefully to a solid charcoal
-  // hero section that still showcases the headline — much better than a broken
-  // image icon or empty white space.
+  // Real divain Klaviyo aesthetic: FULL-BLEED MODEL PHOTO that fills the
+  // canvas, with the wordmark + tag + headline + body LAYERED BELOW (not
+  // overlaid on the photo). The photo IS the email; the typography is the
+  // contemplative caption underneath. Matches NOVEDAD-1104 / PRIMERS series.
   const heroSection = s.heroUrl
-    ? `<mj-section background-url="${s.heroUrl}" background-size="cover" background-repeat="no-repeat" padding="180px 30px 180px">
+    ? `<mj-section padding="0">
         <mj-column>
-          <mj-text align="center" color="#FFFFFF" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="54px" font-weight="600" line-height="1.05" css-class="sf-hero-text">${headlineHtml}</mj-text>
-          {{subhead}}
+          <mj-image src="${s.heroUrl}" alt="" padding="0" fluid-on-mobile="true" />
         </mj-column>
       </mj-section>`
-    : `<mj-section background-color="${s.primaryColor}" padding="140px 30px 140px">
+    : `<mj-section background-color="${s.primaryColor}" padding="180px 30px 180px">
         <mj-column>
           <mj-text align="center" color="${s.bgColor}" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="48px" font-weight="600" line-height="1.05">${headlineHtml}</mj-text>
-          {{subhead}}
         </mj-column>
       </mj-section>`;
-  const subheadColor = s.heroUrl ? "#FFFFFF" : s.bgColor;
 
   // Real-product showcase row. When we DO have catalog data, show 3 actual
   // products from the store with their photos and prices. When we don't yet,
@@ -147,34 +145,30 @@ function lifestyleHero(s: SkeletonSlots): string {
     </mj-section>
   `;
 
-  const slots: Record<string, string> = {
-    preheader: PREHEADER(s.preheader, s.bgColor),
-    wordmark: WORDMARK(s.textColor),
-    heroSection,
-    subhead: s.subhead ? `<mj-text align="center" color="${subheadColor}" font-size="13px" letter-spacing="4px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" padding-top="18px">${escapeHtml(s.subhead)}</mj-text>` : "",
-    body: s.body ? `<mj-text align="center" font-size="15px" line-height="1.65" color="${s.textColor}" padding="0 30px 24px">${escapeHtml(s.body)}</mj-text>` : "",
-    cta: PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#"),
-    productSection,
-    closerSection,
-    brandBar: BRAND_BAR(),
-    bgColor: s.bgColor,
-  };
+  // Caption block sits BELOW the hero photo, matching the NOVEDAD-1104 style:
+  // small all-caps tag, big headline, short tagline. Generous bottom padding.
+  const captionBlock = `
+    <mj-section padding="36px 24px 8px" background-color="${s.bgColor}">
+      <mj-column>
+        ${s.subhead ? `<mj-text align="center" color="${s.textColor}" font-size="11px" letter-spacing="5px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" opacity="0.7">${escapeHtml(s.subhead)}</mj-text>` : ""}
+        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="34px" font-weight="500" color="${s.textColor}" line-height="1.15" padding-top="${s.subhead ? "12px" : "0"}">${headlineHtml}</mj-text>
+        ${s.body ? `<mj-text align="center" font-size="14px" line-height="1.65" color="${s.textColor}" padding="14px 30px 0" opacity="0.85">${escapeHtml(s.body)}</mj-text>` : ""}
+      </mj-column>
+    </mj-section>
+    <mj-section padding="22px 24px 40px" background-color="${s.bgColor}">
+      <mj-column>${PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#")}</mj-column>
+    </mj-section>
+  `;
 
-  const filledHero = heroSection.replace("{{subhead}}", slots.subhead);
-  return render(`<mjml>${HEAD}<mj-body background-color="{{bgColor}}">
-{{preheader}}
-{{wordmark}}
-${filledHero}
-<mj-section padding="50px 24px 30px">
-  <mj-column>
-    {{body}}
-    {{cta}}
-  </mj-column>
-</mj-section>
-{{productSection}}
-{{closerSection}}
-{{brandBar}}
-</mj-body></mjml>`, slots);
+  return `<mjml>${HEAD}<mj-body background-color="${s.bgColor}">
+${PREHEADER(s.preheader, s.bgColor)}
+${WORDMARK(s.textColor)}
+${heroSection}
+${captionBlock}
+${productSection}
+${closerSection}
+${BRAND_BAR()}
+</mj-body></mjml>`;
 }
 
 // ── big-number-hero ───────────────────────────────────────────────────────
