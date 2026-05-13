@@ -73,6 +73,8 @@ export async function POST(req: Request) {
         preheader: generated.preheader,
         layoutPattern: generated.layoutPattern,
         bannerPrompt: generated.bannerPrompt,
+        bannerUrl: generated.bannerUrl,
+        bannerError: generated.bannerError,
         modelUsed: generated.modelUsed,
         mjml: generated.mjml,
         html: compiled.html,

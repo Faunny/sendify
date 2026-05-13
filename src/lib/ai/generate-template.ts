@@ -112,6 +112,7 @@ export type TemplateGenOutput = {
   bannerPrompt?: string;     // prompt fed to Gemini
   bannerAssetId?: string;    // populated when Gemini generation succeeded
   bannerUrl?: string;        // public URL of the generated hero
+  bannerError?: string;      // human-readable reason the banner step did not produce an image
   designJson?: unknown;      // optional Unlayer-compatible JSON for round-trip editing
   modelUsed: string;
   promptTokens?: number;
@@ -342,17 +343,20 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
     throw new Error("LLM mjml output doesn't look like MJML (no <mjml> root)");
   }
 
-  // Banner generation step: if the LLM gave us a bannerPrompt and Gemini is
-  // configured, run image gen now and inject the real URL into the MJML in
-  // place of the cdn.divain.space placeholder.
+  // Banner generation step. Always tries to produce a hero image when the LLM
+  // gave us a bannerPrompt; failures are now surfaced (not silently swallowed)
+  // so we can see what's wrong instead of getting empty heroes.
   let finalMjml = parsed.mjml;
   let bannerAssetId: string | undefined;
   let bannerUrl: string | undefined;
+  let bannerError: string | undefined;
   const shouldGenBanner = input.generateBanner !== false && !!parsed.bannerPrompt;
   if (shouldGenBanner) {
-    try {
-      const gemini = await getCredential("IMAGE_GEMINI");
-      if (gemini) {
+    const gemini = await getCredential("IMAGE_GEMINI");
+    if (!gemini) {
+      bannerError = "IMAGE_GEMINI key not configured in Settings → Integrations";
+    } else {
+      try {
         const img = await generateBanner({
           prompt: parsed.bannerPrompt!,
           aspectRatio: "3:2",
@@ -379,17 +383,23 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
         bannerAssetId = asset.id;
         const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://sendify.divain.space";
         bannerUrl = `${appUrl}/api/assets/${asset.id}`;
-        // Substitute any cdn.divain.space/banners/... placeholder with the real URL.
-        finalMjml = finalMjml.replace(
-          /https:\/\/cdn\.divain\.space\/banners\/[^"'\s)]+/g,
-          bannerUrl,
-        );
+        // Substitute any cdn.divain.space/banners/... placeholder with the real
+        // URL — catches both background-url and src="…" forms.
+        const placeholderRe = /https:\/\/cdn\.divain\.space\/banners\/[^"'\s)]+/g;
+        const replacements = finalMjml.match(placeholderRe)?.length ?? 0;
+        finalMjml = finalMjml.replace(placeholderRe, bannerUrl);
+        if (replacements === 0) {
+          // LLM didn't emit a placeholder URL but we generated a banner anyway.
+          // Surface this so we can tighten the prompt next iteration.
+          bannerError = `Gemini generated a banner but no cdn.divain.space placeholder was found in the MJML to substitute. asset_id=${asset.id}`;
+        }
+      } catch (e) {
+        bannerError = e instanceof Error ? e.message.slice(0, 280) : "Gemini failed";
+        console.warn("[generate-template] banner gen failed:", e);
       }
-    } catch (e) {
-      // Banner gen failure must not block template creation — log and continue
-      // with the placeholder URL. User can regenerate later.
-      console.warn("[generate-template] banner gen failed, falling back to placeholder:", e instanceof Error ? e.message : e);
     }
+  } else if (!parsed.bannerPrompt && input.generateBanner !== false) {
+    bannerError = "LLM did not return a bannerPrompt field — model ignored the hero-image instruction";
   }
 
   return {
@@ -400,6 +410,7 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
     bannerPrompt: parsed.bannerPrompt,
     bannerAssetId,
     bannerUrl,
+    bannerError,
     modelUsed: model,
     promptTokens: json.usage?.prompt_tokens,
     completionTokens: json.usage?.completion_tokens,

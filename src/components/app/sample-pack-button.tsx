@@ -9,7 +9,8 @@ type Sample =
   | {
       id: string; label: string; ok: true;
       subject: string; preheader: string; layoutPattern?: string;
-      bannerPrompt?: string; modelUsed: string;
+      bannerPrompt?: string; bannerUrl?: string; bannerError?: string;
+      modelUsed: string;
       mjml: string; html: string; mjmlErrors: string[];
       tokensIn?: number; tokensOut?: number;
     }
@@ -160,8 +161,22 @@ export function SamplePackButton({ stores }: { stores: { slug: string; name: str
                         </div>
                       </details>
                     )}
+                    {active.bannerError && (
+                      <div className="border-t border-border bg-[color-mix(in_oklch,var(--danger)_6%,transparent)] px-3 py-2 text-[12px] text-[color:var(--danger)] flex items-start gap-1.5">
+                        <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                        <div>
+                          <div className="font-medium">Banner Gemini falló:</div>
+                          <div className="opacity-90 break-all">{active.bannerError}</div>
+                        </div>
+                      </div>
+                    )}
+                    {active.bannerUrl && (
+                      <div className="border-t border-border bg-[color-mix(in_oklch,var(--positive)_5%,transparent)] px-3 py-2 text-[12px] text-[color:var(--positive)]">
+                        ✓ Hero generado: <a href={active.bannerUrl} target="_blank" className="underline break-all">{active.bannerUrl}</a>
+                      </div>
+                    )}
                     {active.mjmlErrors.length > 0 && (
-                      <div className="border-t border-border bg-[color-mix(in_oklch,var(--warning)_5%,transparent)] px-3 py-2 text-[11px] text-[color:var(--warning)]">
+                      <div className="border-t border-border bg-[color-mix(in_oklch,var(--warning)_5%,transparent)] px-3 py-2 text-[12px] text-[color:var(--warning)]">
                         MJML warnings ({active.mjmlErrors.length}): {active.mjmlErrors.slice(0, 3).join(" · ")}
                       </div>
                     )}
