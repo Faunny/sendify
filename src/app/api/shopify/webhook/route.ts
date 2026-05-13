@@ -14,6 +14,7 @@ import { NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/db";
 import { getShopifyClientSecret } from "@/lib/providers/shopify";
+import { enrollIntoMatchingFlows } from "@/lib/flows/engine";
 
 // Webhook topics we subscribe to. The handler below routes based on the
 // `X-Shopify-Topic` header.
@@ -69,7 +70,16 @@ export async function POST(req: Request) {
 
   try {
     switch (topic) {
-      case "customers/create":
+      case "customers/create": {
+        const customer = await upsertCustomerFromWebhook(payload, store.id, store.defaultLanguage);
+        // Brand-new customer → welcome series.
+        if (customer) {
+          await enrollIntoMatchingFlows({ storeId: store.id, customerId: customer.id, trigger: "WELCOME" }).catch((e) => {
+            console.warn("[webhook] welcome enroll failed:", e);
+          });
+        }
+        break;
+      }
       case "customers/update":
         await upsertCustomerFromWebhook(payload, store.id, store.defaultLanguage);
         break;
@@ -79,10 +89,37 @@ export async function POST(req: Request) {
           data:  { deletedAt: new Date() },
         });
         break;
-      case "orders/create":
+      case "orders/create": {
+        const customer = await updateCustomerOrdersFromWebhook(payload, store.id);
+        // Successful order → cancel any in-flight abandoned-cart enrollments for this
+        // customer (they already converted) + enroll into post-purchase series.
+        if (customer) {
+          await prisma.flowEnrollment.updateMany({
+            where: {
+              customerId: customer.id,
+              status: "ACTIVE",
+              flow: { trigger: "ABANDONED_CART" },
+            },
+            data: { status: "CANCELLED", completedAt: new Date(), lastError: "customer purchased" },
+          }).catch(() => {});
+          await enrollIntoMatchingFlows({
+            storeId: store.id,
+            customerId: customer.id,
+            trigger: "POST_PURCHASE",
+            context: { orderId: String(payload.id ?? ""), total: String(payload.total_price ?? "") },
+          }).catch((e) => console.warn("[webhook] post-purchase enroll failed:", e));
+        }
+        break;
+      }
       case "orders/updated":
         await updateCustomerOrdersFromWebhook(payload, store.id);
         break;
+      case "checkouts/create":
+      case "checkouts/update": {
+        // Abandoned-cart entry: record the event + enroll if there's a customer email.
+        await handleCheckoutWebhook(payload, store.id);
+        break;
+      }
       case "products/create":
       case "products/update":
         await upsertProductFromWebhook(payload, store.id, store.countryCode, store.currency);
@@ -92,7 +129,6 @@ export async function POST(req: Request) {
           where: { storeId: store.id, shopifyId: shopifyGid("Product", payload.id) },
         });
         break;
-      // checkouts/* handled later when we wire the abandoned-cart flow
       default:
         // Ignore unknown topics gracefully — Shopify retries indefinitely on 5xx.
         return NextResponse.json({ ok: true, ignored: topic });
@@ -131,7 +167,7 @@ type WebhookCustomer = {
 };
 
 async function upsertCustomerFromWebhook(p: WebhookCustomer, storeId: string, storeDefaultLang: string) {
-  if (!p.email) return; // anonymous webhook payload, skip
+  if (!p.email) return null; // anonymous webhook payload, skip
 
   // Find metafield values (Shopify sends them inline only when explicitly requested).
   const meta = (k: string) => p.metafields?.find((m) => m.namespace === "app" && m.key === k)?.value;
@@ -158,10 +194,11 @@ async function upsertCustomerFromWebhook(p: WebhookCustomer, storeId: string, st
     shopifyTags: p.tags ? p.tags.split(",").map((t) => t.trim()).filter(Boolean) : [],
   };
 
-  await prisma.customer.upsert({
+  return prisma.customer.upsert({
     where: { storeId_shopifyId: { storeId, shopifyId: shopifyGid("Customer", p.id) } },
     create: data,
     update: data,
+    select: { id: true },
   });
 }
 
@@ -174,14 +211,15 @@ type WebhookOrder = {
 };
 
 async function updateCustomerOrdersFromWebhook(p: WebhookOrder, storeId: string) {
-  if (!p.customer?.id) return;
+  if (!p.customer?.id) return null;
   // Recompute from authoritative customer row (cheap query that returns current totals).
   // For massive accuracy we'd pull the full order list, but Shopify webhooks fire on every
   // order create/update so a denormalized incremental update is sufficient.
   const customer = await prisma.customer.findFirst({
     where: { storeId, shopifyId: shopifyGid("Customer", p.customer.id) },
+    select: { id: true },
   });
-  if (!customer) return;
+  if (!customer) return null;
   const delta = parseFloat(p.total_price ?? "0");
   await prisma.customer.update({
     where: { id: customer.id },
@@ -199,6 +237,50 @@ async function updateCustomerOrdersFromWebhook(p: WebhookOrder, storeId: string)
       occurredAt: new Date(),
     },
   }).catch(() => {});
+  return customer;
+}
+
+// Checkout webhook → record event + enroll into abandoned-cart flows.
+//
+// Shopify fires checkouts/create when a customer reaches checkout and starts
+// filling details, and checkouts/update on each step. We treat the latest
+// update as the abandoned-cart signal because abandon ≠ "never reached
+// checkout". The flow's first step is always a delay, so the customer has time
+// to complete the purchase before any email fires — and orders/create cancels
+// the enrollment if they do.
+type WebhookCheckout = {
+  id: number;
+  token: string;
+  email: string | null;
+  abandoned_checkout_url?: string | null;
+  customer?: { id: number; first_name?: string | null } | null;
+  line_items?: Array<{ title?: string; quantity?: number; price?: string; image_url?: string | null }>;
+};
+
+async function handleCheckoutWebhook(p: WebhookCheckout, storeId: string) {
+  if (!p.email || !p.customer?.id) return; // need an identifiable customer
+  const customer = await prisma.customer.findFirst({
+    where: { storeId, shopifyId: shopifyGid("Customer", p.customer.id) },
+    select: { id: true },
+  });
+  if (!customer) return;
+  await prisma.customerEvent.create({
+    data: {
+      customerId: customer.id,
+      type: "checkout.abandoned",
+      payload: p as unknown as object,
+      occurredAt: new Date(),
+    },
+  }).catch(() => {});
+  await enrollIntoMatchingFlows({
+    storeId,
+    customerId: customer.id,
+    trigger: "ABANDONED_CART",
+    context: {
+      checkoutUrl: p.abandoned_checkout_url ?? "",
+      checkoutToken: p.token,
+    },
+  }).catch((e) => console.warn("[webhook] abandoned-cart enroll failed:", e));
 }
 
 // Product webhook → upsert single product + variants.

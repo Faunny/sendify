@@ -32,14 +32,14 @@ enum Role {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
+  id            String     @id @default(cuid())
+  email         String     @unique
   name          String?
   image         String?
-  role          Role      @default(USER)
+  role          Role       @default(USER)
   emailVerified DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
   accounts      Account[]
   sessions      Session[]
   approvals     Approval[]
@@ -82,24 +82,24 @@ model VerificationToken {
 // ── Stores (Shopify Plus tenants) ────────────────────────────────────────────
 
 model Store {
-  id              String   @id @default(cuid())
-  slug            String   @unique // divain-es, divain-fr, divain-eu, divaincare
-  name            String
-  shopifyDomain   String   @unique // mystore.myshopify.com
-  shopifyAccessToken String  // encrypted at rest in production
-  storefrontUrl   String?  // https://divainparfums.com
-  countryCode     String   // primary country, ISO-3166-1 alpha-2
-  defaultLanguage String   // BCP-47, e.g. "es-ES"
-  currency        String   // ISO-4217, e.g. "EUR"
-  markets         String[] // list of country codes this store sells into
-  timezone        String   @default("Europe/Madrid")
-  productCount    Int      @default(0)
-  active          Boolean  @default(true)
+  id                 String   @id @default(cuid())
+  slug               String   @unique // divain-es, divain-fr, divain-eu, divaincare
+  name               String
+  shopifyDomain      String   @unique // mystore.myshopify.com
+  shopifyAccessToken String // encrypted at rest in production
+  storefrontUrl      String? // https://divainparfums.com
+  countryCode        String // primary country, ISO-3166-1 alpha-2
+  defaultLanguage    String // BCP-47, e.g. "es-ES"
+  currency           String // ISO-4217, e.g. "EUR"
+  markets            String[] // list of country codes this store sells into
+  timezone           String   @default("Europe/Madrid")
+  productCount       Int      @default(0)
+  active             Boolean  @default(true)
 
   // ── Legal entity (per "sociedad", required in every email footer for EU compliance)
-  legalName       String?  // razón social
-  vatNumber       String?  // CIF/NIF
-  legalAddress    String?  // calle + número
+  legalName       String? // razón social
+  vatNumber       String? // CIF/NIF
+  legalAddress    String? // calle + número
   legalPostalCode String?
   legalCity       String?
   legalCountry    String?
@@ -110,31 +110,31 @@ model Store {
   cookiesUrl      String?
 
   // ── Brand kit (drives default email styling per store)
-  brandLogoUrl    String?  // square or rectangular, light bg
+  brandLogoUrl     String? // square or rectangular, light bg
   brandLogoDarkUrl String? // for dark email backgrounds (uncommon, but kept)
-  brandPalette    Json?    // { primary: "#0E0E0E", accent: "#D4AF7A", bg: "#FBF8F3" }
+  brandPalette     Json? // { primary: "#0E0E0E", accent: "#D4AF7A", bg: "#FBF8F3" }
   brandFontHeading String? @default("Geist")
-  brandFontBody   String?  @default("Inter")
+  brandFontBody    String? @default("Inter")
 
   // Substring patterns (case-insensitive) to exclude from AI template product
   // selection — e.g. "BOLSA", "GOMINOLAS", "DIV-", "MUESTRA". A product is
   // excluded if ANY of its variants' SKU contains ANY of these patterns.
   productExcludedSkuPatterns String[] @default([])
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  senders     Sender[]
-  customers   Customer[]
-  campaigns   Campaign[]
-  flows       Flow[]
-  segments    Segment[]
-  templates   Template[]
-  promotions  Promotion[]
-  products    Product[]
-  costs       CostEntry[]
+  senders       Sender[]
+  customers     Customer[]
+  campaigns     Campaign[]
+  flows         Flow[]
+  segments      Segment[]
+  templates     Template[]
+  promotions    Promotion[]
+  products      Product[]
+  costs         CostEntry[]
   discountCodes DiscountCode[]
-  forms       Form[]
+  forms         Form[]
 }
 
 // ── Sender identities (verified domains/emails in SES) ───────────────────────
@@ -147,7 +147,7 @@ enum SenderProvider {
 model Sender {
   id            String         @id @default(cuid())
   storeId       String
-  name          String         // "Divain ES <hola@divainparfums.com>"
+  name          String // "Divain ES <hola@divainparfums.com>"
   fromEmail     String         @unique
   fromName      String
   replyTo       String?
@@ -163,11 +163,11 @@ model Sender {
   // NULL warmupStartedAt = warmed (no ramp applied). Set this when you add a NEW sender domain
   // and we'll cap daily sends per the curve until the domain is fully warmed (~14 days).
   // Skip warm-up entirely on senders that have been sending for years from existing domains.
-  warmupStartedAt   DateTime?
-  warmupTargetPerDay Int      @default(670000)  // the daily volume we aim for once fully warmed
+  warmupStartedAt    DateTime?
+  warmupTargetPerDay Int       @default(670000) // the daily volume we aim for once fully warmed
 
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   store     Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
   campaigns Campaign[]
@@ -184,31 +184,32 @@ enum ConsentStatus {
 }
 
 model Customer {
-  id              String   @id @default(cuid())
-  storeId         String
-  shopifyId       String   // gid://shopify/Customer/123
-  email           String
-  firstName       String?
-  lastName        String?
-  phone           String?
-  country         String?  // ISO-3166-1
-  language        String?  // BCP-47 from Shopify customer locale field
-  acceptsMarketing Boolean @default(false)
-  consentStatus   ConsentStatus @default(PENDING)
-  hasApp          Boolean  @default(false)         // mirrored from Shopify customer metafield
-  lastPushAt      DateTime?                        // mirrored — drives suppression rule
-  totalSpent      Decimal  @default(0) @db.Decimal(12, 2)
-  ordersCount     Int      @default(0)
-  tags            String[]
-  shopifyTags     String[]
-  deletedAt       DateTime? // GDPR tombstone
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String        @id @default(cuid())
+  storeId          String
+  shopifyId        String // gid://shopify/Customer/123
+  email            String
+  firstName        String?
+  lastName         String?
+  phone            String?
+  country          String? // ISO-3166-1
+  language         String? // BCP-47 from Shopify customer locale field
+  acceptsMarketing Boolean       @default(false)
+  consentStatus    ConsentStatus @default(PENDING)
+  hasApp           Boolean       @default(false) // mirrored from Shopify customer metafield
+  lastPushAt       DateTime? // mirrored — drives suppression rule
+  totalSpent       Decimal       @default(0) @db.Decimal(12, 2)
+  ordersCount      Int           @default(0)
+  tags             String[]
+  shopifyTags      String[]
+  deletedAt        DateTime? // GDPR tombstone
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
-  store         Store          @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  sends         Send[]
-  events        CustomerEvent[]
-  segmentLinks  CustomerSegment[]
+  store           Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  sends           Send[]
+  events          CustomerEvent[]
+  segmentLinks    CustomerSegment[]
+  flowEnrollments FlowEnrollment[]
 
   @@unique([storeId, shopifyId])
   @@index([storeId, consentStatus])
@@ -219,7 +220,7 @@ model Customer {
 model CustomerEvent {
   id         String   @id @default(cuid())
   customerId String
-  type       String   // "order.placed", "checkout.abandoned", "product.viewed", etc.
+  type       String // "order.placed", "checkout.abandoned", "product.viewed", etc.
   payload    Json
   occurredAt DateTime
   createdAt  DateTime @default(now())
@@ -238,17 +239,17 @@ enum TemplateKind {
 }
 
 model Template {
-  id          String       @id @default(cuid())
-  storeId     String?      // null = global template across all stores
-  name        String
-  kind        TemplateKind @default(CAMPAIGN)
-  mjml        String       @db.Text
-  designJson  Json?        // Unlayer design payload for round-trip editing
-  previewUrl  String?
-  thumbnail   String?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  archivedAt  DateTime?
+  id         String       @id @default(cuid())
+  storeId    String? // null = global template across all stores
+  name       String
+  kind       TemplateKind @default(CAMPAIGN)
+  mjml       String       @db.Text
+  designJson Json? // Unlayer design payload for round-trip editing
+  previewUrl String?
+  thumbnail  String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  archivedAt DateTime?
 
   store     Store?     @relation(fields: [storeId], references: [id], onDelete: Cascade)
   campaigns Campaign[]
@@ -265,16 +266,16 @@ enum Translator {
 }
 
 model Translation {
-  id          String     @id @default(cuid())
-  sourceHash  String
-  sourceText  String     @db.Text
-  targetLang  String
-  tone        String     @default("default") // "default", "formal", "informal", "promotional"
-  text        String     @db.Text
-  translator  Translator
-  glossaryId  String?
-  reviewed    Boolean    @default(false)
-  createdAt   DateTime   @default(now())
+  id         String     @id @default(cuid())
+  sourceHash String
+  sourceText String     @db.Text
+  targetLang String
+  tone       String     @default("default") // "default", "formal", "informal", "promotional"
+  text       String     @db.Text
+  translator Translator
+  glossaryId String?
+  reviewed   Boolean    @default(false)
+  createdAt  DateTime   @default(now())
 
   glossary Glossary? @relation(fields: [glossaryId], references: [id])
 
@@ -309,51 +310,51 @@ enum CampaignStatus {
 }
 
 enum DraftSource {
-  MANUAL              // user built it from /campaigns/new
-  AUTO_PROMOTION      // generated from a Promotion calendar entry
-  AUTO_FLOW_BRANCH    // generated when a Flow added a new branch
-  AUTO_LLM            // user clicked "generate with AI" in builder
-  EXTERNAL_API        // pushed by upstream system
+  MANUAL // user built it from /campaigns/new
+  AUTO_PROMOTION // generated from a Promotion calendar entry
+  AUTO_FLOW_BRANCH // generated when a Flow added a new branch
+  AUTO_LLM // user clicked "generate with AI" in builder
+  EXTERNAL_API // pushed by upstream system
 }
 
 model Campaign {
-  id              String         @id @default(cuid())
-  storeId         String
-  templateId      String?
-  senderId        String
-  promotionId     String?
-  name            String
-  subject         String         // source-language subject (translated per language at render time)
-  preheader       String?
-  status          CampaignStatus @default(DRAFT)
-  scheduledFor    DateTime?
-  sentAt          DateTime?
-  segmentIds      String[]       // segments to union for the audience
-  excludeAppRecent Boolean       @default(true) // skip customers with push in last 24h
-  appSuppressionHours Int        @default(24)
+  id                  String         @id @default(cuid())
+  storeId             String
+  templateId          String?
+  senderId            String
+  promotionId         String?
+  name                String
+  subject             String // source-language subject (translated per language at render time)
+  preheader           String?
+  status              CampaignStatus @default(DRAFT)
+  scheduledFor        DateTime?
+  sentAt              DateTime?
+  segmentIds          String[] // segments to union for the audience
+  excludeAppRecent    Boolean        @default(true) // skip customers with push in last 24h
+  appSuppressionHours Int            @default(24)
   // estimated/actual cost in USD (denormalized for fast dashboard reads)
-  estimatedCost   Decimal        @default(0) @db.Decimal(10, 4)
-  actualCost      Decimal        @default(0) @db.Decimal(10, 4)
-  estimatedRecipients Int        @default(0)
+  estimatedCost       Decimal        @default(0) @db.Decimal(10, 4)
+  actualCost          Decimal        @default(0) @db.Decimal(10, 4)
+  estimatedRecipients Int            @default(0)
 
   // ── Auto-draft provenance — surfaced in the Approvals inbox so the reviewer
   // knows what created this and can spot-check the AI's choices.
-  draftSource     DraftSource    @default(MANUAL)
-  draftReason     String?        // e.g. "Día de la Madre · 22 days before send"
-  draftLlmPrompt  String?  @db.Text   // record the brief that produced the copy
-  bannerAssetId   String?            // asset row for the generated banner
+  draftSource    DraftSource @default(MANUAL)
+  draftReason    String? // e.g. "Día de la Madre · 22 days before send"
+  draftLlmPrompt String?     @db.Text // record the brief that produced the copy
+  bannerAssetId  String? // asset row for the generated banner
 
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  store      Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  template   Template?  @relation(fields: [templateId], references: [id])
-  sender     Sender     @relation(fields: [senderId], references: [id])
-  promotion  Promotion? @relation(fields: [promotionId], references: [id])
-  variants   CampaignVariant[]
-  sends      Send[]
-  approvals  Approval[]
-  costs      CostEntry[]
+  store     Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  template  Template?         @relation(fields: [templateId], references: [id])
+  sender    Sender            @relation(fields: [senderId], references: [id])
+  promotion Promotion?        @relation(fields: [promotionId], references: [id])
+  variants  CampaignVariant[]
+  sends     Send[]
+  approvals Approval[]
+  costs     CostEntry[]
 
   @@index([storeId, status, scheduledFor])
 }
@@ -361,16 +362,16 @@ model Campaign {
 // One variant per language for a campaign. Each holds the translated subject/preheader
 // plus a reference to the translation cache rows that produced them.
 model CampaignVariant {
-  id          String   @id @default(cuid())
-  campaignId  String
-  language    String
-  subject     String
-  preheader   String?
-  mjml        String   @db.Text  // language-localized MJML
-  htmlSnapshot String? @db.Text  // compiled HTML snapshot (rendered at approval time)
-  htmlHash    String?
-  recipients  Int      @default(0)
-  approvedAt  DateTime?
+  id           String    @id @default(cuid())
+  campaignId   String
+  language     String
+  subject      String
+  preheader    String?
+  mjml         String    @db.Text // language-localized MJML
+  htmlSnapshot String?   @db.Text // compiled HTML snapshot (rendered at approval time)
+  htmlHash     String?
+  recipients   Int       @default(0)
+  approvedAt   DateTime?
   approvedById String?
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
@@ -379,12 +380,12 @@ model CampaignVariant {
 }
 
 model Approval {
-  id          String   @id @default(cuid())
-  campaignId  String
-  approverId  String
-  status      String   // "approved" | "rejected" | "changes_requested"
-  comment     String?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  campaignId String
+  approverId String
+  status     String // "approved" | "rejected" | "changes_requested"
+  comment    String?
+  createdAt  DateTime @default(now())
 
   campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   approver User     @relation(fields: [approverId], references: [id])
@@ -404,36 +405,72 @@ enum FlowTrigger {
 }
 
 model Flow {
-  id        String      @id @default(cuid())
-  storeId   String
-  name      String
-  trigger   FlowTrigger
-  active    Boolean     @default(false)
-  // graph is the visual flow definition (nodes for delays, conditions, sends, splits)
-  graph     Json
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id                String      @id @default(cuid())
+  storeId           String
+  name              String
+  trigger           FlowTrigger
+  active            Boolean     @default(false)
+  // graph is the flow definition: ordered list of steps, each either { type: "delay", hours } or
+  // { type: "send", templateId, subject?, language? }. Walked by the cron engine in flows/engine.ts.
+  graph             Json
+  // Cooldown to avoid re-enrolling the same customer over and over (e.g. don't send a welcome
+  // twice if the customer's row is touched). In hours; 0 disables the dedupe.
+  reEnrollCooldownH Int         @default(720)
+  // Last activation event so the UI can show "last fired Nm ago" without scanning enrollments.
+  lastTriggeredAt   DateTime?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
 
-  store Store      @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  sends Send[]
+  store       Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  sends       Send[]
+  enrollments FlowEnrollment[]
+}
+
+enum FlowEnrollmentStatus {
+  ACTIVE // waiting on next step (nextRunAt in future) or actively being processed
+  COMPLETED // all steps fired
+  CANCELLED // unsubscribed / consent withdrawn / customer purchased in time (abandoned-cart exit)
+  FAILED // a step errored beyond retry
+}
+
+model FlowEnrollment {
+  id          String               @id @default(cuid())
+  flowId      String
+  customerId  String
+  currentStep Int                  @default(0)
+  status      FlowEnrollmentStatus @default(ACTIVE)
+  // When the engine should look at this row next. Indexed so the cron query is cheap.
+  nextRunAt   DateTime
+  // Context: the event payload that caused enrollment (checkout token, product handle, etc).
+  // Used by send-time templating to inject product info into the abandoned-cart email.
+  context     Json?
+  enrolledAt  DateTime             @default(now())
+  completedAt DateTime?
+  lastError   String?
+
+  flow     Flow     @relation(fields: [flowId], references: [id], onDelete: Cascade)
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([status, nextRunAt])
+  @@index([flowId, customerId])
 }
 
 // ── Segments ─────────────────────────────────────────────────────────────────
 
 model Segment {
-  id          String   @id @default(cuid())
-  storeId     String
-  name        String
-  description String?
+  id              String    @id @default(cuid())
+  storeId         String
+  name            String
+  description     String?
   // conditions tree (AND/OR with comparators) compiled to SQL at evaluation time
-  rules       Json
-  estimatedSize Int    @default(0)
+  rules           Json
+  estimatedSize   Int       @default(0)
   lastEvaluatedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  store    Store              @relation(fields: [storeId], references: [id], onDelete: Cascade)
-  members  CustomerSegment[]
+  store   Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  members CustomerSegment[]
 }
 
 model CustomerSegment {
@@ -451,38 +488,38 @@ model CustomerSegment {
 // ── Promotional calendar ─────────────────────────────────────────────────────
 
 enum PromotionKind {
-  GLOBAL       // Black Friday, Cyber Monday
-  REGIONAL     // Mother's Day (date varies per country)
-  STORE        // anniversary, owner-defined
+  GLOBAL // Black Friday, Cyber Monday
+  REGIONAL // Mother's Day (date varies per country)
+  STORE // anniversary, owner-defined
 }
 
 model Promotion {
-  id          String        @id @default(cuid())
-  storeId     String?       // null = applies to all stores
-  name        String        // "Día de la Madre"
-  kind        PromotionKind
+  id            String        @id @default(cuid())
+  storeId       String? // null = applies to all stores
+  name          String // "Día de la Madre"
+  kind          PromotionKind
   // dateByCountry: { "ES": "2026-05-03", "UK": "2026-03-15", "US": "2026-05-10" }
   dateByCountry Json
   // copy seeds per language (used as starting point; auto-translation fills the rest)
-  copyByLang  Json?
-  imagePrompt String?       // seed prompt for Nano Banana banner generation
-  active      Boolean       @default(true)
+  copyByLang    Json?
+  imagePrompt   String? // seed prompt for Nano Banana banner generation
+  active        Boolean       @default(true)
 
   // ── Sync with external promotions project (push-based)
   // The upstream project sends { externalId, source } so we can upsert idempotently.
-  externalId    String?  @unique // id in the upstream system
-  externalSource String?         // "marketing-calendar", "ops-tool", etc.
+  externalId     String? @unique // id in the upstream system
+  externalSource String? // "marketing-calendar", "ops-tool", etc.
 
   // ── Auto-drafting
-  autoDraft   Boolean   @default(true)  // if true, Sendify creates a campaign draft N days before each market's date
-  leadDays    Int       @default(14)    // how many days before the promotion's date to drop the draft
-  defaultTemplateId String?             // optional starter template
-  defaultSegmentIds String[]            // segments to target by default
-  bannerPrompt String?                  // overrides Promotion.imagePrompt for the auto-generated banner
-  briefForLlm  String? @db.Text         // optional brief for the LLM to write the subject+hero copy
+  autoDraft         Boolean  @default(true) // if true, Sendify creates a campaign draft N days before each market's date
+  leadDays          Int      @default(14) // how many days before the promotion's date to drop the draft
+  defaultTemplateId String? // optional starter template
+  defaultSegmentIds String[] // segments to target by default
+  bannerPrompt      String? // overrides Promotion.imagePrompt for the auto-generated banner
+  briefForLlm       String?  @db.Text // optional brief for the LLM to write the subject+hero copy
 
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   store     Store?     @relation(fields: [storeId], references: [id], onDelete: Cascade)
   campaigns Campaign[]
@@ -505,21 +542,21 @@ enum SendStatus {
 }
 
 model Send {
-  id           String      @id @default(cuid())
-  campaignId   String?
-  flowId       String?
-  customerId   String
-  messageId    String?     @unique // SES Message-ID
-  status       SendStatus  @default(QUEUED)
-  language     String
-  htmlHash     String?     // matches CampaignVariant.htmlHash for audit
-  queuedAt     DateTime    @default(now())
-  sentAt       DateTime?
-  openedAt     DateTime?
-  clickedAt    DateTime?
-  bouncedAt    DateTime?
+  id             String     @id @default(cuid())
+  campaignId     String?
+  flowId         String?
+  customerId     String
+  messageId      String?    @unique // SES Message-ID
+  status         SendStatus @default(QUEUED)
+  language       String
+  htmlHash       String? // matches CampaignVariant.htmlHash for audit
+  queuedAt       DateTime   @default(now())
+  sentAt         DateTime?
+  openedAt       DateTime?
+  clickedAt      DateTime?
+  bouncedAt      DateTime?
   unsubscribedAt DateTime?
-  errorMessage String?
+  errorMessage   String?
 
   campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
   flow     Flow?     @relation(fields: [flowId], references: [id], onDelete: SetNull)
@@ -544,21 +581,21 @@ model Asset {
   id          String    @id @default(cuid())
   name        String
   kind        AssetKind @default(IMAGE)
-  s3Key       String    @default("")   // empty when stored inline as `data`
-  url         String    @default("")   // CDN URL (or empty when self-served)
+  s3Key       String    @default("") // empty when stored inline as `data`
+  url         String    @default("") // CDN URL (or empty when self-served)
   mimeType    String
-  data        Bytes?    // raw bytes for self-hosted assets (Gemini banners pre-S3)
+  data        Bytes? // raw bytes for self-hosted assets (Gemini banners pre-S3)
   width       Int?
   height      Int?
   sizeBytes   Int?
   tags        String[]
-  prompt      String?   // for AI-generated assets
-  generatedBy String?   // "gemini-2.5-flash-image" | "manual" | "agent:xxx"
+  prompt      String? // for AI-generated assets
+  generatedBy String? // "gemini-2.5-flash-image" | "manual" | "agent:xxx"
   // Usage tracking — lets an external agent drop assets here, Sendify pick
   // unused ones first, and a UI filter "used / unused / all".
   usedCount   Int       @default(0)
   lastUsedAt  DateTime?
-  notes       String?   // free-form context the uploader wants to remember
+  notes       String? // free-form context the uploader wants to remember
   createdAt   DateTime  @default(now())
 
   @@index([kind, usedCount, createdAt])
@@ -602,23 +639,23 @@ model CostEntry {
 // so a campaign sent to Germany shows the EUR price for DE, not the ES one.
 
 model Product {
-  id              String   @id @default(cuid())
-  storeId         String
-  shopifyId       String   // gid://shopify/Product/123
-  handle          String   // url slug
-  title           String   // source-language title (Spanish); translations cached separately
-  vendor          String?
-  productType     String?
-  status          String   @default("active") // active, draft, archived
-  tags            String[]
-  imageUrl        String?  // primary image
-  descriptionHtml String?  @db.Text
+  id               String    @id @default(cuid())
+  storeId          String
+  shopifyId        String // gid://shopify/Product/123
+  handle           String // url slug
+  title            String // source-language title (Spanish); translations cached separately
+  vendor           String?
+  productType      String?
+  status           String    @default("active") // active, draft, archived
+  tags             String[]
+  imageUrl         String? // primary image
+  descriptionHtml  String?   @db.Text
   shopifyCreatedAt DateTime?
   shopifyUpdatedAt DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-  store    Store           @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  store    Store            @relation(fields: [storeId], references: [id], onDelete: Cascade)
   variants ProductVariant[]
 
   @@unique([storeId, shopifyId])
@@ -627,16 +664,16 @@ model Product {
 }
 
 model ProductVariant {
-  id            String   @id @default(cuid())
-  productId     String
-  shopifyId     String   // gid://shopify/ProductVariant/123
-  sku           String?
-  title         String   // "100ml", "EDP 50ml", etc.
-  imageUrl      String?
-  inventoryQty  Int?     // null = not tracked
-  available     Boolean  @default(true)
-  weight        Float?
-  weightUnit    String?
+  id           String  @id @default(cuid())
+  productId    String
+  shopifyId    String // gid://shopify/ProductVariant/123
+  sku          String?
+  title        String // "100ml", "EDP 50ml", etc.
+  imageUrl     String?
+  inventoryQty Int? // null = not tracked
+  available    Boolean @default(true)
+  weight       Float?
+  weightUnit   String?
 
   product Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   prices  ProductPrice[]
@@ -648,14 +685,14 @@ model ProductVariant {
 // Same SKU can have 4+ rows if the same store sells into multiple countries with
 // different list prices (Shopify Markets feature).
 model ProductPrice {
-  id          String   @id @default(cuid())
-  variantId   String
-  market      String   // ISO-3166-1 alpha-2 country code: "ES", "FR", "DE", etc.
-  currency    String   // ISO-4217: "EUR", "GBP", "USD"
-  price       Decimal  @db.Decimal(10, 2)
+  id           String   @id @default(cuid())
+  variantId    String
+  market       String // ISO-3166-1 alpha-2 country code: "ES", "FR", "DE", etc.
+  currency     String // ISO-4217: "EUR", "GBP", "USD"
+  price        Decimal  @db.Decimal(10, 2)
   comparePrice Decimal? @db.Decimal(10, 2) // "was" price for discount strike-through
-  active      Boolean  @default(true)
-  updatedAt   DateTime @updatedAt
+  active       Boolean  @default(true)
+  updatedAt    DateTime @updatedAt
 
   variant ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
@@ -672,21 +709,21 @@ enum DiscountKind {
 }
 
 model DiscountCode {
-  id           String       @id @default(cuid())
-  storeId      String
-  code         String       // unique code, e.g. "VUELVE-ABC123"
-  kind         DiscountKind
-  value        Decimal      @db.Decimal(10, 2) // percent (0-100) or amount in store currency
-  startsAt     DateTime     @default(now())
-  endsAt       DateTime?
-  usageLimit   Int          @default(1)        // per-recipient codes default to 1 use
-  usedCount    Int          @default(0)
-  appliesToHandle String?   // optional Shopify product/collection handle filter
-  customerEmail String?     // recipient bound (NULL for shareable promo codes)
+  id                 String       @id @default(cuid())
+  storeId            String
+  code               String // unique code, e.g. "VUELVE-ABC123"
+  kind               DiscountKind
+  value              Decimal      @db.Decimal(10, 2) // percent (0-100) or amount in store currency
+  startsAt           DateTime     @default(now())
+  endsAt             DateTime?
+  usageLimit         Int          @default(1) // per-recipient codes default to 1 use
+  usedCount          Int          @default(0)
+  appliesToHandle    String? // optional Shopify product/collection handle filter
+  customerEmail      String? // recipient bound (NULL for shareable promo codes)
   shopifyPriceRuleId String? // mirrored from Shopify after creation
-  campaignId   String?
-  flowSendId   String?
-  createdAt    DateTime     @default(now())
+  campaignId         String?
+  flowSendId         String?
+  createdAt          DateTime     @default(now())
 
   store Store @relation(fields: [storeId], references: [id], onDelete: Cascade)
 
@@ -707,28 +744,28 @@ model DiscountCode {
 enum ProviderType {
   TRANSLATION_DEEPSEEK
   TRANSLATION_OPENAI
-  TRANSLATION_DEEPL          // legacy fallback
-  IMAGE_GEMINI               // banner generation (Nano Banana)
-  IMAGE_OPENAI               // DALL-E fallback
-  REVIEW_OPENAI              // GPT-4 commercial copy review
-  SHOPIFY                    // scoped per store
-  AWS_SES                    // global
-  SNS_WEBHOOK_SECRET         // global
-  PROMOTIONS_WEBHOOK_SECRET  // global
-  S3                         // global
-  GOOGLE_ADS                 // global
+  TRANSLATION_DEEPL // legacy fallback
+  IMAGE_GEMINI // banner generation (Nano Banana)
+  IMAGE_OPENAI // DALL-E fallback
+  REVIEW_OPENAI // GPT-4 commercial copy review
+  SHOPIFY // scoped per store
+  AWS_SES // global
+  SNS_WEBHOOK_SECRET // global
+  PROMOTIONS_WEBHOOK_SECRET // global
+  S3 // global
+  GOOGLE_ADS // global
 }
 
 model ProviderCredential {
   id            String       @id @default(cuid())
   provider      ProviderType
-  scope         String?      // store slug for SHOPIFY, NULL for globals
-  label         String?      // user-set, e.g. "DeepSeek prod"
+  scope         String? // store slug for SHOPIFY, NULL for globals
+  label         String? // user-set, e.g. "DeepSeek prod"
   valueEnc      String       @db.Text
   valueIv       String
   valueTag      String
   active        Boolean      @default(true)
-  meta          Json?        // small extra config (model name, region, endpoint)
+  meta          Json? // small extra config (model name, region, endpoint)
   lastTestedAt  DateTime?
   lastTestOk    Boolean?
   lastTestError String?
@@ -752,7 +789,7 @@ model Suppression {
   id        String            @id @default(cuid())
   email     String            @unique
   reason    SuppressionReason
-  source    String?           // "ses:bounce" | "ses:complaint" | "user:click-unsub"
+  source    String? // "ses:bounce" | "ses:complaint" | "user:click-unsub"
   createdAt DateTime          @default(now())
 }
 
@@ -762,10 +799,10 @@ model Suppression {
 // SUBSCRIBED if double-opt-in is OFF) and trigger any wired Flow.
 
 enum FormKind {
-  EMBED        // <div id="sendify-form-..."> + script — paste in any page
-  POPUP        // exit-intent or time-delay popup
-  INLINE       // permanent inline section
-  HOSTED       // standalone hosted page at sendify.divain.space/forms/<slug>
+  EMBED // <div id="sendify-form-..."> + script — paste in any page
+  POPUP // exit-intent or time-delay popup
+  INLINE // permanent inline section
+  HOSTED // standalone hosted page at sendify.divain.space/forms/<slug>
 }
 
 enum FormStatus {
@@ -775,25 +812,25 @@ enum FormStatus {
 }
 
 model Form {
-  id          String     @id @default(cuid())
-  storeId     String?    // null = available to all stores
-  slug        String     @unique          // URL-safe id used in embed snippet
-  name        String                       // internal label
-  kind        FormKind   @default(EMBED)
-  status      FormStatus @default(DRAFT)
+  id      String     @id @default(cuid())
+  storeId String? // null = available to all stores
+  slug    String     @unique // URL-safe id used in embed snippet
+  name    String // internal label
+  kind    FormKind   @default(EMBED)
+  status  FormStatus @default(DRAFT)
 
   // Field schema: array of { id, type, label, placeholder, required, options? }
   // Types: "email" | "text" | "tel" | "select" | "checkbox" | "consent"
   // The "consent" field is special — its checked state writes to Customer.acceptsMarketing.
-  fields      Json
+  fields Json
 
   // Visual config: { headline, subheadline, ctaLabel, theme, palette }
   // theme: "minimal" | "lifestyle" (matches Klaviyo aesthetic with optional bg image)
-  design      Json
+  design Json
 
   // Behavior: { successMessage, successRedirectUrl, doubleOptIn, popupTrigger? }
   // popupTrigger: { kind: "exit-intent" | "delay" | "scroll", value?: number }
-  behavior    Json
+  behavior Json
 
   // Audience routing — when this form converts, optionally tag the customer or
   // add them to a segment so Flows can pick them up.
@@ -801,11 +838,11 @@ model Form {
   segmentIds   String[]
 
   // Stats (denormalized for fast dashboard)
-  impressions  Int       @default(0)
-  submissions  Int       @default(0)
+  impressions Int @default(0)
+  submissions Int @default(0)
 
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   publishedAt DateTime?
   archivedAt  DateTime?
 
@@ -818,18 +855,18 @@ model Form {
 // Every form submission — kept raw alongside the resulting Customer so we can
 // audit consent + replay if a Flow misses an event.
 model FormSubmission {
-  id          String   @id @default(cuid())
-  formId      String
-  storeId     String?
-  customerId  String?  // populated once the upsert resolves
-  email       String
-  fieldData   Json     // raw {fieldId: value} payload as received
-  source      String?  // referrer URL or "shopify:home"
-  ip          String?
-  userAgent   String?
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  formId     String
+  storeId    String?
+  customerId String? // populated once the upsert resolves
+  email      String
+  fieldData  Json // raw {fieldId: value} payload as received
+  source     String? // referrer URL or "shopify:home"
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
 
-  form        Form     @relation(fields: [formId], references: [id], onDelete: Cascade)
+  form Form @relation(fields: [formId], references: [id], onDelete: Cascade)
 
   @@index([formId, createdAt])
   @@index([email])
