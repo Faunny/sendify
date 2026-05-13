@@ -231,12 +231,28 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
   // Resolve store palette + storefront URL → drives skeleton colors and links.
   let palette: Required<StorePalette> = DEFAULT_PALETTE;
   let storefrontUrl = "";
+  let storeName = "";
+  let legalName: string | null = null;
+  let legalAddress: string | null = null;
+  let legalCity: string | null = null;
+  let legalCountry: string | null = null;
+  let privacyUrl: string | null = null;
   if (input.storeSlug) {
     const store = await prisma.store.findUnique({
       where: { slug: input.storeSlug },
-      select: { brandPalette: true, storefrontUrl: true },
+      select: {
+        name: true, brandPalette: true, storefrontUrl: true,
+        legalName: true, legalAddress: true, legalCity: true, legalCountry: true,
+        privacyUrl: true,
+      },
     }).catch(() => null);
     storefrontUrl = (store?.storefrontUrl ?? "").replace(/\/$/, "");
+    storeName = store?.name ?? "";
+    legalName    = store?.legalName    ?? null;
+    legalAddress = store?.legalAddress ?? null;
+    legalCity    = store?.legalCity    ?? null;
+    legalCountry = store?.legalCountry ?? null;
+    privacyUrl   = store?.privacyUrl   ?? null;
     const p = (store?.brandPalette ?? {}) as StorePalette;
     palette = {
       primary: p.primary ?? DEFAULT_PALETTE.primary,
@@ -408,6 +424,18 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
     bgColor: palette.bg,
     textColor: palette.text,
     primaryColor: palette.primary,
+    // Legal footer slots — render-time injection adds the compliance block
+    // beneath the BRAND_BAR using these.
+    storeName: storeName || undefined,
+    storefrontUrl: storefrontUrl || undefined,
+    legalName: legalName ?? undefined,
+    legalAddress: legalAddress ?? undefined,
+    legalCity: legalCity ?? undefined,
+    legalCountry: legalCountry ?? undefined,
+    privacyUrl: privacyUrl ?? undefined,
+    // Generic unsubscribe stub — Send-time the campaign worker swaps this for a
+    // per-recipient token. Placeholder URL keeps the link valid in previews.
+    unsubscribeUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://sendify.divain.space"}/api/unsubscribe`,
   };
 
   const mjml = renderSkeleton(layoutPattern, slots);

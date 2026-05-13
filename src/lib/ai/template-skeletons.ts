@@ -33,6 +33,17 @@ export type SkeletonSlots = {
   productCopy?: string;
   // Countdown / winback
   customerIncentive?: string;  // "-15%"
+  // Legal footer (driven by Store.legalName/legalAddress/etc). When present,
+  // renderSkeleton injects a compliance block under the brand bar so every
+  // generated template includes the unsubscribe link + razón social.
+  storeName?: string;
+  storefrontUrl?: string;
+  legalName?: string;
+  legalAddress?: string;
+  legalCity?: string;
+  legalCountry?: string;
+  privacyUrl?: string;
+  unsubscribeUrl?: string;     // defaults to a generic /unsubscribe stub when missing
 };
 
 const BRAND_BAR = (textOnDark = "#FFFFFF") => `
@@ -43,6 +54,34 @@ const BRAND_BAR = (textOnDark = "#FFFFFF") => `
     <mj-column width="25%"><mj-text align="center" color="${textOnDark}" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="3px" text-transform="uppercase" font-weight="500">divain. RITUAL</mj-text></mj-column>
   </mj-section>
 `;
+
+// Legal compliance footer — required in every promotional email under
+// EU/UK/US e-commerce rules. Pulls razón social, address, privacy URL and
+// unsubscribe link from the store. Sits under the BRAND_BAR.
+//
+// Style: small light-grey type on the store bg. Reads as a quiet legal slip
+// that doesn't fight the design. Falls back gracefully when the store hasn't
+// filled all the fields yet (just shows the unsubscribe + privacy line).
+const LEGAL_FOOTER = (s: SkeletonSlots) => {
+  const unsub   = s.unsubscribeUrl ?? `${(s.storefrontUrl ?? "").replace(/\/$/, "")}/account`;
+  const privacy = s.privacyUrl ?? `${(s.storefrontUrl ?? "").replace(/\/$/, "")}/policies/privacy-policy`;
+  const legalLine = [s.legalName, s.legalAddress, [s.legalCity, s.legalCountry].filter(Boolean).join(", ")]
+    .filter(Boolean)
+    .join(" · ");
+  return `
+  <mj-section background-color="${s.bgColor}" padding="22px 24px 44px">
+    <mj-column>
+      ${legalLine ? `<mj-text align="center" color="#888" font-family="Inter, Helvetica, Arial, sans-serif" font-size="10.5px" line-height="1.7">${escapeHtml(legalLine)}</mj-text>` : ""}
+      <mj-text align="center" color="#888" font-family="Inter, Helvetica, Arial, sans-serif" font-size="10.5px" line-height="1.7" padding-top="${legalLine ? "6px" : "0"}">
+        <a href="${unsub}" style="color:#888;text-decoration:underline;">Darme de baja</a>
+        &nbsp;·&nbsp;
+        <a href="${privacy}" style="color:#888;text-decoration:underline;">Privacidad</a>
+        ${s.storefrontUrl ? `&nbsp;·&nbsp;<a href="${s.storefrontUrl}" style="color:#888;text-decoration:underline;">${escapeHtml(s.storefrontUrl.replace(/^https?:\/\//, ""))}</a>` : ""}
+      </mj-text>
+    </mj-column>
+  </mj-section>
+`;
+};
 
 const PREHEADER = (text: string, bg: string) => `
   <mj-raw><div style="display:none;font-size:1px;color:${bg};line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(text)}</div></mj-raw>
@@ -451,5 +490,9 @@ export const SKELETONS: Record<string, (s: SkeletonSlots) => string> = {
 
 export function renderSkeleton(patternId: string, slots: SkeletonSlots): string {
   const fn = SKELETONS[patternId] ?? lifestyleHero;
-  return fn(slots);
+  const raw = fn(slots);
+  // Inject the legal compliance footer right before </mj-body>. Every skeleton
+  // already includes BRAND_BAR before that tag, so the footer slots in directly
+  // beneath. Done here (vs in each skeleton fn) so we never forget a layout.
+  return raw.replace(/<\/mj-body>/, `${LEGAL_FOOTER(slots)}</mj-body>`);
 }
