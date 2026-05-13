@@ -66,7 +66,18 @@ const HEAD = `
       <mj-all font-family="Inter, Helvetica, Arial, sans-serif" />
     </mj-attributes>
     <mj-style inline="inline">
-      .sf-hero-text { text-shadow: 0 2px 12px rgba(0,0,0,0.35); }
+      .sf-hero-text { text-shadow: 0 2px 12px rgba(0,0,0,0.45); }
+    </mj-style>
+    <mj-style>
+      @media only screen and (max-width: 480px) {
+        .sf-hero-section td { padding: 90px 18px !important; }
+        .sf-hero-headline div { font-size: 34px !important; line-height: 1.1 !important; }
+        .sf-hero-headline { font-size: 34px !important; }
+        .sf-hero-subhead, .sf-hero-subhead div { font-size: 11px !important; letter-spacing: 3px !important; }
+        .sf-big-number, .sf-big-number div { font-size: 68px !important; line-height: 1 !important; }
+        .sf-section-pad td { padding: 28px 18px !important; }
+        .sf-body, .sf-body div { font-size: 14px !important; line-height: 1.6 !important; padding: 0 18px !important; }
+      }
     </mj-style>
   </mj-head>
 `;
@@ -91,18 +102,18 @@ function lifestyleHero(s: SkeletonSlots): string {
   // legibility against any background). Matches the divain campaign style
   // where the offer reads against the model photo.
   const heroSection = s.heroUrl
-    ? `<mj-section background-url="${s.heroUrl}" background-size="cover" background-position="center center" background-repeat="no-repeat" padding="180px 30px 180px">
+    ? `<mj-section background-url="${s.heroUrl}" background-size="cover" background-position="center center" background-repeat="no-repeat" padding="180px 30px" css-class="sf-hero-section">
         <mj-column>
-          ${s.subhead ? `<mj-text align="center" color="#FFFFFF" font-size="13px" letter-spacing="5px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" css-class="sf-hero-text" padding-bottom="14px">${escapeHtml(s.subhead)}</mj-text>` : ""}
-          <mj-text align="center" color="#FFFFFF" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="54px" font-weight="600" line-height="1.05" css-class="sf-hero-text">${headlineHtml}</mj-text>
+          ${s.subhead ? `<mj-text align="center" color="#FFFFFF" font-size="13px" letter-spacing="5px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" css-class="sf-hero-text sf-hero-subhead" padding-bottom="14px">${escapeHtml(s.subhead)}</mj-text>` : ""}
+          <mj-text align="center" color="#FFFFFF" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="54px" font-weight="600" line-height="1.05" css-class="sf-hero-text sf-hero-headline">${headlineHtml}</mj-text>
           <mj-spacer height="24px" />
           ${PILL_BUTTON(s.ctaLabel, s.bgColor, s.primaryColor, s.ctaUrl ?? "#")}
         </mj-column>
       </mj-section>`
-    : `<mj-section background-color="${s.primaryColor}" padding="180px 30px 180px">
+    : `<mj-section background-color="${s.primaryColor}" padding="180px 30px" css-class="sf-hero-section">
         <mj-column>
-          ${s.subhead ? `<mj-text align="center" color="${s.bgColor}" font-size="13px" letter-spacing="5px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" padding-bottom="14px">${escapeHtml(s.subhead)}</mj-text>` : ""}
-          <mj-text align="center" color="${s.bgColor}" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="48px" font-weight="600" line-height="1.05">${headlineHtml}</mj-text>
+          ${s.subhead ? `<mj-text align="center" color="${s.bgColor}" font-size="13px" letter-spacing="5px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" css-class="sf-hero-subhead" padding-bottom="14px">${escapeHtml(s.subhead)}</mj-text>` : ""}
+          <mj-text align="center" color="${s.bgColor}" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="48px" font-weight="600" line-height="1.05" css-class="sf-hero-headline">${headlineHtml}</mj-text>
           <mj-spacer height="24px" />
           ${PILL_BUTTON(s.ctaLabel, s.bgColor, s.primaryColor, s.ctaUrl ?? "#")}
         </mj-column>
@@ -200,7 +211,7 @@ function bigNumberHero(s: SkeletonSlots): string {
 {{wordmark}}
 <mj-section padding="70px 24px 12px">
   <mj-column>
-    <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="118px" font-weight="700" line-height="1" color="{{primaryColor}}">{{offerNumber}}</mj-text>
+    <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="118px" font-weight="700" line-height="1" color="{{primaryColor}}" css-class="sf-big-number">{{offerNumber}}</mj-text>
     <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="15px" letter-spacing="6px" text-transform="uppercase" color="{{textColor}}" padding-top="22px" font-weight="500">{{offerLabel}}</mj-text>
     <mj-text align="center" font-size="13px" color="{{textColor}}" padding-top="10px">{{body}}</mj-text>
   </mj-column>

@@ -44,6 +44,34 @@ const SAMPLE_BRIEFS: Array<{ id: string; label: string; brief: string; pillar: "
     pillar: "RITUAL",
     tone: "lujo-minimalista",
   },
+  {
+    id: "flash-24h",
+    label: "Flash 24h — countdown urgency",
+    brief: "Última oportunidad · cierre del 40% off a medianoche · solo 24h · sin foto · fondo negro · urgencia máxima · 1 CTA blanco enorme. discountKind=PERCENT, discountValue=40.",
+    pillar: "ALL",
+    tone: "urgente-flash",
+  },
+  {
+    id: "welcome-series",
+    label: "Welcome — brand anthology",
+    brief: "Welcome series · primer email tras subscripción · presentación de los 4 pilares (PARFUMS, CARE, HOME, RITUAL) · cupón -10% en primera compra · tono editorial cálido.",
+    pillar: "ALL",
+    tone: "editorial-cálido",
+  },
+  {
+    id: "app-push",
+    label: "Descarga app — app promo gradient",
+    brief: "Descarga la app divain · 10% extra solo desde app · push exclusivos · pastel rosa · 2 CTAs (App Store / Google Play).",
+    pillar: "ALL",
+    tone: "comercial-directo",
+  },
+  {
+    id: "winback",
+    label: "Win-back — empathic",
+    brief: "Clientes inactivos 60-120 días · 'Te echamos de menos' · tono empático en primera persona · incentivo sutil -15% · sin agresividad. discountKind=PERCENT, discountValue=15.",
+    pillar: "PARFUMS",
+    tone: "editorial-cálido",
+  },
 ];
 
 export async function POST(req: Request) {
