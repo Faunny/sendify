@@ -65,26 +65,65 @@ async function loadProductHints(storeSlug: string | undefined, pillar: string | 
   });
   if (!store) return [];
 
-  const pillarFilter = pillar && pillar !== "ALL" ? {
-    OR: [
-      { productType: { contains: pillar, mode: "insensitive" as const } },
-      { tags: { has: pillar.toLowerCase() } },
-      { tags: { has: pillar } },
-    ],
-  } : {};
+  // Pillar keyword sets — divain's productType + tags are written in Spanish
+  // business terms (e.g. "PACK DE MUESTRAS", "PERFUMES MUJER"), not the
+  // schema's enum names. Match loosely.
+  const PILLAR_KEYWORDS: Record<string, string[]> = {
+    PARFUMS: ["perfume", "fragancia", "parfum", "eau de", "edt", "edp"],
+    CARE:    ["care", "skincare", "crema", "vitamina", "facial", "ritual de piel", "body", "cuerpo"],
+    HOME:    ["home", "casa", "vela", "candle", "difusor", "diffuser", "hogar"],
+    RITUAL:  ["ritual", "set", "edicion limitada", "edición limitada", "premium"],
+  };
 
-  const products = await prisma.product.findMany({
-    where: { storeId: store.id, status: "active", ...pillarFilter },
-    orderBy: { shopifyUpdatedAt: "desc" },
-    take: 8,
-    select: {
-      handle: true, title: true, imageUrl: true,
-      variants: {
-        take: 1,
-        select: { prices: { where: { market: store.countryCode }, take: 1, select: { price: true, currency: true } } },
-      },
-    },
-  }).catch(() => []);
+  // Strategy: prefer products WITH an image AND matching the pillar, then with
+  // an image (regardless of pillar), then anything active. Always exclude the
+  // obvious non-perfume SKUs (gift card, bag, gominolas accessories).
+  const NON_PERFUME_HANDLES = ["bolsa-divain-store", "gominolas", "divain-gift-card"];
+  const keywords = pillar && pillar !== "ALL" ? (PILLAR_KEYWORDS[pillar] ?? []) : [];
+
+  const baseWhere = {
+    storeId: store.id,
+    status: "active",
+    NOT: { handle: { in: NON_PERFUME_HANDLES } },
+  } as const;
+
+  // Tier 1: pillar match + has image
+  let products = keywords.length > 0
+    ? await prisma.product.findMany({
+        where: {
+          ...baseWhere,
+          imageUrl: { not: null },
+          OR: keywords.flatMap((k) => [
+            { title: { contains: k, mode: "insensitive" as const } },
+            { productType: { contains: k, mode: "insensitive" as const } },
+            { tags: { hasSome: [k, k.toLowerCase(), k.toUpperCase()] } },
+          ]),
+        },
+        orderBy: { shopifyUpdatedAt: "desc" },
+        take: 8,
+        select: { handle: true, title: true, imageUrl: true, variants: { take: 1, select: { prices: { where: { market: store.countryCode }, take: 1, select: { price: true } } } } },
+      }).catch(() => [])
+    : [];
+
+  // Tier 2: any active product WITH image
+  if (products.length === 0) {
+    products = await prisma.product.findMany({
+      where: { ...baseWhere, imageUrl: { not: null } },
+      orderBy: { shopifyUpdatedAt: "desc" },
+      take: 8,
+      select: { handle: true, title: true, imageUrl: true, variants: { take: 1, select: { prices: { where: { market: store.countryCode }, take: 1, select: { price: true } } } } },
+    }).catch(() => []);
+  }
+
+  // Tier 3: anything active (no image guarantee)
+  if (products.length === 0) {
+    products = await prisma.product.findMany({
+      where: baseWhere,
+      orderBy: { shopifyUpdatedAt: "desc" },
+      take: 8,
+      select: { handle: true, title: true, imageUrl: true, variants: { take: 1, select: { prices: { where: { market: store.countryCode }, take: 1, select: { price: true } } } } },
+    }).catch(() => []);
+  }
 
   return products.map((p) => ({
     handle: p.handle,
