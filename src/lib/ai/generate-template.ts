@@ -8,6 +8,7 @@
 
 import { getCredential } from "../credentials";
 import { prisma } from "../db";
+import { LAYOUT_LIBRARY, FEW_SHOT_EXAMPLES } from "./template-patterns";
 
 export type TemplateGenInput = {
   brief: string;             // free-form: "Día de la Madre — 15% off perfumes mujer, tono cálido"
@@ -32,11 +33,23 @@ export type TemplateGenOutput = {
   subject: string;
   preheader: string;
   mjml: string;              // full <mjml>…</mjml> document
+  layoutPattern?: string;    // which pattern from the library was chosen
+  bannerPrompt?: string;     // prompt suitable for Gemini banner generation
   designJson?: unknown;      // optional Unlayer-compatible JSON for round-trip editing
-  modelUsed: "deepseek-chat" | "gpt-4o-mini";
+  modelUsed: string;
   promptTokens?: number;
   completionTokens?: number;
 };
+
+function buildPatternLibraryBlock(): string {
+  return LAYOUT_LIBRARY.map((p, i) => `${i + 1}. **${p.id}** — ${p.name}
+   when to use: ${p.whenToUse}
+   tone: ${p.emotionalTone}
+   visual: ${p.visualSignature}
+   structure:${p.structureHint.split("\n").map((l) => `   ${l}`).join("\n")}
+   canonical CTA label: "${p.ctaLabel}"
+   example subject: "${p.exampleSubject}"`).join("\n\n");
+}
 
 function buildSystemPrompt(palette: Required<StorePalette>): string {
   return `You are a senior email designer for divain®, a perfume brand from Alicante, Spain.
@@ -93,11 +106,39 @@ STRUCTURE (adapt to brief, this is a starting skeleton):
 
 Use placeholder image URLs in this format: \`https://cdn.divain.space/banners/{event-slug}-hero.jpg\` for the hero, \`https://cdn.divain.space/products/{handle}.jpg\` for products. The user replaces them or Gemini auto-generates the hero.
 
+PATTERN LIBRARY — pick ONE that fits the brief, then improvise on top of it.
+You MUST NOT just fill a generic skeleton. Every email starts by reading the
+brief, deciding which pattern best embodies the moment, and then composing the
+MJML in that pattern's specific visual language. Two emails for different
+occasions should look visibly DIFFERENT, not slight variations of the same
+template.
+
+${buildPatternLibraryBlock()}
+
+DECISION HEURISTIC:
+- Hard sell with big discount → big-number-hero OR countdown-urgency
+- Mother's Day / Father's Day / Women's Day → lifestyle-hero
+- Gift guides / curation / "top 5" → product-grid-editorial
+- App promo → app-promo-gradient
+- Welcome series / brand storytelling → brand-anthology
+- 24h flash / "ends tonight" → countdown-urgency
+- New SKU launch (RITUAL edition etc) → premium-launch
+- Win-back inactive customers → winback-empathic
+
+Once you pick, hold to that pattern's typography scale, color use and structure.
+DON'T mix patterns — pure lifestyle-hero looks nothing like big-number-hero;
+keep the chosen one CLEAN.
+
+FEW-SHOT EXAMPLES of what good output looks like (these are real, working MJMLs):
+${FEW_SHOT_EXAMPLES}
+
 Respond with ONLY a JSON object — no commentary, no markdown fences:
 {
+  "layoutPattern": "<one of: ${LAYOUT_LIBRARY.map((p) => p.id).join(" | ")}>",
+  "bannerPrompt": "<50-80 word prompt suitable for Nano Banana / Gemini image gen. Describe a photograph: subject, setting, mood, lighting. NO text in image. NO logos. Aspect 16:9 or 4:3. Match divain's aesthetic — refined, editorial, lifestyle photography (NOT product packshots unless premium-launch).>",
   "subject": "<60 chars, no emojis, sentence case>",
   "preheader": "<90-120 chars, complements subject>",
-  "mjml": "<full valid <mjml> document following the visual language above>"
+  "mjml": "<full valid <mjml> document following the chosen pattern's visual language>"
 }`;
 }
 
@@ -139,17 +180,19 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
     };
   }
 
-  // Prefer DeepSeek (cheaper, configured first); fall back to OpenAI if missing.
-  const deepseek = await getCredential("TRANSLATION_DEEPSEEK");
+  // For DESIGN, prefer GPT-4o (better aesthetic + structure) over DeepSeek.
+  // DeepSeek is great for translation but produces more templatey output here.
+  // Order: gpt-4o > deepseek > gpt-4o-mini (fallback when neither exists).
   const openai   = await getCredential("TRANSLATION_OPENAI");
-  const cred = deepseek ?? openai;
-  if (!cred) throw new Error("No translation/LLM provider configured. Pega DeepSeek o OpenAI key en Settings → Integrations.");
+  const deepseek = await getCredential("TRANSLATION_DEEPSEEK");
+  const cred = openai ?? deepseek;
+  if (!cred) throw new Error("No LLM provider configured. Pega OpenAI o DeepSeek key en Settings → Integrations.");
 
-  const useDeepseek = !!deepseek;
-  const url   = useDeepseek ? "https://api.deepseek.com/chat/completions" : "https://api.openai.com/v1/chat/completions";
-  const model = useDeepseek
-    ? (cred.meta?.model as string) ?? "deepseek-chat"
-    : (cred.meta?.model as string) ?? "gpt-4o-mini";
+  const useOpenai = !!openai;
+  const url   = useOpenai ? "https://api.openai.com/v1/chat/completions" : "https://api.deepseek.com/chat/completions";
+  const model = useOpenai
+    ? (cred.meta?.designModel as string) ?? (cred.meta?.model as string) ?? "gpt-4o"
+    : (cred.meta?.model as string) ?? "deepseek-chat";
 
   const res = await fetch(url, {
     method: "POST",
@@ -178,10 +221,10 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
 
   // The model is asked to return pure JSON; strip stray code fences if it ignored.
   const cleaned = raw.replace(/^```(?:json)?\s*/i, "").replace(/```$/i, "").trim();
-  let parsed: { subject?: string; preheader?: string; mjml?: string };
+  let parsed: { subject?: string; preheader?: string; mjml?: string; layoutPattern?: string; bannerPrompt?: string };
   try {
     parsed = JSON.parse(cleaned);
-  } catch (e) {
+  } catch {
     throw new Error(`LLM returned invalid JSON: ${cleaned.slice(0, 200)}...`);
   }
   if (!parsed.subject || !parsed.preheader || !parsed.mjml) {
@@ -195,7 +238,9 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
     subject: parsed.subject,
     preheader: parsed.preheader,
     mjml: parsed.mjml,
-    modelUsed: useDeepseek ? "deepseek-chat" : "gpt-4o-mini",
+    layoutPattern: parsed.layoutPattern,
+    bannerPrompt: parsed.bannerPrompt,
+    modelUsed: model,
     promptTokens: json.usage?.prompt_tokens,
     completionTokens: json.usage?.completion_tokens,
   };
