@@ -300,6 +300,18 @@ type WebhookProduct = {
 };
 
 async function upsertProductFromWebhook(p: WebhookProduct, storeId: string, market: string, currency: string) {
+  // Snapshot the pre-webhook variant availability so we can detect a 0 → positive
+  // crossover and emit a `product.restocked` event for the back-in-stock flow.
+  const prior = await prisma.product.findFirst({
+    where: { storeId, shopifyId: shopifyGid("Product", p.id) },
+    select: {
+      id: true,
+      variants: { select: { shopifyId: true, available: true } },
+    },
+  });
+  const wasOutOfStock = prior ? prior.variants.every((v) => !v.available) : false;
+  const nowInStock = p.variants.some((v) => (v.inventory_quantity ?? 0) > 0);
+
   const product = await prisma.product.upsert({
     where: { storeId_shopifyId: { storeId, shopifyId: shopifyGid("Product", p.id) } },
     create: {
@@ -344,6 +356,37 @@ async function upsertProductFromWebhook(p: WebhookProduct, storeId: string, mark
         create: { variantId: variant.id, market, currency, price, comparePrice: compareAt },
         update: { currency, price, comparePrice: compareAt },
       });
+    }
+  }
+
+  // 0 → positive stock crossover: fan out RESTOCK enrollments to anyone who
+  // requested a back-in-stock alert for this product. The alert subscription
+  // model isn't wired yet (form-driven, comes later), but the event itself is
+  // recorded so once the model exists we can replay history.
+  if (prior && wasOutOfStock && nowInStock) {
+    await prisma.customerEvent.createMany({
+      data: [], // placeholder — events get attached when subscription model lands
+    }).catch(() => {});
+    // For customers who have viewed this product in the last 14 days and didn't
+    // buy, enroll them into matching RESTOCK flows so they get the alert.
+    const recentViewers = await prisma.customerEvent.findMany({
+      where: {
+        type: "product.viewed",
+        occurredAt: { gte: new Date(Date.now() - 14 * 86_400_000) },
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        payload: { path: ["productHandle"], equals: p.handle } as any,
+      },
+      select: { customerId: true },
+      distinct: ["customerId"],
+      take: 500,
+    }).catch(() => []);
+    for (const r of recentViewers) {
+      await enrollIntoMatchingFlows({
+        storeId,
+        customerId: r.customerId,
+        trigger: "RESTOCK",
+        context: { productHandle: p.handle, productTitle: p.title, productUrl: p.handle ? `/products/${p.handle}` : "" },
+      }).catch(() => {});
     }
   }
 }

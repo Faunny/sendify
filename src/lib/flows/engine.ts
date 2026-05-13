@@ -17,7 +17,7 @@ import { prisma } from "@/lib/db";
 import { renderMjml } from "@/lib/mjml";
 import { sendEmail } from "@/lib/ses";
 import type { FlowTrigger, FlowEnrollment } from "@prisma/client";
-import type { FlowGraph, FlowStep } from "./presets";
+import { FLOW_PRESETS, type EntryFilter, type FlowGraph, type FlowStep, type FlowStepCondition } from "./presets";
 
 // ── Enrollment ───────────────────────────────────────────────────────────────
 
@@ -29,13 +29,33 @@ export async function enrollIntoMatchingFlows(args: {
 }): Promise<{ enrolled: number; skipped: number }> {
   const flows = await prisma.flow.findMany({
     where: { storeId: args.storeId, trigger: args.trigger, active: true },
-    select: { id: true, reEnrollCooldownH: true, graph: true },
+    select: { id: true, name: true, reEnrollCooldownH: true, graph: true },
   });
 
   if (flows.length === 0) return { enrolled: 0, skipped: 0 };
 
+  // Resolve the customer once — entry filters need ordersCount / totalSpent /
+  // consentStatus, and we'd rather not fetch the row per flow.
+  const customer = await prisma.customer.findUnique({
+    where: { id: args.customerId },
+    select: {
+      id: true, ordersCount: true, totalSpent: true,
+      consentStatus: true, hasApp: true, deletedAt: true,
+    },
+  });
+  if (!customer || customer.deletedAt) return { enrolled: 0, skipped: 0 };
+
   let enrolled = 0, skipped = 0;
   for (const flow of flows) {
+    // Entry filter from the preset: we look up the preset by trigger+name to
+    // find filters that aren't persisted (presets are code, flows are DB).
+    // It's cheap because there are O(20) presets.
+    const preset = findPresetForFlow(flow.name, args.trigger);
+    if (preset?.entryFilter && !matchesEntryFilter(preset.entryFilter, customer)) {
+      skipped++;
+      continue;
+    }
+
     // Cooldown check: skip if customer already enrolled in last reEnrollCooldownH hours.
     if (flow.reEnrollCooldownH > 0) {
       const since = new Date(Date.now() - flow.reEnrollCooldownH * 3600_000);
@@ -71,6 +91,30 @@ export async function enrollIntoMatchingFlows(args: {
   return { enrolled, skipped };
 }
 
+// Locate the preset behind a DB-persisted flow row. We don't store presetId on
+// Flow (the graph is the source of truth post-creation), so we match by trigger
+// and name-prefix instead. Returns undefined for custom flows authored by hand.
+function findPresetForFlow(flowName: string, trigger: FlowTrigger) {
+  // Flow names are created as "${preset.name} · ${store.name}" — strip the suffix.
+  const namePart = flowName.split(" · ")[0];
+  return FLOW_PRESETS.find((p) => p.trigger === trigger && p.name === namePart);
+}
+
+function matchesEntryFilter(filter: EntryFilter, customer: {
+  ordersCount: number;
+  totalSpent: { toNumber(): number } | number;
+  consentStatus: string;
+  hasApp: boolean;
+}): boolean {
+  const totalSpent = typeof customer.totalSpent === "number" ? customer.totalSpent : customer.totalSpent.toNumber();
+  if (filter.ordersCountGte !== undefined && customer.ordersCount < filter.ordersCountGte) return false;
+  if (filter.ordersCountLte !== undefined && customer.ordersCount > filter.ordersCountLte) return false;
+  if (filter.totalSpentGte !== undefined && totalSpent < filter.totalSpentGte) return false;
+  if (filter.consentRequired && customer.consentStatus !== "SUBSCRIBED") return false;
+  if (filter.hasAppEq !== undefined && customer.hasApp !== filter.hasAppEq) return false;
+  return true;
+}
+
 // ── Tick ─────────────────────────────────────────────────────────────────────
 
 export async function tickDueEnrollments(limit = 100): Promise<{
@@ -84,7 +128,10 @@ export async function tickDueEnrollments(limit = 100): Promise<{
     where: { status: "ACTIVE", nextRunAt: { lte: new Date() } },
     include: {
       flow: { select: { id: true, name: true, graph: true, active: true, storeId: true } },
-      customer: { select: { id: true, email: true, firstName: true, lastName: true, language: true, consentStatus: true } },
+      customer: { select: {
+        id: true, email: true, firstName: true, lastName: true, language: true,
+        consentStatus: true, ordersCount: true, totalSpent: true, hasApp: true,
+      } },
     },
     orderBy: { nextRunAt: "asc" },
     take: limit,
@@ -121,6 +168,30 @@ export async function tickDueEnrollments(limit = 100): Promise<{
           data: { status: "COMPLETED", completedAt: new Date() },
         });
         completed++;
+        continue;
+      }
+
+      // Condition step: evaluate against the customer; on false, exit the flow.
+      if (step.type === "condition") {
+        const passes = evalCondition(step, e.customer);
+        if (!passes) {
+          await prisma.flowEnrollment.update({
+            where: { id: e.id },
+            data: { status: "CANCELLED", completedAt: new Date(), currentStep: e.currentStep, lastError: `condition failed: ${step.label}` },
+          });
+          continue;
+        }
+        // Condition passed → advance to next step immediately.
+        const nextStepIdx = e.currentStep + 1;
+        const nextAfterCondition = graph.steps[nextStepIdx];
+        const nextDelayMs = nextAfterCondition?.type === "delay" ? nextAfterCondition.hours * 3600_000 : 0;
+        await prisma.flowEnrollment.update({
+          where: { id: e.id },
+          data: {
+            currentStep: nextAfterCondition?.type === "delay" ? nextStepIdx + 1 : nextStepIdx,
+            nextRunAt: new Date(Date.now() + nextDelayMs),
+          },
+        });
         continue;
       }
 
@@ -177,7 +248,7 @@ type StepResult = { kind: "sent" | "delayed" | "noop" };
 async function runStep(step: FlowStep, enrollment: FlowEnrollment & {
   customer: { id: string; email: string; firstName: string | null; lastName: string | null; language: string | null };
 }, storeId: string): Promise<StepResult> {
-  if (step.type === "delay") return { kind: "delayed" };
+  if (step.type === "delay" || step.type === "condition") return { kind: "noop" };
 
   // type === "send" — render MJML, personalize, hit SES, record Send row.
   const [store, sender] = await Promise.all([
@@ -267,4 +338,29 @@ async function runStep(step: FlowStep, enrollment: FlowEnrollment & {
 // Whitespace around the key is tolerated. Unknown keys collapse to empty string.
 function personalizeDotted(template: string, ctx: Record<string, string>): string {
   return template.replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_, k: string) => ctx[k] ?? "");
+}
+
+function evalCondition(step: FlowStepCondition, customer: {
+  ordersCount: number;
+  totalSpent: { toNumber(): number } | number;
+  consentStatus: string;
+  hasApp: boolean;
+}): boolean {
+  const fieldValue = (() => {
+    switch (step.field) {
+      case "customer.ordersCount":   return customer.ordersCount;
+      case "customer.totalSpent":    return typeof customer.totalSpent === "number" ? customer.totalSpent : customer.totalSpent.toNumber();
+      case "customer.consentStatus": return customer.consentStatus;
+      case "customer.hasApp":        return customer.hasApp;
+    }
+  })();
+
+  switch (step.op) {
+    case "eq":  return fieldValue === step.value;
+    case "neq": return fieldValue !== step.value;
+    case "gte": return typeof fieldValue === "number" && typeof step.value === "number" && fieldValue >= step.value;
+    case "lte": return typeof fieldValue === "number" && typeof step.value === "number" && fieldValue <= step.value;
+    case "gt":  return typeof fieldValue === "number" && typeof step.value === "number" && fieldValue >  step.value;
+    case "lt":  return typeof fieldValue === "number" && typeof step.value === "number" && fieldValue <  step.value;
+  }
 }

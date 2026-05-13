@@ -22,6 +22,8 @@ export const authConfig = {
         pathname.startsWith("/api/promotions/webhook") ||
         pathname.startsWith("/api/ses/events")         ||
         pathname.startsWith("/api/cron/")              ||
+        // Pixel events from the Shopify storefront (CORS, identifies by email body).
+        pathname.startsWith("/api/events/track")       ||
         // Assets served to email clients (no session cookies in email-rendering pipeline).
         pathname.startsWith("/api/assets/")            ||
         // Form submissions + the embed JS must be open so the storefront can POST.

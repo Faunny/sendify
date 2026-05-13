@@ -3,14 +3,15 @@
 import { useState } from "react";
 import {
   Workflow, Plus, Heart, ShoppingCart, Sparkles, Clock, Gift, Bell,
-  Loader2, Trash2, MoreHorizontal, Power, PowerOff,
+  Eye, Star, RotateCcw, TrendingDown, PartyPopper, ShoppingBag, Mail,
+  Award, Repeat, MoonStar, Loader2, Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { FLOW_PRESETS } from "@/lib/flows/presets";
+import { FLOW_PRESETS, PRESETS_BY_CATEGORY, type FlowPresetCategory } from "@/lib/flows/presets";
 
 export type FlowRow = {
   id: string;
@@ -29,7 +30,8 @@ export type FlowRow = {
 export type StoreOption = { id: string; slug: string; name: string };
 
 const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  Heart, ShoppingCart, Sparkles, Clock, Bell, Gift,
+  Heart, ShoppingCart, Sparkles, Clock, Bell, Gift, Eye, Star, RotateCcw,
+  TrendingDown, PartyPopper, ShoppingBag, Mail, Award, Repeat, MoonStar,
 };
 
 const TRIGGER_LABEL: Record<string, string> = {
@@ -41,6 +43,15 @@ const TRIGGER_LABEL: Record<string, string> = {
   RESTOCK: "Stock disponible",
   BIRTHDAY: "Cumpleaños",
   CUSTOM: "Manual",
+};
+
+const CATEGORY_ORDER: FlowPresetCategory[] = ["Acquisition", "Cart", "Retention", "Win-back", "Lifecycle"];
+const CATEGORY_LABEL: Record<FlowPresetCategory, string> = {
+  "Acquisition": "Captación",
+  "Cart":        "Carrito",
+  "Retention":   "Retención",
+  "Win-back":    "Reactivación",
+  "Lifecycle":   "Ciclo de vida",
 };
 
 export function FlowsClient({ initialFlows, stores }: { initialFlows: FlowRow[]; stores: StoreOption[] }) {
@@ -210,33 +221,45 @@ function NewFlowDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div>
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Plantilla</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {FLOW_PRESETS.map((p) => {
-                const Icon = ICON_MAP[p.icon] ?? Workflow;
-                const selected = p.id === presetId;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setPresetId(p.id)}
-                    className={`text-left rounded-md border p-3 transition-colors ${selected ? "border-[color:var(--accent)] bg-[color-mix(in_oklch,var(--accent)_8%,transparent)]" : "border-border bg-card/40 hover:bg-secondary/40"}`}
-                  >
-                    <div className="flex items-start gap-2.5">
-                      <Icon className="h-4 w-4 mt-0.5 text-[color:var(--accent)]" />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[13px] font-medium">{p.name}</div>
-                        <div className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{p.description}</div>
-                        <div className="text-[10px] text-muted-foreground/70 mt-1.5 uppercase tracking-wider">
-                          {p.graph.steps.filter((s) => s.type === "send").length} emails · {p.estDuration}
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+          <div className="max-h-[60vh] overflow-y-auto pr-1 -mr-1 space-y-4">
+            {CATEGORY_ORDER.map((cat) => {
+              const list = PRESETS_BY_CATEGORY[cat];
+              if (list.length === 0) return null;
+              return (
+                <div key={cat}>
+                  <div className="text-[10px] uppercase tracking-[2.5px] text-muted-foreground/80 mb-2 sticky top-0 bg-background/95 backdrop-blur py-1 z-10">
+                    {CATEGORY_LABEL[cat]} <span className="text-muted-foreground/40">· {list.length}</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {list.map((p) => {
+                      const Icon = ICON_MAP[p.icon] ?? Workflow;
+                      const selected = p.id === presetId;
+                      const sendCount = p.graph.steps.filter((s) => s.type === "send").length;
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setPresetId(p.id)}
+                          className={`text-left rounded-md border p-3 transition-colors ${selected ? "border-[color:var(--accent)] bg-[color-mix(in_oklch,var(--accent)_8%,transparent)]" : "border-border bg-card/40 hover:bg-secondary/40"}`}
+                        >
+                          <div className="flex items-start gap-2.5">
+                            <Icon className="h-4 w-4 mt-0.5 text-[color:var(--accent)]" />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-[13px] font-medium">{p.name}</div>
+                              <div className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{p.description}</div>
+                              <div className="text-[10px] text-muted-foreground/70 mt-1.5 uppercase tracking-wider">
+                                {sendCount} email{sendCount === 1 ? "" : "s"} · {p.estDuration}
+                                {p.entryFilter && <span className="text-[color:var(--accent)] ml-1.5">· con filtro</span>}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -271,12 +294,20 @@ function NewFlowDialog({
               <ol className="space-y-1 ml-5 list-decimal">
                 {preset.graph.steps.map((s, i) => (
                   <li key={i}>
-                    {s.type === "delay"
-                      ? <>Espera <strong>{s.hours < 24 ? `${s.hours}h` : `${Math.round(s.hours / 24)}d`}</strong></>
-                      : <>Email · &ldquo;{s.subject}&rdquo;</>}
+                    {s.type === "delay" && <>Espera <strong>{s.hours < 24 ? `${s.hours}h` : `${Math.round(s.hours / 24)}d`}</strong></>}
+                    {s.type === "send"  && <>Email · &ldquo;{s.subject}&rdquo;</>}
+                    {s.type === "condition" && <em className="text-muted-foreground">Sólo si: {s.label}</em>}
                   </li>
                 ))}
               </ol>
+              {preset.entryFilter && (
+                <div className="mt-2.5 pt-2.5 border-t border-border text-[11px]">
+                  <span className="text-muted-foreground">Filtro de entrada · </span>
+                  {preset.entryFilter.ordersCountGte !== undefined && <span>ordersCount ≥ {preset.entryFilter.ordersCountGte} </span>}
+                  {preset.entryFilter.ordersCountLte !== undefined && <span>ordersCount ≤ {preset.entryFilter.ordersCountLte} </span>}
+                  {preset.entryFilter.totalSpentGte !== undefined && <span>totalSpent ≥ {preset.entryFilter.totalSpentGte}€ </span>}
+                </div>
+              )}
             </div>
           )}
 

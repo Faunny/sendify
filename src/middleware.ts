@@ -23,6 +23,7 @@ function isPublicApiPath(pathname: string): boolean {
     pathname.startsWith("/api/promotions/webhook") ||
     pathname.startsWith("/api/ses/events") ||
     pathname.startsWith("/api/cron/") ||
+    pathname.startsWith("/api/events/track") ||
     pathname.startsWith("/api/assets/") ||
     (pathname.startsWith("/api/forms/") &&
       (pathname.endsWith("/submit") || pathname.endsWith("/embed.js")))
