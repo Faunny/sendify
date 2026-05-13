@@ -227,9 +227,9 @@ function lifestyleHero(s: SkeletonSlots): string {
   // headline + subhead are now overlaid on the hero photo, so we just need
   // the supporting editorial copy here).
   const captionBlock = s.body ? `
-    <mj-section padding="32px 32px 12px" background-color="${s.bgColor}">
+    <mj-section padding="32px 20px 12px" background-color="${s.bgColor}">
       <mj-column>
-        <mj-text align="center" font-size="15px" line-height="1.6" color="${s.textColor}" opacity="0.88">${escapeHtml(s.body)}</mj-text>
+        <mj-text align="center" font-size="15px" line-height="1.6" color="${s.textColor}" opacity="0.88" css-class="sf-body">${escapeHtml(s.body)}</mj-text>
       </mj-column>
     </mj-section>
   ` : "";
@@ -470,30 +470,37 @@ function brandAnthology(s: SkeletonSlots): string {
 // ── winback-empathic ───────────────────────────────────────────────────────
 
 function winbackEmpathic(s: SkeletonSlots): string {
+  const heroImageBlock = s.heroUrl
+    ? `<mj-section padding="0" background-color="#F5F1EA"><mj-column><mj-image src="${s.heroUrl}" alt="" padding="0" /></mj-column></mj-section>`
+    : "";
+
   const slots: Record<string, string> = {
     preheader: PREHEADER(s.preheader, "#F5F1EA"),
     wordmark: WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
     headline: escapeHtml(s.headline),
     body: escapeHtml(s.body ?? "Hemos seguido trabajando estos meses. Pensamos que quizá quieras volver a oler lo que hemos hecho. Si te apetece volver, tu próxima compra lleva un detalle nuestro."),
-    heroImage: s.heroUrl ? `<mj-image src="${s.heroUrl}" alt="" padding="0 24px" /></mj-column></mj-section><mj-section padding="20px 24px"><mj-column>` : "",
+    heroImage: heroImageBlock,
     incentive: s.customerIncentive ? `<mj-text align="center" font-size="13px" letter-spacing="3px" text-transform="uppercase" color="${s.textColor}" padding-top="6px" opacity="0.65">Te guardamos un ${escapeHtml(s.customerIncentive)}</mj-text>` : "",
     cta: PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#"),
     bgColor: s.bgColor,
     textColor: s.textColor,
   };
 
+  // Each section is self-contained — no nesting hacks like the previous
+  // build (which closed an mj-section mid-string and produced a broken DOM
+  // in Gmail iOS, leaving a huge dead band between the image and the body).
   return render(`<mjml>${HEAD}<mj-body background-color="#F5F1EA">
 {{preheader}}
 {{wordmark}}
-<mj-section padding="38px 24px 14px"><mj-column>
+<mj-section padding="32px 24px 14px"><mj-column>
   <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="32px" font-weight="500" color="{{textColor}}" line-height="1.2">{{headline}}</mj-text>
   {{incentive}}
 </mj-column></mj-section>
 {{heroImage}}
-<mj-section padding="14px 36px"><mj-column>
-  <mj-text align="center" font-size="14px" line-height="1.65" color="{{textColor}}">{{body}}</mj-text>
+<mj-section padding="22px 20px 8px"><mj-column>
+  <mj-text align="center" font-size="15px" line-height="1.6" color="{{textColor}}">{{body}}</mj-text>
 </mj-column></mj-section>
-<mj-section padding="22px 24px 44px"><mj-column>{{cta}}</mj-column></mj-section>
+<mj-section padding="20px 24px 40px"><mj-column>{{cta}}</mj-column></mj-section>
 </mj-body></mjml>`, slots);
 }
 
