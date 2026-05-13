@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Loader2, Smartphone, Monitor, Send, AlertTriangle, Check, RefreshCw, Languages } from "lucide-react";
+import { Save, Loader2, Smartphone, Monitor, Send, AlertTriangle, Check, RefreshCw, Languages, Code2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -67,6 +67,9 @@ export function TemplateEditor({ template, initialHtml = "" }: { template: Templ
   const [translationCache, setTranslationCache] = useState<Record<string, string>>({});
   const [translatingLang, setTranslatingLang] = useState(false);
   const [translateError, setTranslateError] = useState<string | null>(null);
+  // Code editor visibility — hidden by default so the rendered email is the
+  // primary view. Power users can flip it on with the "Editar código" toggle.
+  const [showCode, setShowCode] = useState(false);
 
   async function loadTranslation(target: string) {
     if (target === "es-ES") { setPreviewLang("es-ES"); return; }
@@ -200,35 +203,39 @@ export function TemplateEditor({ template, initialHtml = "" }: { template: Templ
         </div>
       )}
 
-      {/* Editor + Preview */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3" style={{ minHeight: "72vh" }}>
-        {/* Left: MJML source */}
-        <div className="rounded-md border border-border bg-card/40 overflow-hidden flex flex-col">
-          <div className="px-3 py-2 border-b border-border flex items-center justify-between bg-card">
-            <span className="text-[11px] uppercase tracking-wider text-muted-foreground">MJML source</span>
-            <span className="text-[11px] text-muted-foreground">{mjml.length.toLocaleString()} chars</span>
-          </div>
-          <textarea
-            value={mjml}
-            onChange={(e) => { setMjml(e.target.value); setTouched(true); }}
-            spellCheck={false}
-            className="flex-1 p-3 font-mono text-[12px] bg-[color:var(--bg)] text-foreground resize-none focus:outline-none"
-            style={{ lineHeight: 1.55, tabSize: 2 }}
-          />
-          {renderErrors.length > 0 && (
-            <div className="px-3 py-2 border-t border-border bg-[color-mix(in_oklch,var(--warning)_5%,transparent)] text-[11px] text-[color:var(--warning)]">
-              {renderErrors.length} warnings: {renderErrors.slice(0, 3).join(" · ")}
+      {/* Preview (always visible) + optional code editor */}
+      <div className={showCode ? "grid grid-cols-1 lg:grid-cols-2 gap-3" : ""} style={{ minHeight: "72vh" }}>
+        {/* Code editor — hidden by default, toggle in the preview toolbar */}
+        {showCode && (
+          <div className="rounded-md border border-border bg-card/40 overflow-hidden flex flex-col">
+            <div className="px-3 py-2 border-b border-border flex items-center justify-between bg-card">
+              <span className="text-[12px] uppercase tracking-wider text-muted-foreground inline-flex items-center gap-1.5">
+                <Code2 className="h-3.5 w-3.5" /> MJML source
+              </span>
+              <span className="text-[11px] text-muted-foreground">{mjml.length.toLocaleString()} chars</span>
             </div>
-          )}
-        </div>
+            <textarea
+              value={mjml}
+              onChange={(e) => { setMjml(e.target.value); setTouched(true); }}
+              spellCheck={false}
+              className="flex-1 p-3 font-mono text-[12px] bg-[color:var(--bg)] text-foreground resize-none focus:outline-none"
+              style={{ lineHeight: 1.55, tabSize: 2 }}
+            />
+            {renderErrors.length > 0 && (
+              <div className="px-3 py-2 border-t border-border bg-[color-mix(in_oklch,var(--warning)_5%,transparent)] text-[11px] text-[color:var(--warning)]">
+                {renderErrors.length} warnings: {renderErrors.slice(0, 3).join(" · ")}
+              </div>
+            )}
+          </div>
+        )}
 
-        {/* Right: rendered preview */}
+        {/* Rendered preview — always the main thing on screen */}
         <div className="rounded-md border border-border bg-card/40 overflow-hidden flex flex-col">
           <div className="px-3 py-2 border-b border-border flex items-center justify-between bg-card gap-2 flex-wrap">
-            <span className="text-[11px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              Preview {(rendering || translatingLang) && <RefreshCw className="h-3 w-3 animate-spin" />}
+            <span className="text-[12px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              Vista previa {(rendering || translatingLang) && <RefreshCw className="h-3 w-3 animate-spin" />}
             </span>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
               <Languages className="h-3.5 w-3.5 text-muted-foreground" />
               <select
                 value={previewLang}
@@ -240,12 +247,19 @@ export function TemplateEditor({ template, initialHtml = "" }: { template: Templ
                   <option key={l.code} value={l.code}>{l.flag} {l.label}{translationCache[l.code] ? " ✓" : ""}</option>
                 ))}
               </select>
-              <Button variant={device === "mobile" ? "secondary" : "ghost"} size="icon-sm" onClick={() => setDevice("mobile")}>
+              <Button variant={device === "mobile" ? "secondary" : "ghost"} size="icon-sm" onClick={() => setDevice("mobile")} title="Vista móvil">
                 <Smartphone className="h-3.5 w-3.5" />
               </Button>
-              <Button variant={device === "desktop" ? "secondary" : "ghost"} size="icon-sm" onClick={() => setDevice("desktop")}>
+              <Button variant={device === "desktop" ? "secondary" : "ghost"} size="icon-sm" onClick={() => setDevice("desktop")} title="Vista desktop">
                 <Monitor className="h-3.5 w-3.5" />
               </Button>
+              <button
+                onClick={() => setShowCode((v) => !v)}
+                className={`text-[11px] inline-flex items-center gap-1 px-2 py-1 rounded border ${showCode ? "border-foreground/40 bg-foreground/[0.06] text-foreground" : "border-border text-muted-foreground hover:text-foreground"}`}
+                title="Editar el código MJML directamente"
+              >
+                <Code2 className="h-3 w-3" /> {showCode ? "Cerrar código" : "Editar código"}
+              </button>
             </div>
           </div>
           {translateError && (
@@ -254,10 +268,10 @@ export function TemplateEditor({ template, initialHtml = "" }: { template: Templ
               {translateError}
             </div>
           )}
-          <div className="flex-1 overflow-auto p-3 bg-[color:var(--muted)] flex justify-center">
+          <div className="flex-1 overflow-auto p-4 bg-[color:var(--muted)] flex justify-center">
             <div className="bg-white rounded-md shadow" style={{ width: device === "desktop" ? 620 : 380, maxWidth: "100%" }}>
               <iframe
-                srcDoc={html || "<div style=\"padding:24px;color:#666\">Renderizando…</div>"}
+                srcDoc={html || "<div style=\"padding:24px;color:#666;font-family:sans-serif\">Renderizando…</div>"}
                 className="w-full"
                 style={{ minHeight: "65vh", border: 0 }}
                 title="preview"

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Sparkles, Loader2, AlertTriangle, Mail, Eye } from "lucide-react";
+import Link from "next/link";
+import { Sparkles, Loader2, AlertTriangle, Mail, Code2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -28,7 +28,6 @@ const EXAMPLE_BRIEFS = [
 ];
 
 export function AiTemplateGenerator({ stores }: { stores: { slug: string; name: string }[] }) {
-  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [brief, setBrief] = useState("");
   const [pillar, setPillar] = useState<typeof PILLARS[number]["value"]>("PARFUMS");
@@ -39,6 +38,28 @@ export function AiTemplateGenerator({ stores }: { stores: { slug: string; name: 
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ subject: string; preheader: string; mjml: string; templateId?: string; modelUsed: string } | null>(null);
+  const [previewHtml, setPreviewHtml] = useState<string>("");
+  const [previewBusy, setPreviewBusy] = useState(false);
+  const [showCode, setShowCode] = useState(false);
+
+  // When a result lands, compile the MJML to HTML so the dialog can show
+  // an actual rendered preview (iframe) instead of raw source code. The user
+  // is a designer/owner, not a coder — she wants to see the email, not MJML.
+  useEffect(() => {
+    if (!result?.mjml) { setPreviewHtml(""); return; }
+    let cancelled = false;
+    setPreviewBusy(true);
+    fetch("/api/templates/render-preview", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mjml: result.mjml }),
+    })
+      .then((r) => r.json())
+      .then((j) => { if (!cancelled && j?.ok && typeof j.html === "string") setPreviewHtml(j.html); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setPreviewBusy(false); });
+    return () => { cancelled = true; };
+  }, [result?.mjml]);
 
   // Tick a second-by-second counter while busy so the user sees the request is
   // actively running (gen-with-image-ref can take 60-90s, not 12).
@@ -89,11 +110,6 @@ export function AiTemplateGenerator({ stores }: { stores: { slug: string; name: 
       clearTimeout(abortTimer);
       setBusy(false);
     }
-  }
-
-  function openInBuilder() {
-    if (!result?.templateId) return;
-    router.push(`/templates/${result.templateId}/edit`);
   }
 
   return (
@@ -201,22 +217,48 @@ export function AiTemplateGenerator({ stores }: { stores: { slug: string; name: 
                 <div className="text-[13px] text-muted-foreground mt-0.5">{result.preheader}</div>
               </div>
 
-              <details className="rounded-md border border-border bg-card/40">
-                <summary className="cursor-pointer text-[13px] px-3 py-2 flex items-center gap-2">
-                  <Eye className="h-3.5 w-3.5" /> Ver MJML generado ({result.mjml.length.toLocaleString()} caracteres)
-                </summary>
-                <pre className="text-[12px] font-mono p-3 max-h-64 overflow-auto bg-[color:var(--bg)] border-t border-border whitespace-pre-wrap break-all">
-                  {result.mjml}
-                </pre>
-              </details>
+              {/* Rendered email preview — what the user actually wants to see. */}
+              <div className="rounded-md border border-border bg-[color:var(--muted)] overflow-hidden">
+                <div className="px-3 py-2 border-b border-border flex items-center justify-between bg-card">
+                  <span className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                    Preview {previewBusy && "· renderizando…"}
+                  </span>
+                  <button onClick={() => setShowCode((v) => !v)} className="text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1">
+                    <Code2 className="h-3 w-3" /> {showCode ? "Ocultar código" : "Ver código"}
+                  </button>
+                </div>
+                <div className="p-3 flex justify-center">
+                  <div className="bg-white rounded shadow w-full max-w-[600px]">
+                    <iframe
+                      srcDoc={previewHtml || "<div style=\"padding:24px;color:#666;font-family:sans-serif\">Renderizando…</div>"}
+                      className="w-full"
+                      style={{ minHeight: "480px", border: 0 }}
+                      title="preview"
+                    />
+                  </div>
+                </div>
+                {showCode && (
+                  <pre className="text-[11px] font-mono p-3 max-h-64 overflow-auto bg-[color:var(--bg)] border-t border-border whitespace-pre-wrap break-all">
+                    {result.mjml}
+                  </pre>
+                )}
+              </div>
 
               <div className="flex items-center justify-between border-t border-border pt-3">
-                <Button variant="outline" size="sm" onClick={() => { setResult(null); setBrief(""); }}>
+                <Button variant="outline" size="default" onClick={() => { setResult(null); setBrief(""); }}>
                   Generar otra
                 </Button>
-                <Button onClick={openInBuilder} disabled={!result.templateId}>
-                  <Mail className="h-3.5 w-3.5" /> Abrir en builder →
-                </Button>
+                {result.templateId ? (
+                  <Button asChild size="default">
+                    <Link href={`/templates/${result.templateId}/edit`} onClick={() => setOpen(false)}>
+                      <Mail className="h-4 w-4" /> Editar y enviar →
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button disabled size="default">
+                    <Mail className="h-4 w-4" /> Sin guardar en DB
+                  </Button>
+                )}
               </div>
             </div>
           )}
