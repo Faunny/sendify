@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/app/page-header";
 import { AiTemplateGenerator } from "@/components/app/ai-template-generator";
+import { SamplePackButton } from "@/components/app/sample-pack-button";
 import { Card, CardContent } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
 
@@ -26,7 +27,8 @@ export default async function TemplatesPage() {
         title="Templates"
         description="Plantillas MJML para renderizado pixel-correcto en Outlook, Gmail, Apple Mail. Genera con IA, edita en el builder, traduce a 22 idiomas automáticamente."
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <SamplePackButton stores={stores} />
             <AiTemplateGenerator stores={stores} />
             <Button size="sm" variant="outline" asChild>
               <Link href="/builder"><Palette className="h-3.5 w-3.5" /> Abrir builder</Link>
