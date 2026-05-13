@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/app/page-header";
 import { AiTemplateGenerator } from "@/components/app/ai-template-generator";
 import { SamplePackButton } from "@/components/app/sample-pack-button";
+import { StoreLogosStrip } from "@/components/app/store-logos-strip";
 import { Card, CardContent } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
 
@@ -18,8 +19,13 @@ export default async function TemplatesPage() {
       take: 50,
       select: { id: true, name: true, kind: true, updatedAt: true, storeId: true, store: { select: { name: true, slug: true } } },
     }).catch(() => []),
-    prisma.store.findMany({ select: { slug: true, name: true }, orderBy: { name: "asc" } }).catch(() => []),
+    prisma.store.findMany({
+      where: { active: true },
+      select: { slug: true, name: true, brandLogoUrl: true },
+      orderBy: { name: "asc" },
+    }).catch(() => []),
   ]);
+  const storesForUi = stores.map((s) => ({ slug: s.slug, name: s.name }));
 
   return (
     <div className="flex flex-col gap-5">
@@ -28,14 +34,20 @@ export default async function TemplatesPage() {
         description="Plantillas MJML para renderizado pixel-correcto en Outlook, Gmail, Apple Mail. Genera con IA, edita en el builder, traduce a 22 idiomas automáticamente."
         actions={
           <div className="flex items-center gap-2 flex-wrap">
-            <SamplePackButton stores={stores} />
-            <AiTemplateGenerator stores={stores} />
+            <SamplePackButton stores={storesForUi} />
+            <AiTemplateGenerator stores={storesForUi} />
             <Button size="sm" variant="outline" asChild>
               <Link href="/builder"><Palette className="h-3.5 w-3.5" /> Abrir builder</Link>
             </Button>
           </div>
         }
       />
+
+      {/* Logo per store — appears in every email header. Surfaced here so the
+          owner doesn't have to dig into /settings/brand or the editor banner. */}
+      {stores.length > 0 && (
+        <StoreLogosStrip stores={stores.map((s) => ({ slug: s.slug, name: s.name, brandLogoUrl: s.brandLogoUrl }))} />
+      )}
 
       {templates.length === 0 ? (
         <Card>
