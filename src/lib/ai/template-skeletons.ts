@@ -85,27 +85,41 @@ function render(template: string, slots: Record<string, string>): string {
 
 function lifestyleHero(s: SkeletonSlots): string {
   const headlineHtml = escapeHtml(s.headline).replace(/\n/g, "<br/>");
+  // When Gemini didn't produce a hero we degrade gracefully to a solid charcoal
+  // hero section that still showcases the headline — much better than a broken
+  // image icon or empty white space.
+  const heroSection = s.heroUrl
+    ? `<mj-section background-url="${s.heroUrl}" background-size="cover" background-repeat="no-repeat" padding="180px 30px 180px">
+        <mj-column>
+          <mj-text align="center" color="#FFFFFF" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="54px" font-weight="600" line-height="1.05" css-class="sf-hero-text">${headlineHtml}</mj-text>
+          {{subhead}}
+        </mj-column>
+      </mj-section>`
+    : `<mj-section background-color="${s.primaryColor}" padding="140px 30px 140px">
+        <mj-column>
+          <mj-text align="center" color="${s.bgColor}" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="48px" font-weight="600" line-height="1.05">${headlineHtml}</mj-text>
+          {{subhead}}
+        </mj-column>
+      </mj-section>`;
+  const subheadColor = s.heroUrl ? "#FFFFFF" : s.bgColor;
   const slots: Record<string, string> = {
     preheader: PREHEADER(s.preheader, s.bgColor),
     wordmark: WORDMARK(s.textColor),
-    heroUrl: s.heroUrl || "https://cdn.divain.space/banners/_fallback.jpg",
-    headline: headlineHtml,
-    subhead: s.subhead ? `<mj-text align="center" color="#FFFFFF" font-size="13px" letter-spacing="4px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" padding-top="18px" css-class="sf-hero-text">${escapeHtml(s.subhead)}</mj-text>` : "",
+    heroSection: heroSection,
+    subhead: s.subhead ? `<mj-text align="center" color="${subheadColor}" font-size="13px" letter-spacing="4px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" padding-top="18px">${escapeHtml(s.subhead)}</mj-text>` : "",
     body: s.body ? `<mj-text align="center" font-size="15px" line-height="1.65" color="${s.textColor}" padding="0 30px 24px">${escapeHtml(s.body)}</mj-text>` : "",
     cta: PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#"),
     brandBar: BRAND_BAR(),
     bgColor: s.bgColor,
   };
 
+  // Substitute {{subhead}} BEFORE wrapping, since heroSection already contains
+  // the placeholder.
+  const filledHero = heroSection.replace("{{subhead}}", slots.subhead);
   return render(`<mjml>${HEAD}<mj-body background-color="{{bgColor}}">
 {{preheader}}
 {{wordmark}}
-<mj-section background-url="{{heroUrl}}" background-size="cover" background-repeat="no-repeat" padding="180px 30px 180px">
-  <mj-column>
-    <mj-text align="center" color="#FFFFFF" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="54px" font-weight="600" line-height="1.05" css-class="sf-hero-text">{{headline}}</mj-text>
-    {{subhead}}
-  </mj-column>
-</mj-section>
+${filledHero}
 <mj-section padding="50px 24px 20px">
   <mj-column>
     {{body}}
