@@ -82,9 +82,8 @@ export function SenderConfigDialog({ sender, trigger }: { sender: SenderProp; tr
             )}
             {result?.ok && (
               <div className="space-y-1">
-                <Row label="Verified for sending"   value={result.verified ? "yes" : "no"} ok={result.verified} />
-                <Row label="DKIM"                   value={result.dkim ? "ok" : "pending"} ok={result.dkim} />
-                <Row label="Sending enabled"        value={result.sendingEnabled ? "yes" : "no"} ok={!!result.sendingEnabled} />
+                <Row label="Verified for sending" value={result.verified ? "yes" : "no"} ok={!!result.verified} />
+                <Row label="DKIM"                 value={result.dkim ? "ok" : "pending"} ok={!!result.dkim} />
                 {result.mailFromDomain && <Row label="MAIL FROM" value={`${result.mailFromDomain} (${result.mailFromStatus})`} ok={result.mailFromStatus === "SUCCESS"} />}
               </div>
             )}

@@ -45,10 +45,11 @@ export async function POST(req: Request) {
   const sender = await prisma.sender.create({
     data: {
       storeId: store.id,
+      name: `${fromName} <${fromEmail}>`,
       provider: "SES",
       fromEmail,
       fromName,
-      replyToEmail,
+      replyTo: replyToEmail,
       dailyCap,
       verified: false,
     },

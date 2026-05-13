@@ -50,7 +50,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       dkimTokens: r.DkimAttributes?.Tokens ?? [],
       mailFromDomain: r.MailFromAttributes?.MailFromDomain ?? null,
       mailFromStatus: r.MailFromAttributes?.MailFromDomainStatus ?? null,
-      sendingEnabled: r.SendingEnabled ?? null,
     });
   } catch (e) {
     return NextResponse.json({
