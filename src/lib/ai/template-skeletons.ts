@@ -52,7 +52,7 @@ export type SkeletonSlots = {
 };
 
 const BRAND_BAR = (textOnDark = "#FFFFFF") => `
-  <mj-section background-color="#000000" padding="22px 0">
+  <mj-section background-color="#000000" padding="22px 0" css-class="sf-mobile-pad">
     <mj-column width="25%"><mj-text align="center" color="${textOnDark}" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="3px" text-transform="uppercase" font-weight="500">divain. PARFUMS</mj-text></mj-column>
     <mj-column width="25%"><mj-text align="center" color="${textOnDark}" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="3px" text-transform="uppercase" font-weight="500">divain. CARE</mj-text></mj-column>
     <mj-column width="25%"><mj-text align="center" color="${textOnDark}" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="3px" text-transform="uppercase" font-weight="500">divain. HOME</mj-text></mj-column>
@@ -74,7 +74,7 @@ const LEGAL_FOOTER = (s: SkeletonSlots) => {
     .filter(Boolean)
     .join(" · ");
   return `
-  <mj-section background-color="${s.bgColor}" padding="22px 24px 44px">
+  <mj-section background-color="${s.bgColor}" padding="22px 24px 44px" css-class="sf-mobile-pad">
     <mj-column>
       ${legalLine ? `<mj-text align="center" color="#888" font-family="Inter, Helvetica, Arial, sans-serif" font-size="10.5px" line-height="1.7">${escapeHtml(legalLine)}</mj-text>` : ""}
       <mj-text align="center" color="#888" font-family="Inter, Helvetica, Arial, sans-serif" font-size="10.5px" line-height="1.7" padding-top="${legalLine ? "6px" : "0"}">
@@ -99,7 +99,7 @@ const WORDMARK = (color: string, logoUrl?: string, href?: string) => {
   const link = href ?? "#";
   if (logoUrl) {
     return `
-      <mj-section padding="28px 24px 8px">
+      <mj-section padding="28px 24px 8px" css-class="sf-mobile-pad">
         <mj-column>
           <mj-image src="${logoUrl}" alt="" width="120px" align="center" href="${link}" padding="0" />
         </mj-column>
@@ -107,7 +107,7 @@ const WORDMARK = (color: string, logoUrl?: string, href?: string) => {
     `;
   }
   return `
-    <mj-section padding="28px 24px 0">
+    <mj-section padding="28px 24px 0" css-class="sf-mobile-pad">
       <mj-column>
         <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="24px" font-weight="700" color="${color}" letter-spacing="-0.5px">
           <a href="${link}" style="color:${color};text-decoration:none;">divain.</a>
@@ -125,19 +125,46 @@ const HEAD = `
   <mj-head>
     <mj-attributes>
       <mj-all font-family="Inter, Helvetica, Arial, sans-serif" />
+      <mj-class name="sf-pad" padding="0 16px" />
     </mj-attributes>
     <mj-style inline="inline">
       .sf-hero-text { text-shadow: 0 2px 12px rgba(0,0,0,0.45); }
     </mj-style>
     <mj-style>
+      /* Mobile reset — Gmail iOS / Apple Mail / Outlook iOS render emails at
+         600px native and scale to fit, but tap-zoom + paddings stacking up
+         crush the layout. This media query trims every section's horizontal
+         padding, shrinks oversized type, and ensures hero images stay full-
+         bleed so the email reads cleanly without pinch-zoom. */
       @media only screen and (max-width: 480px) {
-        .sf-hero-section td { padding: 90px 18px !important; }
-        .sf-hero-headline div { font-size: 34px !important; line-height: 1.1 !important; }
-        .sf-hero-headline { font-size: 34px !important; }
+        /* Universal: every mj-section td gets compact mobile padding. */
+        div[style*="600px"] { width: 100% !important; max-width: 100% !important; }
+        .mj-outlook-group-fix { width: 100% !important; }
+        /* Hero sections with background-url should keep full-bleed sides. */
+        .sf-hero-section td { padding: 80px 18px !important; }
+        .sf-hero-headline div { font-size: 32px !important; line-height: 1.1 !important; }
+        .sf-hero-headline { font-size: 32px !important; }
         .sf-hero-subhead, .sf-hero-subhead div { font-size: 11px !important; letter-spacing: 3px !important; }
-        .sf-big-number, .sf-big-number div { font-size: 68px !important; line-height: 1 !important; }
-        .sf-section-pad td { padding: 28px 18px !important; }
-        .sf-body, .sf-body div { font-size: 14px !important; line-height: 1.6 !important; padding: 0 18px !important; }
+        /* Promo + big-number variants. */
+        .sf-big-number, .sf-big-number div { font-size: 64px !important; line-height: 1 !important; }
+        /* Default content section: short vertical padding, slim 16px sides. */
+        .sf-section-pad td { padding: 22px 16px !important; }
+        .sf-section-pad-tight td { padding: 14px 16px !important; }
+        .sf-section-pad-loose td { padding: 32px 16px !important; }
+        /* Sides-only override that preserves whatever vertical padding the
+           section already declares — used for content sections that just want
+           to slim their sides on mobile. */
+        .sf-mobile-pad td { padding-left: 16px !important; padding-right: 16px !important; }
+        /* Body copy stays comfortable on small screens. */
+        .sf-body, .sf-body div { font-size: 14.5px !important; line-height: 1.55 !important; padding: 0 8px !important; }
+        /* Headlines smaller on phone — anything 26-32px on desktop -> 22-26 */
+        .sf-h2, .sf-h2 div { font-size: 24px !important; line-height: 1.15 !important; }
+        .sf-h1, .sf-h1 div { font-size: 28px !important; line-height: 1.12 !important; }
+        /* Edge-to-edge images on mobile. */
+        .sf-img-bleed td { padding: 0 !important; }
+        .sf-img-bleed img { width: 100% !important; height: auto !important; }
+        /* Buttons fill width on mobile so tap target is big. */
+        .sf-cta a { width: auto !important; min-width: 60% !important; }
       }
     </mj-style>
   </mj-head>
@@ -185,12 +212,12 @@ function lifestyleHero(s: SkeletonSlots): string {
   // emit a small hint block so the email isn't just "headline + CTA".
   const products = (s.products ?? []).slice(0, 3);
   const productSection = products.length > 0 ? `
-    <mj-section padding="40px 16px 10px" background-color="${s.bgColor}">
+    <mj-section padding="40px 16px 10px" background-color="${s.bgColor}" css-class="sf-mobile-pad">
       <mj-column>
         <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="12px" letter-spacing="3px" text-transform="uppercase" color="${s.textColor}" opacity="0.7">Selección destacada</mj-text>
       </mj-column>
     </mj-section>
-    <mj-section padding="10px 12px 40px" background-color="${s.bgColor}">
+    <mj-section padding="10px 12px 40px" background-color="${s.bgColor}" css-class="sf-mobile-pad">
       ${products.map((p) => {
         const href = p.productUrl ?? "#";
         const img = p.imageUrl
@@ -210,7 +237,7 @@ function lifestyleHero(s: SkeletonSlots): string {
   // Editorial closer section — 2-column layout with copy + supporting visual.
   // Always renders so the email has structural depth beyond hero + CTA.
   const closerSection = `
-    <mj-section padding="40px 24px 50px" background-color="#F5F1EA">
+    <mj-section padding="40px 24px 50px" background-color="#F5F1EA" css-class="sf-mobile-pad">
       <mj-column width="60%">
         <mj-text font-family="Outfit, Helvetica, Arial, sans-serif" font-size="20px" font-weight="500" color="${s.textColor}" line-height="1.35">Cada fragancia, una historia.</mj-text>
         <mj-text font-size="14px" line-height="1.65" color="${s.textColor}" padding-top="12px">Llevamos años perfeccionando las equivalencias. Detrás de cada nota hay un proceso que respeta el original y lo hace accesible. Descubre la colección y elige la que mejor te cuente.</mj-text>
@@ -227,7 +254,7 @@ function lifestyleHero(s: SkeletonSlots): string {
   // headline + subhead are now overlaid on the hero photo, so we just need
   // the supporting editorial copy here).
   const captionBlock = s.body ? `
-    <mj-section padding="32px 20px 12px" background-color="${s.bgColor}">
+    <mj-section padding="32px 20px 12px" background-color="${s.bgColor}" css-class="sf-mobile-pad">
       <mj-column>
         <mj-text align="center" font-size="15px" line-height="1.6" color="${s.textColor}" opacity="0.88" css-class="sf-body">${escapeHtml(s.body)}</mj-text>
       </mj-column>
@@ -259,7 +286,7 @@ function bigNumberHero(s: SkeletonSlots): string {
     cta: PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#"),
     heroUrl: s.heroUrl || "",
     heroSection: s.heroUrl
-      ? `<mj-section padding="20px 24px"><mj-column><mj-image src="${s.heroUrl}" alt="" border-radius="6px" /></mj-column></mj-section>`
+      ? `<mj-section padding="20px 24px" css-class="sf-mobile-pad"><mj-column><mj-image src="${s.heroUrl}" alt="" border-radius="6px" /></mj-column></mj-section>`
       : "",
     brandBar: BRAND_BAR(),
     bgColor: s.bgColor,
@@ -270,14 +297,14 @@ function bigNumberHero(s: SkeletonSlots): string {
   return render(`<mjml>${HEAD}<mj-body background-color="{{bgColor}}">
 {{preheader}}
 {{wordmark}}
-<mj-section padding="44px 24px 8px">
+<mj-section padding="44px 24px 8px" css-class="sf-mobile-pad">
   <mj-column>
     <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="118px" font-weight="700" line-height="1" color="{{primaryColor}}" css-class="sf-big-number">{{offerNumber}}</mj-text>
     <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="15px" letter-spacing="6px" text-transform="uppercase" color="{{textColor}}" padding-top="18px" font-weight="500">{{offerLabel}}</mj-text>
     <mj-text align="center" font-size="13px" color="{{textColor}}" padding-top="8px">{{body}}</mj-text>
   </mj-column>
 </mj-section>
-<mj-section padding="18px 24px 24px"><mj-column>{{cta}}</mj-column></mj-section>
+<mj-section padding="18px 24px 24px" css-class="sf-mobile-pad"><mj-column>{{cta}}</mj-column></mj-section>
 {{heroSection}}
 {{brandBar}}
 </mj-body></mjml>`, slots);
@@ -309,7 +336,7 @@ function productGridEditorial(s: SkeletonSlots): string {
     wordmark: WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
     headline: escapeHtml(s.headline),
     subhead: s.subhead ? `<mj-text align="center" font-size="14px" letter-spacing="3px" text-transform="uppercase" color="${s.textColor}" opacity="0.65" padding-top="10px">${escapeHtml(s.subhead)}</mj-text>` : "",
-    bigHero: s.heroUrl ? `<mj-section padding="20px 24px"><mj-column><mj-image src="${s.heroUrl}" alt="" border-radius="6px" /></mj-column></mj-section>` : "",
+    bigHero: s.heroUrl ? `<mj-section padding="20px 24px" css-class="sf-mobile-pad"><mj-column><mj-image src="${s.heroUrl}" alt="" border-radius="6px" /></mj-column></mj-section>` : "",
     cols,
     cta: PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#"),
     brandBar: BRAND_BAR(),
@@ -320,15 +347,15 @@ function productGridEditorial(s: SkeletonSlots): string {
   return render(`<mjml>${HEAD}<mj-body background-color="{{bgColor}}">
 {{preheader}}
 {{wordmark}}
-<mj-section padding="36px 24px 8px">
+<mj-section padding="36px 24px 8px" css-class="sf-mobile-pad">
   <mj-column>
     <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="32px" font-weight="600" color="{{textColor}}" line-height="1.15">{{headline}}</mj-text>
     {{subhead}}
   </mj-column>
 </mj-section>
 {{bigHero}}
-<mj-section padding="24px 16px">{{cols}}</mj-section>
-<mj-section padding="0 24px 36px"><mj-column>{{cta}}</mj-column></mj-section>
+<mj-section padding="24px 16px" css-class="sf-mobile-pad">{{cols}}</mj-section>
+<mj-section padding="0 24px 36px" css-class="sf-mobile-pad"><mj-column>{{cta}}</mj-column></mj-section>
 {{brandBar}}
 </mj-body></mjml>`, slots);
 }
@@ -354,12 +381,12 @@ function premiumLaunch(s: SkeletonSlots): string {
   return render(`<mjml>${HEAD}<mj-body background-color="{{bgColor}}">
 {{preheader}}
 {{wordmark}}
-<mj-section padding="56px 32px 22px"><mj-column>{{productImage}}</mj-column></mj-section>
-<mj-section padding="8px 32px"><mj-column>
+<mj-section padding="56px 32px 22px" css-class="sf-mobile-pad"><mj-column>{{productImage}}</mj-column></mj-section>
+<mj-section padding="8px 32px" css-class="sf-mobile-pad"><mj-column>
   <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="26px" font-weight="500" letter-spacing="0.5px" color="{{textColor}}">{{productName}}</mj-text>
   <mj-text align="center" font-size="13px" letter-spacing="3px" text-transform="uppercase" color="{{textColor}}" opacity="0.6" padding-top="10px">{{productCopy}}</mj-text>
 </mj-column></mj-section>
-<mj-section padding="28px 32px 60px"><mj-column>{{cta}}</mj-column></mj-section>
+<mj-section padding="28px 32px 60px" css-class="sf-mobile-pad"><mj-column>{{cta}}</mj-column></mj-section>
 </mj-body></mjml>`, slots);
 }
 
@@ -369,7 +396,7 @@ function premiumLaunch(s: SkeletonSlots): string {
 function countdownUrgency(s: SkeletonSlots): string {
   const slots: Record<string, string> = {
     preheader: PREHEADER(s.preheader, "#000000"),
-    wordmark: `<mj-section background-color="#000000" padding="32px 24px 0"><mj-column>
+    wordmark: `<mj-section background-color="#000000" padding="32px 24px 0" css-class="sf-mobile-pad"><mj-column>
       <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="22px" font-weight="700" color="#FFFFFF">divain.</mj-text>
     </mj-column></mj-section>`,
     headline: escapeHtml(s.headline),
@@ -381,11 +408,11 @@ function countdownUrgency(s: SkeletonSlots): string {
   return render(`<mjml>${HEAD}<mj-body background-color="#000000">
 {{preheader}}
 {{wordmark}}
-<mj-section background-color="#000000" padding="48px 24px 18px"><mj-column>
+<mj-section background-color="#000000" padding="48px 24px 18px" css-class="sf-mobile-pad"><mj-column>
   <mj-text align="center" color="#FFFFFF" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="46px" font-weight="700" line-height="1.1" letter-spacing="-0.5px">{{headline}}</mj-text>
   <mj-text align="center" color="#FFFFFF" font-size="14px" letter-spacing="5px" text-transform="uppercase" padding-top="18px" opacity="0.7">{{subhead}}</mj-text>
 </mj-column></mj-section>
-<mj-section background-color="#000000" padding="14px 24px 48px"><mj-column>
+<mj-section background-color="#000000" padding="14px 24px 48px" css-class="sf-mobile-pad"><mj-column>
   <mj-text align="center" color="#FFFFFF" font-size="14px" padding-bottom="24px" opacity="0.8">{{body}}</mj-text>
   {{cta}}
 </mj-column></mj-section>
@@ -407,15 +434,15 @@ function appPromoGradient(s: SkeletonSlots): string {
 
   return render(`<mjml>${HEAD}<mj-body background-color="#FFBDCF">
 {{preheader}}
-<mj-section background-color="#FFBDCF" padding="32px 24px 0"><mj-column>
+<mj-section background-color="#FFBDCF" padding="32px 24px 0" css-class="sf-mobile-pad"><mj-column>
   <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="22px" font-weight="700" color="#1A1A1A">divain.</mj-text>
 </mj-column></mj-section>
-<mj-section background-color="#FFBDCF" padding="28px 24px 14px"><mj-column>
+<mj-section background-color="#FFBDCF" padding="28px 24px 14px" css-class="sf-mobile-pad"><mj-column>
   <mj-text align="center" color="#1A1A1A" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="40px" font-weight="600" line-height="1.1">{{headline}}</mj-text>
   <mj-text align="center" color="#1A1A1A" font-size="14px" letter-spacing="2px" text-transform="uppercase" padding-top="14px">{{subhead}}</mj-text>
 </mj-column></mj-section>
-<mj-section background-color="#FFBDCF" padding="14px 24px 22px"><mj-column>{{heroImage}}</mj-column></mj-section>
-<mj-section background-color="#FFBDCF" padding="0 24px 44px"><mj-column>{{appStoreBtn}}</mj-column></mj-section>
+<mj-section background-color="#FFBDCF" padding="14px 24px 22px" css-class="sf-mobile-pad"><mj-column>{{heroImage}}</mj-column></mj-section>
+<mj-section background-color="#FFBDCF" padding="0 24px 44px" css-class="sf-mobile-pad"><mj-column>{{appStoreBtn}}</mj-column></mj-section>
 </mj-body></mjml>`, slots);
 }
 
@@ -432,7 +459,7 @@ function brandAnthology(s: SkeletonSlots): string {
   const pillarSections = pillars.map((p, i) => {
     const bg = i % 2 === 0 ? s.bgColor : "#F5F5F5";
     return `
-      <mj-section background-color="${bg}" padding="42px 24px">
+      <mj-section background-color="${bg}" padding="42px 24px" css-class="sf-mobile-pad">
         <mj-column>
           <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="4px" text-transform="uppercase" color="${s.textColor}" font-weight="500">divain. ${escapeHtml(p.title)}</mj-text>
           <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="22px" font-weight="500" color="${s.textColor}" line-height="1.3" padding-top="12px">${escapeHtml(p.copy)}</mj-text>
@@ -448,7 +475,7 @@ function brandAnthology(s: SkeletonSlots): string {
     preheader: PREHEADER(s.preheader, s.bgColor),
     wordmark: WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
     headline: escapeHtml(s.headline),
-    heroImage: s.heroUrl ? `<mj-section padding="0 24px 16px"><mj-column><mj-image src="${s.heroUrl}" alt="" border-radius="6px" /></mj-column></mj-section>` : "",
+    heroImage: s.heroUrl ? `<mj-section padding="0 24px 16px" css-class="sf-mobile-pad"><mj-column><mj-image src="${s.heroUrl}" alt="" border-radius="6px" /></mj-column></mj-section>` : "",
     pillarSections,
     bgColor: s.bgColor,
     textColor: s.textColor,
@@ -457,7 +484,7 @@ function brandAnthology(s: SkeletonSlots): string {
   return render(`<mjml>${HEAD}<mj-body background-color="{{bgColor}}">
 {{preheader}}
 {{wordmark}}
-<mj-section padding="40px 24px 14px">
+<mj-section padding="40px 24px 14px" css-class="sf-mobile-pad">
   <mj-column>
     <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="30px" font-weight="600" color="{{textColor}}" line-height="1.2">{{headline}}</mj-text>
   </mj-column>
@@ -471,7 +498,7 @@ function brandAnthology(s: SkeletonSlots): string {
 
 function winbackEmpathic(s: SkeletonSlots): string {
   const heroImageBlock = s.heroUrl
-    ? `<mj-section padding="0" background-color="#F5F1EA"><mj-column><mj-image src="${s.heroUrl}" alt="" padding="0" /></mj-column></mj-section>`
+    ? `<mj-section padding="0" background-color="#F5F1EA" css-class="sf-mobile-pad"><mj-column><mj-image src="${s.heroUrl}" alt="" padding="0" /></mj-column></mj-section>`
     : "";
 
   const slots: Record<string, string> = {
@@ -492,15 +519,15 @@ function winbackEmpathic(s: SkeletonSlots): string {
   return render(`<mjml>${HEAD}<mj-body background-color="#F5F1EA">
 {{preheader}}
 {{wordmark}}
-<mj-section padding="32px 24px 14px"><mj-column>
+<mj-section padding="32px 24px 14px" css-class="sf-mobile-pad"><mj-column>
   <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="32px" font-weight="500" color="{{textColor}}" line-height="1.2">{{headline}}</mj-text>
   {{incentive}}
 </mj-column></mj-section>
 {{heroImage}}
-<mj-section padding="22px 20px 8px"><mj-column>
+<mj-section padding="22px 20px 8px" css-class="sf-mobile-pad"><mj-column>
   <mj-text align="center" font-size="15px" line-height="1.6" color="{{textColor}}">{{body}}</mj-text>
 </mj-column></mj-section>
-<mj-section padding="20px 24px 40px"><mj-column>{{cta}}</mj-column></mj-section>
+<mj-section padding="20px 24px 40px" css-class="sf-mobile-pad"><mj-column>{{cta}}</mj-column></mj-section>
 </mj-body></mjml>`, slots);
 }
 

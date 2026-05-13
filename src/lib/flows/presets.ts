@@ -82,7 +82,7 @@ export type FlowPreset = {
 const headerStyle = `
   <mj-attributes>
     <mj-all font-family="Outfit, Helvetica, Arial, sans-serif" />
-    <mj-text color="{{store.textColor}}" font-size="15px" line-height="1.65" />
+    <mj-text color="{{store.textColor}}" font-size="15px" line-height="1.6" />
     <mj-button background-color="{{store.primaryColor}}" color="{{store.bgColor}}" font-weight="500" font-size="13px" letter-spacing="2.5px" inner-padding="14px 32px" border-radius="0" />
   </mj-attributes>
   <mj-style inline="inline">
@@ -90,14 +90,28 @@ const headerStyle = `
     .sf-headline { font-size: 38px; line-height: 1.08; font-weight: 300; letter-spacing: -0.5px; }
     .sf-headline-lg { font-size: 56px; line-height: 1; font-weight: 300; letter-spacing: -1px; }
     .sf-headline-sm { font-size: 28px; line-height: 1.1; font-weight: 400; letter-spacing: -0.25px; }
-    .sf-sub { font-size: 14.5px; color: {{store.textColor}}; opacity: 0.72; line-height: 1.65; }
+    .sf-sub { font-size: 14.5px; color: {{store.textColor}}; opacity: 0.72; line-height: 1.55; }
     .sf-tiny { font-size: 11px; color: {{store.textColor}}; opacity: 0.55; letter-spacing: 1px; text-transform: uppercase; }
     .sf-divider { border-top: 1px solid {{store.textColor}}; opacity: 0.12; }
     .sf-offer-num { font-size: 110px; line-height: 1; font-weight: 300; letter-spacing: -3px; color: {{store.primaryColor}}; }
-    @media (max-width: 480px) {
-      .sf-headline    { font-size: 30px !important; }
-      .sf-headline-lg { font-size: 40px !important; }
-      .sf-offer-num   { font-size: 72px !important; }
+    @media only screen and (max-width: 480px) {
+      /* Type shrinks so it reads without horizontal scrolling. */
+      .sf-headline      { font-size: 28px !important; line-height: 1.1 !important; }
+      .sf-headline-lg   { font-size: 36px !important; }
+      .sf-headline-sm   { font-size: 22px !important; }
+      .sf-offer-num     { font-size: 64px !important; letter-spacing: -2px !important; }
+      .sf-sub           { font-size: 14px !important; line-height: 1.55 !important; }
+      .sf-eyebrow       { font-size: 10.5px !important; letter-spacing: 3px !important; }
+      /* Every section's td gets compact horizontal padding on mobile. The
+         attribute selector hits any inline padding-* style emitted by MJML
+         and only changes the sides — vertical padding stays intact. */
+      .sf-mobile-pad td { padding-left: 16px !important; padding-right: 16px !important; }
+      /* Edge-to-edge images on small screens. */
+      .sf-img-bleed td  { padding: 0 !important; }
+      .sf-img-bleed img { width: 100% !important; height: auto !important; }
+      /* Outlook-iOS 600px wrappers — collapse to viewport width. */
+      div[style*="600px"] { width: 100% !important; max-width: 100% !important; }
+      .mj-outlook-group-fix { width: 100% !important; }
     }
   </mj-style>
 `;
@@ -107,7 +121,7 @@ const FOOTER = `
     <mj-column width="50%"><mj-text align="center" color="#FFFFFF" font-size="11px" letter-spacing="3px" text-transform="uppercase">divain. parfums</mj-text></mj-column>
     <mj-column width="50%"><mj-text align="center" color="#FFFFFF" font-size="11px" letter-spacing="3px" text-transform="uppercase">divain. care</mj-text></mj-column>
   </mj-section>
-  <mj-section background-color="{{store.bgColor}}" padding="22px 20px 44px">
+  <mj-section background-color="{{store.bgColor}}" padding="22px 20px 44px" css-class="sf-mobile-pad">
     <mj-column>
       <mj-text align="center" color="#888" font-size="10.5px" line-height="1.7">
         {{store.legalName}} · {{store.legalAddress}} · {{store.legalCity}}, {{store.legalCountry}}<br/>
@@ -126,7 +140,7 @@ const FOOTER = `
 // otherwise it falls back to the "divain." wordmark in text. Either way the
 // header links to the storefront so a header click goes to the homepage.
 const HEADER = `
-  <mj-section background-color="{{store.bgColor}}" padding="28px 24px 6px">
+  <mj-section background-color="{{store.bgColor}}" padding="28px 24px 6px" css-class="sf-mobile-pad">
     <mj-column>
       {{store.logoBlock}}
     </mj-column>
@@ -140,40 +154,40 @@ function tpl(body: string): string {
 // ── Reusable section helpers ─────────────────────────────────────────────────
 
 const heroCentered = (eyebrow: string, headline: string, sub: string, ctaLabel: string, ctaUrl: string) => `
-  <mj-section padding="48px 20px 24px">
+  <mj-section padding="48px 20px 24px" css-class="sf-mobile-pad">
     <mj-column>
       <mj-text align="center" css-class="sf-eyebrow">${eyebrow}</mj-text>
       <mj-text align="center" css-class="sf-headline" padding-top="12px">${headline}</mj-text>
-      <mj-text align="center" css-class="sf-sub" padding-top="14px" padding-left="36px" padding-right="36px">${sub}</mj-text>
+      <mj-text align="center" css-class="sf-sub" padding-top="14px" padding-left="20px" padding-right="20px">${sub}</mj-text>
       <mj-button href="${ctaUrl}" padding-top="26px">${ctaLabel}</mj-button>
     </mj-column>
   </mj-section>
 `;
 
 const heroOffer = (eyebrow: string, offer: string, sub: string, ctaLabel: string, ctaUrl: string) => `
-  <mj-section padding="44px 20px 20px">
+  <mj-section padding="44px 20px 20px" css-class="sf-mobile-pad">
     <mj-column>
       <mj-text align="center" css-class="sf-eyebrow">${eyebrow}</mj-text>
       <mj-text align="center" css-class="sf-offer-num" padding-top="14px">${offer}</mj-text>
-      <mj-text align="center" css-class="sf-sub" padding-top="10px" padding-left="36px" padding-right="36px">${sub}</mj-text>
+      <mj-text align="center" css-class="sf-sub" padding-top="10px" padding-left="20px" padding-right="20px">${sub}</mj-text>
       <mj-button href="${ctaUrl}" padding-top="22px">${ctaLabel}</mj-button>
     </mj-column>
   </mj-section>
 `;
 
 const heroDark = (eyebrow: string, headline: string, sub: string, ctaLabel: string, ctaUrl: string) => `
-  <mj-section background-color="#0E0E0E" padding="64px 20px 52px">
+  <mj-section background-color="#0E0E0E" padding="64px 20px 52px" css-class="sf-mobile-pad">
     <mj-column>
       <mj-text align="center" color="#D4AF7A" font-size="11px" letter-spacing="4px" text-transform="uppercase" font-weight="500">${eyebrow}</mj-text>
-      <mj-text align="center" color="#FFFFFF" font-size="42px" line-height="1.1" font-weight="300" letter-spacing="-0.5px" padding-top="12px">${headline}</mj-text>
-      <mj-text align="center" color="#CCCCCC" font-size="14.5px" line-height="1.55" padding-top="14px" padding-left="36px" padding-right="36px">${sub}</mj-text>
+      <mj-text align="center" color="#FFFFFF" font-size="36px" line-height="1.1" font-weight="300" letter-spacing="-0.5px" padding-top="12px" css-class="sf-headline">${headline}</mj-text>
+      <mj-text align="center" color="#CCCCCC" font-size="14.5px" line-height="1.55" padding-top="14px" padding-left="20px" padding-right="20px" css-class="sf-sub">${sub}</mj-text>
       <mj-button background-color="#D4AF7A" color="#0E0E0E" href="${ctaUrl}" padding-top="22px" inner-padding="14px 36px" font-weight="500" font-size="13px" letter-spacing="2.5px" border-radius="0">${ctaLabel}</mj-button>
     </mj-column>
   </mj-section>
 `;
 
 const closer = (text: string) => `
-  <mj-section padding="0 20px 36px">
+  <mj-section padding="0 20px 36px" css-class="sf-mobile-pad">
     <mj-column>
       <mj-text align="center" css-class="sf-tiny" padding-top="14px">${text}</mj-text>
     </mj-column>
@@ -181,7 +195,7 @@ const closer = (text: string) => `
 `;
 
 const incentiveLine = (code: string, copy: string) => `
-  <mj-section padding="0 20px 22px">
+  <mj-section padding="0 20px 22px" css-class="sf-mobile-pad">
     <mj-column>
       <mj-divider css-class="sf-divider" padding="0" />
       <mj-text align="center" css-class="sf-tiny" padding-top="16px">${copy}</mj-text>
