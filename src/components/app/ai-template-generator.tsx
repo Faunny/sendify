@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles, Loader2, AlertTriangle, Mail, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -36,26 +36,57 @@ export function AiTemplateGenerator({ stores }: { stores: { slug: string; name: 
   const [storeSlug, setStoreSlug] = useState<string>(stores[0]?.slug ?? "");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ subject: string; preheader: string; mjml: string; templateId?: string; modelUsed: string } | null>(null);
 
+  // Tick a second-by-second counter while busy so the user sees the request is
+  // actively running (gen-with-image-ref can take 60-90s, not 12).
+  useEffect(() => {
+    if (!busy) { setElapsed(0); return; }
+    const start = Date.now();
+    const t = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 500);
+    return () => clearInterval(t);
+  }, [busy]);
+
   async function generate() {
     setError(null); setResult(null); setBusy(true);
+    // Hard timeout — abort after 4 minutes so a stuck Gemini call doesn't
+    // pin the UI forever. Vercel's function timeout is 5 min so we cut a
+    // little earlier and surface a clean error instead of a network hang.
+    const controller = new AbortController();
+    const abortTimer = setTimeout(() => controller.abort(), 4 * 60_000);
     try {
-      const res = await fetch("/api/templates/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brief, pillar, tone, storeSlug, name: name || undefined }),
-      });
-      const json = await res.json();
-      if (!json.ok) throw new Error(json.error ?? "generation failed");
+      let res: Response;
+      try {
+        res = await fetch("/api/templates/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ brief, pillar, tone, storeSlug, name: name || undefined }),
+          signal: controller.signal,
+        });
+      } catch (netErr) {
+        if (controller.signal.aborted) {
+          throw new Error("La generación tardó más de 4 minutos. Revisa quotas (OpenAI/Gemini/DeepSeek) y vuelve a intentar.");
+        }
+        throw new Error(`Servidor no responde (${netErr instanceof Error ? netErr.message : "network"}) — espera el deploy y reintenta.`);
+      }
+      // Parse defensively — a 504 / function crash returns HTML and a naive
+      // res.json() throws "Unexpected token <" which hides the real cause.
+      const text = await res.text();
+      let json: { ok?: boolean; error?: string; subject?: string; preheader?: string; mjml?: string; templateId?: string; modelUsed?: string } = {};
+      try { json = JSON.parse(text); } catch {
+        throw new Error(`Respuesta no JSON (HTTP ${res.status}): ${text.slice(0, 200)}`);
+      }
+      if (!res.ok || !json.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       setResult({
-        subject: json.subject, preheader: json.preheader, mjml: json.mjml,
-        templateId: json.templateId, modelUsed: json.modelUsed,
+        subject: json.subject ?? "", preheader: json.preheader ?? "", mjml: json.mjml ?? "",
+        templateId: json.templateId, modelUsed: json.modelUsed ?? "",
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "generation failed");
     } finally {
+      clearTimeout(abortTimer);
       setBusy(false);
     }
   }
@@ -144,13 +175,21 @@ export function AiTemplateGenerator({ stores }: { stores: { slug: string; name: 
                 </div>
               )}
 
-              <div className="flex items-center justify-between border-t border-border pt-3">
-                <div className="text-[12px] text-muted-foreground">
-                  Usa <strong className="text-foreground">DeepSeek</strong> (configurado) · ~$0.003 por generación · ~12 segundos
+              <div className="flex items-center justify-between border-t border-border pt-3 gap-3">
+                <div className="text-[12px] text-muted-foreground leading-relaxed">
+                  {busy ? (
+                    <>
+                      <span className="text-foreground font-medium">{elapsed < 12 ? "Generando copy y elección de layout…" : elapsed < 45 ? "Componiendo el hero con tu producto…" : elapsed < 90 ? "Casi listo, terminando la imagen…" : "Tardando más de lo normal — revisa quotas en Settings"}</span>
+                      <br/>
+                      <span className="tabular-nums">{elapsed}s transcurridos · timeout en 4 min</span>
+                    </>
+                  ) : (
+                    <>Usa <strong className="text-foreground">DeepSeek</strong> + <strong className="text-foreground">Gemini</strong> · ~$0.005 · 30-60s con tu producto en la imagen</>
+                  )}
                 </div>
                 <Button onClick={generate} disabled={busy || brief.trim().length < 8}>
                   {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                  {busy ? "Generando…" : "Generar"}
+                  {busy ? `Generando… ${elapsed}s` : "Generar"}
                 </Button>
               </div>
             </div>

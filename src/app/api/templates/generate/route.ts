@@ -34,6 +34,10 @@ export async function POST(req: Request) {
   try {
     generated = await generateTemplate({ brief, pillar, storeSlug, tone });
   } catch (e) {
+    // Log the full error to Vercel so we can see the underlying cause; return
+    // a clean JSON message to the UI so the user gets actionable feedback
+    // instead of "Failed to fetch".
+    console.error("[POST /api/templates/generate] generateTemplate failed:", e);
     return NextResponse.json({
       ok: false,
       error: e instanceof Error ? e.message : "AI generation failed",
