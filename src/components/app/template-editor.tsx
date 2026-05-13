@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Save, Loader2, Smartphone, Monitor, Send, AlertTriangle, Check, RefreshCw, Languages, Code2 } from "lucide-react";
+import { Save, Loader2, Smartphone, Monitor, Send, AlertTriangle, Check, RefreshCw, Languages, Code2, Image } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -36,12 +36,31 @@ const PREVIEW_LANGS: Array<{ code: string; label: string; flag: string }> = [
 // that handles 95% of real tweaks (subject swap, copy edit, URL change,
 // price change, image replace).
 
+// Replace the divain. text wordmark section with an mj-image block pointing
+// at the freshly-uploaded brand logo. We target the specific shape emitted
+// by template-skeletons.ts WORDMARK helper. Falls back to no-op if the
+// pattern doesn't match (custom templates) — the user can re-generate to
+// pick up the logo automatically.
+function swapWordmarkForLogo(mjml: string, logoUrl: string): string {
+  const newBlock = `<mj-section padding="28px 24px 8px">
+      <mj-column>
+        <mj-image src="${logoUrl}" alt="" width="120px" align="center" padding="0" />
+      </mj-column>
+    </mj-section>`;
+  // Strategy: find any mj-section whose mj-text contains "divain." and swap
+  // the whole section. Greedy match would chew through the rest of the
+  // email, so we cap at the next </mj-section> (lazy match across newlines).
+  const re = /<mj-section\b[^>]*>[\s\S]*?divain\.[\s\S]*?<\/mj-section>/;
+  return re.test(mjml) ? mjml.replace(re, newBlock) : mjml;
+}
+
 type TemplateProp = {
   id: string;
   name: string;
   mjml: string;
   storeName: string | null;
   storeSlug: string | null;
+  storeLogoUrl?: string | null;
 };
 
 export function TemplateEditor({ template, initialHtml = "" }: { template: TemplateProp; initialHtml?: string }) {
@@ -70,6 +89,43 @@ export function TemplateEditor({ template, initialHtml = "" }: { template: Templ
   // Code editor visibility — hidden by default so the rendered email is the
   // primary view. Power users can flip it on with the "Editar código" toggle.
   const [showCode, setShowCode] = useState(false);
+
+  // Inline logo upload state. When the store has no brandLogoUrl, the preview
+  // shows the "divain." text fallback in every email header. A clear banner
+  // lets the owner fix that in one click without leaving the page.
+  const [logoUrl, setLogoUrl] = useState<string | null>(template.storeLogoUrl ?? null);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
+  async function uploadLogo(file: File) {
+    if (!template.storeSlug) { setLogoError("Sin store asociada a la plantilla"); return; }
+    setLogoBusy(true); setLogoError(null);
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve((r.result as string).split(",")[1] ?? "");
+        r.onerror = () => reject(new Error("file read failed"));
+        r.readAsDataURL(file);
+      });
+      const res = await fetch(`/api/stores/${template.storeSlug}/logo`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ base64, mimeType: file.type || "image/png", name: file.name }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "upload failed");
+      setLogoUrl(json.url);
+      // The current MJML had the text wordmark baked in (because the logo
+      // didn't exist when the template was generated). Swap the wordmark
+      // section in-place so the preview updates immediately, then mark the
+      // doc as touched so the autosave persists it.
+      setMjml((cur) => swapWordmarkForLogo(cur, json.url));
+      setTouched(true);
+    } catch (e) {
+      setLogoError(e instanceof Error ? e.message : "upload failed");
+    } finally {
+      setLogoBusy(false);
+    }
+  }
 
   async function loadTranslation(target: string) {
     if (target === "es-ES") { setPreviewLang("es-ES"); return; }
@@ -200,6 +256,50 @@ export function TemplateEditor({ template, initialHtml = "" }: { template: Templ
       {saveError && (
         <div className="rounded-md border border-[color:var(--danger)]/40 bg-[color-mix(in_oklch,var(--danger)_8%,transparent)] p-2 text-[12px] text-[color:var(--danger)] flex items-start gap-1.5">
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />{saveError}
+        </div>
+      )}
+
+      {/* Inline logo nudge — when no brand logo is configured for the store
+          the email falls back to the divain. text wordmark. One-click upload
+          fixes that without leaving the editor. */}
+      {!logoUrl && template.storeSlug && (
+        <div className="rounded-md border border-foreground/30 bg-foreground/[0.04] p-3 flex items-center gap-3 flex-wrap">
+          <div className="flex-1 min-w-[240px]">
+            <div className="text-[14px] font-medium">Tu logo no aparece todavía en los emails</div>
+            <div className="text-[12px] text-muted-foreground mt-0.5">Sube un PNG/SVG con fondo transparente y aparecerá automáticamente en el header de cada plantilla.</div>
+          </div>
+          <label className="inline-flex items-center gap-1.5 px-3 py-2 rounded-md border border-foreground bg-foreground text-background text-[13px] font-medium cursor-pointer hover:opacity-90">
+            {logoBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Image className="h-3.5 w-3.5" />}
+            {logoBusy ? "Subiendo…" : "Subir logo"}
+            <input
+              type="file"
+              accept="image/png,image/svg+xml,image/jpeg,image/webp"
+              className="hidden"
+              disabled={logoBusy}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadLogo(f); }}
+            />
+          </label>
+          {logoError && (
+            <div className="basis-full text-[12px] text-[color:var(--danger)] flex items-center gap-1">
+              <AlertTriangle className="h-3 w-3" /> {logoError}
+            </div>
+          )}
+        </div>
+      )}
+      {logoUrl && template.storeSlug && (
+        <div className="text-[12px] text-muted-foreground flex items-center gap-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={logoUrl} alt="logo" className="h-6 w-auto object-contain bg-white rounded p-1" />
+          Logo cargado · <label className="underline cursor-pointer text-foreground hover:opacity-80">
+            cambiar
+            <input
+              type="file"
+              accept="image/png,image/svg+xml,image/jpeg,image/webp"
+              className="hidden"
+              disabled={logoBusy}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadLogo(f); }}
+            />
+          </label>
         </div>
       )}
 

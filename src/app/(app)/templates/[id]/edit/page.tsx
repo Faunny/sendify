@@ -13,7 +13,10 @@ export default async function TemplateEditPage({ params }: { params: Promise<{ i
   await prisma.$queryRaw`SELECT 1`.catch(() => {});
   const tpl = await prisma.template.findUnique({
     where: { id },
-    select: { id: true, name: true, mjml: true, updatedAt: true, store: { select: { name: true, slug: true } } },
+    select: {
+      id: true, name: true, mjml: true, updatedAt: true,
+      store: { select: { name: true, slug: true, brandLogoUrl: true } },
+    },
   });
   if (!tpl) notFound();
 
@@ -33,7 +36,12 @@ export default async function TemplateEditPage({ params }: { params: Promise<{ i
         <ArrowLeft className="h-3 w-3" /> Templates
       </Link>
       <TemplateEditor
-        template={{ id: tpl.id, name: tpl.name, mjml: tpl.mjml, storeName: tpl.store?.name ?? null, storeSlug: tpl.store?.slug ?? null }}
+        template={{
+          id: tpl.id, name: tpl.name, mjml: tpl.mjml,
+          storeName: tpl.store?.name ?? null,
+          storeSlug: tpl.store?.slug ?? null,
+          storeLogoUrl: tpl.store?.brandLogoUrl ?? null,
+        }}
         initialHtml={initialHtml}
       />
     </div>
