@@ -10,8 +10,21 @@ import { prisma } from "@/lib/db";
 import type { ProviderType } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 30;
+
+async function pingDb(maxAttempts = 4): Promise<void> {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      return;
+    } catch {
+      await new Promise((r) => setTimeout(r, Math.min(500 * 2 ** i, 3000)));
+    }
+  }
+}
 
 export async function GET(req: Request) {
+  await pingDb();
   const session = await auth();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (!(session?.user as any)?.id) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
