@@ -38,7 +38,13 @@ type Payload = {
   externalSource?: string;
   action?: "upsert" | "delete";
   name: string;
-  kind: "REGIONAL" | "GLOBAL" | "STORE";
+  // kind is the calendar SCOPE: GLOBAL (Black Friday) | REGIONAL (Mother's Day,
+  // varies per country) | STORE (single-store promo). Anything else gets coerced.
+  // The discount TYPE (fixed_price / percentage / free_ship) is a separate
+  // dimension — accept it as discountKind and stash on copyByLang for the LLM.
+  kind: string;
+  discountKind?: string;
+  discountValue?: number | string;
   dateByCountry: Record<string, string>;
   // Store identifier — accept any of these field names + any of these value
   // formats so the upstream project doesn't have to match Sendify's internal
@@ -54,6 +60,26 @@ type Payload = {
   briefForLlm?: string;
   copyByLang?: Record<string, Record<string, string>>;
 };
+
+// Coerce the upstream `kind` value into Sendify's PromotionKind enum. The
+// upstream marketing tool classifies by DISCOUNT TYPE (fixed_price, percentage,
+// etc.); Sendify classifies by CALENDAR SCOPE (GLOBAL, REGIONAL, STORE). They
+// don't map 1:1, so we read other signals: dateByCountry with 1 country → STORE,
+// >1 with same date → GLOBAL, >1 with different dates → REGIONAL.
+function coercePromotionKind(rawKind: string, dateByCountry: Record<string, string> | undefined): "GLOBAL" | "REGIONAL" | "STORE" {
+  const v = String(rawKind ?? "").trim().toUpperCase();
+  if (v === "GLOBAL" || v === "REGIONAL" || v === "STORE") return v;
+
+  // Fallback inference from dateByCountry shape
+  if (dateByCountry && typeof dateByCountry === "object") {
+    const countries = Object.keys(dateByCountry);
+    if (countries.length <= 1) return "STORE";
+    const dates = new Set(Object.values(dateByCountry).filter(Boolean));
+    if (dates.size === 1) return "GLOBAL";
+    return "REGIONAL";
+  }
+  return "STORE";
+}
 
 // Resolve a flexible store identifier to a Store.id. Accepts:
 //   - cuid  (the real id)
@@ -159,12 +185,27 @@ export async function POST(req: Request) {
     resolvedSlug = store.slug;
   }
 
+  // Coerce the upstream's free-form kind into the Sendify enum.
+  const resolvedKind = coercePromotionKind(body.kind, body.dateByCountry);
+
+  // Preserve the upstream's discount metadata (discountKind, discountValue, plus
+  // the original raw kind value if it didn't fit our enum) inside copyByLang so
+  // the LLM brief downstream has the full context for writing the email.
+  const meta: Record<string, unknown> = {};
+  if (body.discountKind) meta.discountKind = body.discountKind;
+  if (body.discountValue != null) meta.discountValue = body.discountValue;
+  if (body.kind && body.kind.toUpperCase() !== resolvedKind) meta.rawKind = body.kind;
+  const copyByLang: Record<string, unknown> = {
+    ...(body.copyByLang ?? {}),
+    ...(Object.keys(meta).length > 0 ? { _meta: meta } : {}),
+  };
+
   const data: Prisma.PromotionUncheckedCreateInput = {
     storeId,
     name: body.name,
-    kind: body.kind,
+    kind: resolvedKind,
     dateByCountry: body.dateByCountry as Prisma.InputJsonValue,
-    copyByLang: body.copyByLang as Prisma.InputJsonValue | undefined,
+    copyByLang: copyByLang as Prisma.InputJsonValue,
     externalId: body.externalId,
     externalSource: body.externalSource ?? "webhook",
     autoDraft: body.autoDraft ?? true,
@@ -222,6 +263,8 @@ export async function POST(req: Request) {
     autoDraft: promotion.autoDraft,
     leadDays: promotion.leadDays,
     storeSlug: resolvedSlug,
+    resolvedKind,
+    receivedKind: body.kind,
     syncedAt: new Date().toISOString(),
   });
 }
