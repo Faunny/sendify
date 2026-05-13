@@ -1,11 +1,12 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Boxes, AlertCircle, RefreshCw } from "lucide-react";
+import { Boxes, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyState } from "@/components/app/empty-state";
+import { ResyncButton } from "@/components/app/resync-button";
 import { prisma } from "@/lib/db";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 import type { Prisma } from "@prisma/client";
@@ -77,11 +78,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
       <PageHeader
         title="Products"
         description={`${formatNumber(total)} productos sincronizados`}
-        actions={
-          <Button size="sm" asChild>
-            <Link href="/settings"><RefreshCw className="h-3.5 w-3.5" /> Re-sync</Link>
-          </Button>
-        }
+        actions={<ResyncButton stores={stores.map((s) => ({ slug: s.slug, name: s.name }))} />}
       />
 
       <form method="GET" className="flex items-center gap-2 flex-wrap">
