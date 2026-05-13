@@ -24,6 +24,8 @@ export type TemplateGenInput = {
   language?: string;
   tone?: string;
   generateBanner?: boolean;
+  imageQuality?: "low" | "medium" | "high";    // previews use low to keep within Hobby 60s
+  imageModelOverride?: string;                  // e.g. force gpt-image-1 to avoid the -2 fallback dance
 };
 
 type StorePalette = { primary?: string; accent?: string; bg?: string; text?: string };
@@ -237,6 +239,8 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
           style: "editorial lifestyle photography for divain perfume brand",
           avoidText: true,
         },
+        quality: input.imageQuality ?? "medium",
+        preferredModel: input.imageModelOverride,
       });
       const bytes = Buffer.from(img.base64, "base64");
       const asset = await prisma.asset.create({

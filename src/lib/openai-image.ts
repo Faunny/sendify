@@ -15,6 +15,7 @@ export type GenerateImageArgs = {
     avoidText?: boolean;
   };
   quality?: "low" | "medium" | "high";
+  modelOverride?: string;  // skips the gpt-image-2 → 1 fallback dance
 };
 
 // Map our aspect-ratio tokens to gpt-image-1's accepted size strings.
@@ -42,8 +43,9 @@ export async function generateImageWithOpenAI(args: GenerateImageArgs): Promise<
 
   // Default to gpt-image-2 (latest); if the account doesn't have access to it
   // (404 model_not_found) automatically retry with gpt-image-1. The user can
-  // pin a specific model in cred.meta.imageModel to skip the fallback.
-  const requestedModel = (cred.meta?.imageModel as string) ?? "gpt-image-2";
+  // pin a specific model in cred.meta.imageModel to skip the fallback, or pass
+  // modelOverride per-call (used by the preview pack to go straight to -1).
+  const requestedModel = args.modelOverride ?? (cred.meta?.imageModel as string) ?? "gpt-image-2";
   const callOpenAI = async (model: string) => fetch("https://api.openai.com/v1/images/generations", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${cred.value}` },

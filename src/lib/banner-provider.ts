@@ -16,6 +16,8 @@ export type BannerArgs = {
     style?: string;
     avoidText?: boolean;
   };
+  quality?: "low" | "medium" | "high";
+  preferredModel?: string;  // pin gpt-image-1 to skip the gpt-image-2 fallback dance
 };
 
 export type BannerResult = {
@@ -41,7 +43,8 @@ export async function generateBannerAny(args: BannerArgs): Promise<BannerResult>
         prompt: args.prompt,
         aspectRatio: mapAspect(args.aspectRatio),
         brandHints: args.brandHints,
-        quality: "medium",
+        quality: args.quality ?? "medium",
+        modelOverride: args.preferredModel,
       });
       return { ...img, provider: "openai-image" };
     } catch (e) {
