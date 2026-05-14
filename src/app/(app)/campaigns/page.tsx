@@ -17,6 +17,8 @@ const SOURCE_ICON: Record<string, React.ComponentType<{ className?: string }>> =
   MANUAL: User,
 };
 
+export const dynamic = "force-dynamic";
+
 export default async function CampaignsPage() {
   const [total, campaigns] = await Promise.all([
     prisma.campaign.count().catch(() => 0),

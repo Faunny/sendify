@@ -10,6 +10,11 @@ import { LANGUAGES } from "@/lib/languages";
 import { prisma } from "@/lib/db";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
+// Always re-fetch from DB on every visit — without this Next.js could serve a
+// stale snapshot taken at build time, which made auto-planner drafts look
+// "missing" right after the planner finished writing them.
+export const dynamic = "force-dynamic";
+
 const SOURCE_META: Record<string, { label: string; icon: React.ComponentType<{ className?: string }>; tone: "accent" | "muted" | "warning" }> = {
   AUTO_PROMOTION:   { label: "Auto-drafted · calendar",     icon: CalendarIcon, tone: "accent" },
   AUTO_FLOW_BRANCH: { label: "Auto-drafted · flow branch",  icon: Wand2,        tone: "accent" },
@@ -19,15 +24,32 @@ const SOURCE_META: Record<string, { label: string; icon: React.ComponentType<{ c
 };
 
 export default async function ApprovalsPage() {
-  const pending = await prisma.campaign.findMany({
-    where: { status: "PENDING_APPROVAL" },
-    orderBy: { scheduledFor: "asc" },
-    include: {
-      store: true,
-      sender: { select: { fromEmail: true, fromName: true } },
-      variants: { select: { language: true }, take: 30 },
-    },
-  }).catch(() => []);
+  // Warmup query so Neon cold-start doesn't make the page hang on first paint.
+  await prisma.$queryRaw`SELECT 1`.catch(() => {});
+
+  const [pending, statusCounts] = await Promise.all([
+    prisma.campaign.findMany({
+      where: { status: "PENDING_APPROVAL" },
+      orderBy: { scheduledFor: "asc" },
+      include: {
+        store: true,
+        sender: { select: { fromEmail: true, fromName: true } },
+        variants: { select: { language: true }, take: 30 },
+      },
+    }).catch(() => []),
+    // Diagnostic counts so the page can show what else lives in the DB
+    // (e.g. "there are 12 DRAFT campaigns waiting elsewhere"). Helps when
+    // the auto-planner ran and the user wonders where the drafts went.
+    prisma.campaign.groupBy({
+      by: ["status"],
+      _count: { _all: true },
+    }).catch(() => [] as Array<{ status: string; _count: { _all: number } }>),
+  ]);
+
+  const countByStatus = Object.fromEntries(statusCounts.map((r) => [r.status, r._count._all]));
+  const otherTotal = Object.entries(countByStatus)
+    .filter(([s]) => s !== "PENDING_APPROVAL")
+    .reduce((acc, [, n]) => acc + n, 0);
 
   if (pending.length === 0) {
     return (
@@ -36,6 +58,20 @@ export default async function ApprovalsPage() {
           title="Approvals"
           description="Cualquier draft que cree el calendario, el builder con AI o un sistema externo aterriza aquí. Apruebas la campaña madre y todos los idiomas se liberan a la vez."
         />
+        {otherTotal > 0 && (
+          <div className="rounded-md border border-border bg-card/40 p-3 text-[13px]">
+            <span className="font-medium">Nada PENDING_APPROVAL ahora mismo</span>{" "}
+            <span className="text-muted-foreground">— pero hay {otherTotal} campañas en otros estados:</span>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {Object.entries(countByStatus).map(([status, n]) => (
+                <Link key={status} href={`/campaigns?status=${status}`} className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-[12px] hover:bg-secondary/60">
+                  <span className="font-mono text-foreground/80">{status}</span>
+                  <span className="text-muted-foreground">×{n}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
         <EmptyState
           icon={<Inbox className="h-5 w-5" />}
           title="Sin nada pendiente"
