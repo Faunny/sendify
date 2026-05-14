@@ -178,11 +178,61 @@ export const MARKETING_CALENDAR_2026: CalendarEvent[] = [
 ];
 
 // Pick the right ISO date for a given store from a calendar event. Returns null
-// if the event doesn't apply to any country this store serves.
+// if the event doesn't apply to any country this store serves OR if no shape we
+// know how to read has a date.
+//
+// The webhook lets upstream systems push `dateByCountry` as arbitrary JSON, so
+// we have to tolerate several shapes that have shown up in practice:
+//   1. String value: { "ES": "2026-05-09" }                       ← canonical
+//   2. Object with a `date` field: { "ES": { date: "2026-05-09", ... } }
+//   3. Object containing nested string dates: { "ES": { sendAt: "2026-05-09" } }
+//   4. Plain Date instance (serialised through JSON.stringify earlier)
+//   5. Empty/garbage — we fall back to extracting a yyyy-mm-dd substring from
+//      the event slug (e.g. "eu-2026-05-ES-todo-a-11-99eur-9" → 2026-05-09)
 export function dateForStore(event: CalendarEvent, storeSlug: string): string | null {
   const countries = STORE_COUNTRY[storeSlug] ?? [];
   for (const c of countries) {
-    if (event.dateByCountry[c]) return event.dateByCountry[c];
+    const raw = event.dateByCountry[c as keyof typeof event.dateByCountry];
+    const fromValue = coerceDate(raw);
+    if (fromValue) return fromValue;
+  }
+  // Slug fallback — most pushed events embed the date in their slug. Pattern
+  // is "<prefix>-YYYY-MM-...-<dayNumber>", e.g. eu-2026-05-ES-foo-9 → 2026-05-09.
+  return extractDateFromSlug(event.slug);
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function coerceDate(v: any): string | null {
+  if (!v) return null;
+  if (typeof v === "string") return looksLikeIsoDate(v) ? v.slice(0, 10) : null;
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v.toISOString().slice(0, 10);
+  if (typeof v === "object") {
+    // Common nested keys we've seen upstream use.
+    for (const key of ["date", "sendAt", "send_at", "startDate", "start_date", "iso"]) {
+      const inner = v[key];
+      if (typeof inner === "string" && looksLikeIsoDate(inner)) return inner.slice(0, 10);
+    }
+    // Last resort: take the first stringy value that looks date-shaped.
+    for (const val of Object.values(v)) {
+      if (typeof val === "string" && looksLikeIsoDate(val)) return val.slice(0, 10);
+    }
   }
   return null;
+}
+
+function looksLikeIsoDate(s: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}/.test(s);
+}
+
+function extractDateFromSlug(slug: string): string | null {
+  // Capture "YYYY-MM" followed later by "-NN" where NN is the day (last numeric
+  // segment in the slug). Range-checks the day [01..31] to avoid grabbing a
+  // discount value like "60pct".
+  const ym = slug.match(/(\d{4})-(\d{2})/);
+  if (!ym) return null;
+  const tail = slug.match(/-(\d{1,2})$/);
+  if (!tail) return null;
+  const day = parseInt(tail[1], 10);
+  if (!(day >= 1 && day <= 31)) return null;
+  return `${ym[1]}-${ym[2]}-${String(day).padStart(2, "0")}`;
 }
