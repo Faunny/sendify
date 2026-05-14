@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/calendar/auto-plan",
-      "schedule": "*/15 * * * *"
+      "schedule": "*/5 * * * *"
     },
     {
       "path": "/api/cron/flows-tick",

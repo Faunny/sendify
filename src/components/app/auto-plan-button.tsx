@@ -62,33 +62,21 @@ export function AutoPlanButton() {
     setOpen(true);
     setResult(null);
     setProgress({ batchesRun: 0, pendingCount: 0 });
-    // Aggregated result across batches.
-    const merged: AutoPlanResult = {
-      ok: true, planned: [], skipped: [], failed: [], pendingCount: 0,
-    };
     try {
-      // Loop until the server reports no more pending drafts, with a safety
-      // cap (8 batches × 24 = 192 drafts/run — way more than we'll ever have).
-      for (let batch = 1; batch <= 8; batch++) {
-        const json = await callOnce();
-        merged.planned = [...(merged.planned ?? []), ...(json.planned ?? [])];
-        merged.skipped = [...(merged.skipped ?? []), ...(json.skipped ?? [])];
-        merged.failed  = [...(merged.failed  ?? []), ...(json.failed  ?? [])];
-        merged.pendingCount = json.pendingCount ?? 0;
-        merged.batchSize = json.batchSize;
-        if (!json.ok) {
-          merged.ok = false;
-          merged.error = json.error;
-          break;
-        }
-        setResult({ ...merged });
-        setProgress({ batchesRun: batch, pendingCount: json.pendingCount ?? 0 });
-        if ((json.pendingCount ?? 0) === 0) break;
-      }
-      setResult(merged);
-      if ((merged.planned?.length ?? 0) > 0) router.refresh();
+      // ONE call. The server processes one batch (~16 drafts, ~3 min). Any
+      // remainder stays queued and is picked up by the cron every 5 min —
+      // we no longer loop client-side because that died the moment the user
+      // closed the tab. With the cron taking over, the user can click and
+      // walk away.
+      const json = await callOnce();
+      setResult(json);
+      setProgress({ batchesRun: 1, pendingCount: json.pendingCount ?? 0 });
+      if ((json.planned?.length ?? 0) > 0) router.refresh();
     } catch (e) {
-      setResult({ ...merged, ok: false, error: e instanceof Error ? e.message : "auto-plan failed" });
+      setResult({
+        ok: false, planned: [], skipped: [], failed: [], pendingCount: 0,
+        error: e instanceof Error ? e.message : "auto-plan failed",
+      });
     } finally {
       setBusy(false);
     }
@@ -106,10 +94,10 @@ export function AutoPlanButton() {
           <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2 text-[15px]">
               <Sparkles className="h-4 w-4 text-foreground" />
-              Auto-planner · resultados
+              Auto-planner · primera tanda
             </DialogTitle>
             <p className="text-[12px] text-muted-foreground mt-1">
-              Puedes cerrar el diálogo o navegar — el planner también corre solo cada 15 min en background y termina los drafts que falten.
+              Esta tanda dura ~3 min. Cierra cuando quieras — el cron sigue draftando solo cada 5 min hasta vaciar la cola, sin que tengas que estar en la página.
             </p>
           </DialogHeader>
 

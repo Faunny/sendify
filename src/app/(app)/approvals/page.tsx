@@ -59,7 +59,7 @@ export default async function ApprovalsPage() {
           description="Cualquier draft que cree el calendario, el builder con AI o un sistema externo aterriza aquí. Apruebas la campaña madre y todos los idiomas se liberan a la vez."
         />
         <div className="rounded-md border border-border bg-card/40 p-3 text-[12.5px] text-muted-foreground">
-          El auto-planner corre solo cada 15 min en background y va creando drafts a medida que los eventos entran en su lead-window. Puedes cerrar el navegador — los drafts seguirán apareciendo aquí solos.
+          El auto-planner corre solo cada 5 min en background y va creando drafts a medida que los eventos entran en su lead-window. Puedes cerrar el navegador — los drafts seguirán apareciendo aquí solos.
         </div>
         {otherTotal > 0 && (
           <div className="rounded-md border border-border bg-card/40 p-3 text-[13px]">
