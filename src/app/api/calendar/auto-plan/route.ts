@@ -38,6 +38,9 @@ export async function POST(req: Request) {
     const result = await autoPlan({ horizonDays, onlyStoreSlug });
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
+    // Log to Vercel before returning so we can see the underlying reason
+    // (LLM key missing, store missing, etc) instead of the generic UI error.
+    console.error("[POST /api/calendar/auto-plan] autoPlan failed:", e);
     return NextResponse.json({
       ok: false,
       error: e instanceof Error ? e.message : "auto-plan failed",

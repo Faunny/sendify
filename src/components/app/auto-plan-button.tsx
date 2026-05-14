@@ -24,13 +24,33 @@ export function AutoPlanButton() {
     setBusy(true);
     setOpen(true);
     setResult(null);
+    // Hard abort at 4.5 min so the UI doesn't sit forever if Vercel's 5-min
+    // function timeout kicks in mid-generation.
+    const controller = new AbortController();
+    const abortTimer = setTimeout(() => controller.abort(), 4.5 * 60_000);
     try {
-      const res = await fetch("/api/calendar/auto-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ horizonDays: 30 }),
-      });
-      const json = await res.json() as AutoPlanResult;
+      let res: Response;
+      try {
+        res = await fetch("/api/calendar/auto-plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ horizonDays: 30 }),
+          signal: controller.signal,
+        });
+      } catch (netErr) {
+        if (controller.signal.aborted) {
+          throw new Error("Tardó más de 4.5 minutos — probablemente generaste muchos drafts a la vez. Reintenta y se procesan los que falten.");
+        }
+        throw new Error(`Servidor no responde (${netErr instanceof Error ? netErr.message : "network"})`);
+      }
+      // Parse defensively so Vercel's 504 HTML page surfaces as a readable
+      // error instead of TypeError("Unexpected token <").
+      const text = await res.text();
+      let json: AutoPlanResult = { ok: false };
+      try { json = JSON.parse(text) as AutoPlanResult; } catch {
+        throw new Error(`Respuesta no JSON (HTTP ${res.status}): ${text.slice(0, 200)}`);
+      }
+      if (!res.ok && !json.error) json.error = `HTTP ${res.status}`;
       setResult(json);
       if (json.ok && json.planned && json.planned.length > 0) {
         router.refresh();
@@ -38,6 +58,7 @@ export function AutoPlanButton() {
     } catch (e) {
       setResult({ ok: false, error: e instanceof Error ? e.message : "auto-plan failed" });
     } finally {
+      clearTimeout(abortTimer);
       setBusy(false);
     }
   }

@@ -164,12 +164,20 @@ async function draftCampaignForEvent(args: {
   const { event, store, sender, sendDate } = args;
 
   // 1. Call the AI generator with the calendar brief + brand palette.
+  //
+  // generateBanner: false — auto-plan runs across all stores × all in-window
+  // events in one Vercel function call (5-min cap). Banner generation via
+  // Gemini takes 30-60s per draft; with image gen on, drafting 5+ events
+  // blows the function timeout. The MJML is created with a placeholder hero;
+  // the reviewer can hit "Generar imagen" per-draft from /approvals when
+  // they're ready to send.
   const ai = await generateTemplate({
     brief: event.brief,
     pillar: event.pillar,
     storeSlug: store.slug,
     tone: event.tone,
     language: store.defaultLanguage,
+    generateBanner: false,
   });
 
   // 2. Create a Promotion row (idempotent on externalId) so the campaign has a
