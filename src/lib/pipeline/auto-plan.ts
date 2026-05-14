@@ -46,16 +46,28 @@ export type AutoPlanResult = {
   }>;
   skipped: Array<{ storeSlug: string; eventSlug: string; reason: string }>;
   failed:  Array<{ storeSlug: string; eventSlug: string; error: string }>;
+  // True when more in-window drafts exist beyond this invocation's batch cap.
+  // The UI re-fires autoPlan in a loop until pendingCount drops to 0.
+  pendingCount: number;
+  batchSize: number;
 };
 
 const DEFAULT_HORIZON_DAYS = 30;
+// Max drafts per autoPlan invocation. Each draft = 1 LLM call (~5-12s) plus a
+// DB write — at concurrency 4 that's ~20s per batch of 4, so 24 drafts ≈ 120s,
+// well inside Vercel's 300s function cap with margin for the cold start. The
+// rest are returned via pendingCount and processed on the next call.
+const BATCH_MAX = 24;
+// Parallel concurrency. Sized to keep DeepSeek/OpenAI under their typical
+// rate-limit (~5 rpm on basic plans) while still finishing the batch quickly.
+const CONCURRENCY = 4;
 
 export async function autoPlan(opts?: { horizonDays?: number; onlyStoreSlug?: string }): Promise<AutoPlanResult> {
   const horizon = opts?.horizonDays ?? DEFAULT_HORIZON_DAYS;
   const now = new Date();
   const horizonEnd = new Date(now.getTime() + horizon * 86_400_000);
 
-  const result: AutoPlanResult = { planned: [], skipped: [], failed: [] };
+  const result: AutoPlanResult = { planned: [], skipped: [], failed: [], pendingCount: 0, batchSize: BATCH_MAX };
 
   // Load stores once. Auto-planner targets every store unless restricted.
   const stores = await prisma.store.findMany({
@@ -78,42 +90,45 @@ export async function autoPlan(opts?: { horizonDays?: number; onlyStoreSlug?: st
   for (const e of allEvents) eventsBySlug.set(e.slug, e);
   const events = [...eventsBySlug.values()];
 
+  // Pre-resolve sender for every store once (saves a query per event).
+  const senderByStoreId = new Map<string, { id: string; fromEmail: string; fromName: string } | null>();
   for (const store of stores) {
-    // Sender resolution moved to approve/send time. A draft can exist without
-    // a sender — the user wires that up in /settings before approving. If a
-    // verified sender already exists we pin it now (saves the reviewer a
-    // click), otherwise we leave senderId null.
-    const sender = await prisma.sender.findFirst({
+    const s = await prisma.sender.findFirst({
       where: { storeId: store.id, verified: true },
       select: { id: true, fromEmail: true, fromName: true },
     });
+    senderByStoreId.set(store.id, s);
+  }
 
+  // ── Phase 1: classify every (store, event) pair without touching the LLM.
+  //    Anything that can be decided cheaply (out-of-window, no date, already
+  //    drafted, bad date) is recorded immediately. The remainder becomes the
+  //    draftable queue to feed in parallel.
+  type Job = {
+    store: typeof stores[number];
+    event: CalendarEvent;
+    sender: { id: string; fromEmail: string; fromName: string } | null;
+    sendDate: Date;
+    sendDateIso: string;
+  };
+  const queue: Job[] = [];
+
+  for (const store of stores) {
     for (const event of events) {
       const sendDateIso = dateForStore(event, store.slug);
-      if (!sendDateIso) {
-        // Event doesn't apply to this store's countries.
-        continue;
-      }
+      if (!sendDateIso) continue; // not for this store
       const sendDate = new Date(sendDateIso);
       if (isNaN(sendDate.getTime())) {
         result.failed.push({ storeSlug: store.slug, eventSlug: event.slug, error: `bad date ${sendDateIso}` });
         continue;
       }
-
-      // In the lead window? (send-date - leadDays <= now <= send-date)
       const draftWindowStart = new Date(sendDate.getTime() - event.leadDays * 86_400_000);
       if (now < draftWindowStart || now > sendDate) {
-        // Outside the window — either too early to draft or already past.
-        // Tighter guard: only "skip" if it's inside the horizon so the user can
-        // see which upcoming ones are still pending.
         if (sendDate > now && sendDate <= horizonEnd) {
           result.skipped.push({ storeSlug: store.slug, eventSlug: event.slug, reason: `lead window opens ${draftWindowStart.toISOString().slice(0, 10)}` });
         }
         continue;
       }
-
-      // Check for an existing draft tied to this event (idempotent — re-running
-      // the planner on the same day doesn't duplicate work).
       const existing = await prisma.campaign.findFirst({
         where: {
           storeId: store.id,
@@ -122,37 +137,53 @@ export async function autoPlan(opts?: { horizonDays?: number; onlyStoreSlug?: st
         },
         select: { id: true },
       }).catch(() => null);
-
       if (existing) {
         result.skipped.push({ storeSlug: store.slug, eventSlug: event.slug, reason: "draft already exists" });
         continue;
       }
+      queue.push({ store, event, sender: senderByStoreId.get(store.id) ?? null, sendDate, sendDateIso });
+    }
+  }
 
-      // Sender is optional at draft time — see Campaign.senderId comment in
-      // schema.prisma. If a verified sender exists we pin it now (one less
-      // click for the reviewer), otherwise the draft is created with senderId
-      // = null and the approval UI prompts to pick one before allowing send.
+  // ── Phase 2: drain up to BATCH_MAX from the queue, CONCURRENCY in flight at
+  //    once. Anything left over is reported as pendingCount so the UI knows
+  //    to call again. This is what keeps a 50-draft workload from blowing the
+  //    function timeout — each invocation does a finite, bounded chunk.
+  const toRun = queue.slice(0, BATCH_MAX);
+  result.pendingCount = Math.max(0, queue.length - toRun.length);
 
+  let cursor = 0;
+  async function worker() {
+    while (true) {
+      const i = cursor++;
+      if (i >= toRun.length) return;
+      const job = toRun[i];
       try {
-        const created = await draftCampaignForEvent({ event, store, sender, sendDate });
+        const created = await draftCampaignForEvent({
+          event: job.event,
+          store: job.store,
+          sender: job.sender,
+          sendDate: job.sendDate,
+        });
         result.planned.push({
-          storeSlug: store.slug,
-          eventSlug: event.slug,
-          eventName: event.name,
-          sendDate: sendDateIso,
-          leadDays: event.leadDays,
+          storeSlug: job.store.slug,
+          eventSlug: job.event.slug,
+          eventName: job.event.name,
+          sendDate: job.sendDateIso,
+          leadDays: job.event.leadDays,
           campaignId: created.id,
           subject: created.subject,
         });
       } catch (e) {
         result.failed.push({
-          storeSlug: store.slug,
-          eventSlug: event.slug,
+          storeSlug: job.store.slug,
+          eventSlug: job.event.slug,
           error: e instanceof Error ? e.message.slice(0, 200) : "draft failed",
         });
       }
     }
   }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, toRun.length) }, () => worker()));
 
   return result;
 }

@@ -12,6 +12,8 @@ type AutoPlanResult = {
   planned?: Array<{ storeSlug: string; eventName: string; sendDate: string; subject: string; campaignId: string }>;
   skipped?: Array<{ storeSlug: string; eventSlug: string; reason: string }>;
   failed?:  Array<{ storeSlug: string; eventSlug: string; error: string }>;
+  pendingCount?: number;
+  batchSize?: number;
 };
 
 export function AutoPlanButton() {
@@ -19,13 +21,12 @@ export function AutoPlanButton() {
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
   const [result, setResult] = useState<AutoPlanResult | null>(null);
+  // Cumulative tallies across multiple batches (the server processes 24 drafts
+  // at a time; we loop until pendingCount == 0).
+  const [progress, setProgress] = useState<{ batchesRun: number; pendingCount: number } | null>(null);
 
-  async function run() {
-    setBusy(true);
-    setOpen(true);
-    setResult(null);
-    // Hard abort at 4.5 min so the UI doesn't sit forever if Vercel's 5-min
-    // function timeout kicks in mid-generation.
+  // One server call. Returns the parsed AutoPlanResult or throws.
+  async function callOnce(): Promise<AutoPlanResult> {
     const controller = new AbortController();
     const abortTimer = setTimeout(() => controller.abort(), 4.5 * 60_000);
     try {
@@ -39,26 +40,55 @@ export function AutoPlanButton() {
         });
       } catch (netErr) {
         if (controller.signal.aborted) {
-          throw new Error("Tardó más de 4.5 minutos — probablemente generaste muchos drafts a la vez. Reintenta y se procesan los que falten.");
+          throw new Error("Esta tanda tardó más de 4.5 minutos. Vuelve a pulsar para procesar el resto.");
         }
         throw new Error(`Servidor no responde (${netErr instanceof Error ? netErr.message : "network"})`);
       }
-      // Parse defensively so Vercel's 504 HTML page surfaces as a readable
-      // error instead of TypeError("Unexpected token <").
       const text = await res.text();
       let json: AutoPlanResult = { ok: false };
       try { json = JSON.parse(text) as AutoPlanResult; } catch {
         throw new Error(`Respuesta no JSON (HTTP ${res.status}): ${text.slice(0, 200)}`);
       }
       if (!res.ok && !json.error) json.error = `HTTP ${res.status}`;
-      setResult(json);
-      if (json.ok && json.planned && json.planned.length > 0) {
-        router.refresh();
-      }
-    } catch (e) {
-      setResult({ ok: false, error: e instanceof Error ? e.message : "auto-plan failed" });
+      return json;
     } finally {
       clearTimeout(abortTimer);
+    }
+  }
+
+  async function run() {
+    setBusy(true);
+    setOpen(true);
+    setResult(null);
+    setProgress({ batchesRun: 0, pendingCount: 0 });
+    // Aggregated result across batches.
+    const merged: AutoPlanResult = {
+      ok: true, planned: [], skipped: [], failed: [], pendingCount: 0,
+    };
+    try {
+      // Loop until the server reports no more pending drafts, with a safety
+      // cap (8 batches × 24 = 192 drafts/run — way more than we'll ever have).
+      for (let batch = 1; batch <= 8; batch++) {
+        const json = await callOnce();
+        merged.planned = [...(merged.planned ?? []), ...(json.planned ?? [])];
+        merged.skipped = [...(merged.skipped ?? []), ...(json.skipped ?? [])];
+        merged.failed  = [...(merged.failed  ?? []), ...(json.failed  ?? [])];
+        merged.pendingCount = json.pendingCount ?? 0;
+        merged.batchSize = json.batchSize;
+        if (!json.ok) {
+          merged.ok = false;
+          merged.error = json.error;
+          break;
+        }
+        setResult({ ...merged });
+        setProgress({ batchesRun: batch, pendingCount: json.pendingCount ?? 0 });
+        if ((json.pendingCount ?? 0) === 0) break;
+      }
+      setResult(merged);
+      if ((merged.planned?.length ?? 0) > 0) router.refresh();
+    } catch (e) {
+      setResult({ ...merged, ok: false, error: e instanceof Error ? e.message : "auto-plan failed" });
+    } finally {
       setBusy(false);
     }
   }
@@ -80,9 +110,16 @@ export function AutoPlanButton() {
           </DialogHeader>
 
           {busy && (
-            <div className="py-8 flex items-center justify-center gap-2 text-[14px] text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Generando drafts con IA…
+            <div className="py-8 flex flex-col items-center justify-center gap-2 text-[14px] text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {progress && progress.batchesRun > 0
+                  ? <>Tanda {progress.batchesRun} terminada · {progress.pendingCount > 0 ? `quedan ~${progress.pendingCount} drafts` : "todo listo"}</>
+                  : <>Generando drafts con IA…</>}
+              </div>
+              {progress && (result?.planned?.length ?? 0) > 0 && (
+                <div className="text-[12px]">{result?.planned?.length} drafts creados hasta ahora</div>
+              )}
             </div>
           )}
 
