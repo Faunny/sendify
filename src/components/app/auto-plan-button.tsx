@@ -249,9 +249,11 @@ export function AutoPlanButton() {
               variant="outline"
               size="default"
               className="text-[color:var(--danger)] hover:text-[color:var(--danger)]"
-              disabled={busy}
               onClick={async () => {
                 if (!confirm("¿Borrar todos los drafts auto-creados pendientes de aprobación y regenerar con la paleta actual? Las campañas ya enviadas / aprobadas / manuales no se tocan.")) return;
+                // Allowed even when a run is in flight — DELETE only touches
+                // existing PENDING_APPROVAL rows, doesn't conflict with the
+                // INSERT path that the in-flight planner is using.
                 await fetch("/api/campaigns/auto-drafts", { method: "DELETE" });
                 run();
               }}
