@@ -131,7 +131,10 @@ export default async function CampaignDetail({ params }: { params: Promise<{ id:
                     city:       campaign.store.legalCity ?? "",
                   },
                 }}
-                sender={{ fromName: campaign.sender.fromName, fromEmail: campaign.sender.fromEmail }}
+                sender={{
+                  fromName: campaign.sender?.fromName ?? campaign.store.name,
+                  fromEmail: campaign.sender?.fromEmail ?? "(sin sender configurado)",
+                }}
                 availableLanguages={availableLanguages}
               />
             </CardContent>
@@ -177,7 +180,7 @@ export default async function CampaignDetail({ params }: { params: Promise<{ id:
                 </div>
               </Row>
               <Row icon={<Mail className="h-3 w-3" />} label="From">
-                <span className="text-[12px]">{campaign.sender.fromEmail}</span>
+                <span className="text-[12px]">{campaign.sender?.fromEmail ?? "— sin sender —"}</span>
               </Row>
             </CardContent>
           </Card>
@@ -212,7 +215,11 @@ export default async function CampaignDetail({ params }: { params: Promise<{ id:
               <CheckRow ok={hasShopify}     label="Shopify token para esta tienda"  hint="Sin esto la audiencia es 0" />
               <CheckRow ok={hasTranslation} label="Engine de traducción (DeepSeek/OpenAI)" hint="Para fan-out a los 22 idiomas" />
               <CheckRow ok={hasSes}         label="AWS SES credentials + dominio verificado" hint="Sin esto los Send rows quedan en QUEUED" />
-              <CheckRow ok={campaign.sender.verified} label={`Sender ${campaign.sender.fromEmail} verificado en SES`} hint="DKIM + SPF + DMARC" />
+              <CheckRow
+                ok={!!campaign.sender?.verified}
+                label={campaign.sender ? `Sender ${campaign.sender.fromEmail} verificado en SES` : "Sender no asignado — configúralo en /settings"}
+                hint="DKIM + SPF + DMARC"
+              />
               <CheckRow ok={campaign.variants.length > 0} label={`${campaign.variants.length} variantes traducidas`} hint="Se generan al aprobar si no existen" />
             </CardContent>
           </Card>

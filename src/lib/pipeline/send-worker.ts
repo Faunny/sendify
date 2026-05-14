@@ -57,6 +57,13 @@ export async function startSendWorker() {
             });
             return;
           }
+          if (!campaign.sender) {
+            await prisma.send.update({
+              where: { id: j.sendId },
+              data: { status: "FAILED", errorMessage: "campaign has no sender configured" },
+            });
+            return;
+          }
           const variant = campaign.variants[0];
           if (!variant) throw new Error(`variant gone: ${j.campaignId}/${j.language}`);
 

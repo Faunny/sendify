@@ -46,6 +46,12 @@ export async function approveCampaign(args: {
     if (c.status !== "PENDING_APPROVAL" && c.status !== "DRAFT") {
       throw new Error(`campaign already ${c.status}`);
     }
+    // A campaign can be drafted without a sender (auto-planner does this), but
+    // it can't be approved/sent without one. Surface a clear message so the
+    // reviewer knows exactly what to do.
+    if (!c.senderId) {
+      throw new Error("Esta campaña no tiene sender asignado. Añade uno en /settings (o desde la página de la campaña) antes de aprobar.");
+    }
     await tx.approval.create({
       data: { campaignId, approverId, status: "approved", comment },
     });
@@ -55,6 +61,10 @@ export async function approveCampaign(args: {
       include: { store: true, template: true, sender: true },
     });
   });
+  // After the transaction we know senderId was non-null at approve time, but
+  // the included sender relation is still typed as nullable. Narrow it once
+  // here so the warm-up math below doesn't need defensive checks.
+  if (!campaign.sender) throw new Error("sender desapareció entre approve y warmup — inesperado");
 
   const sourceLanguage = campaign.store.defaultLanguage;
   const baseMjml = campaign.template?.mjml ?? "<mjml><mj-body><mj-section><mj-column><mj-text>Empty</mj-text></mj-column></mj-section></mj-body></mjml>";

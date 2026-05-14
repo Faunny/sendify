@@ -30,6 +30,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     },
   });
   if (!campaign) return NextResponse.json({ ok: false, error: "campaign not found" }, { status: 404 });
+  if (!campaign.sender) {
+    return NextResponse.json(
+      { ok: false, error: "Esta campaña no tiene sender. Asigna uno en /settings antes de enviar." },
+      { status: 400 },
+    );
+  }
 
   // Pick a variant: requested language, or store default, or any first variant.
   const variant = campaign.variants[0] ?? (await prisma.campaignVariant.findFirst({

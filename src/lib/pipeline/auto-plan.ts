@@ -79,8 +79,10 @@ export async function autoPlan(opts?: { horizonDays?: number; onlyStoreSlug?: st
   const events = [...eventsBySlug.values()];
 
   for (const store of stores) {
-    // Pick the first verified sender for the store, if any. Drafts without a sender
-    // can't actually go out — log as skipped.
+    // Sender resolution moved to approve/send time. A draft can exist without
+    // a sender — the user wires that up in /settings before approving. If a
+    // verified sender already exists we pin it now (saves the reviewer a
+    // click), otherwise we leave senderId null.
     const sender = await prisma.sender.findFirst({
       where: { storeId: store.id, verified: true },
       select: { id: true, fromEmail: true, fromName: true },
@@ -126,10 +128,10 @@ export async function autoPlan(opts?: { horizonDays?: number; onlyStoreSlug?: st
         continue;
       }
 
-      if (!sender) {
-        result.skipped.push({ storeSlug: store.slug, eventSlug: event.slug, reason: "no verified sender on this store" });
-        continue;
-      }
+      // Sender is optional at draft time — see Campaign.senderId comment in
+      // schema.prisma. If a verified sender exists we pin it now (one less
+      // click for the reviewer), otherwise the draft is created with senderId
+      // = null and the approval UI prompts to pick one before allowing send.
 
       try {
         const created = await draftCampaignForEvent({ event, store, sender, sendDate });
@@ -158,7 +160,9 @@ export async function autoPlan(opts?: { horizonDays?: number; onlyStoreSlug?: st
 async function draftCampaignForEvent(args: {
   event: CalendarEvent;
   store: { id: string; slug: string; defaultLanguage: string; currency: string; name: string };
-  sender: { id: string; fromEmail: string; fromName: string };
+  // Optional — drafts can exist without a sender, the user wires one up
+  // before approving.
+  sender: { id: string; fromEmail: string; fromName: string } | null;
   sendDate: Date;
 }) {
   const { event, store, sender, sendDate } = args;
@@ -203,7 +207,7 @@ async function draftCampaignForEvent(args: {
   const campaign = await prisma.campaign.create({
     data: {
       storeId: store.id,
-      senderId: sender.id,
+      senderId: sender?.id ?? null,
       promotionId: promotion.id,
       name: `${event.name} · ${store.name}`,
       subject: ai.subject,

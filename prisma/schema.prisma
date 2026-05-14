@@ -321,7 +321,12 @@ model Campaign {
   id                  String         @id @default(cuid())
   storeId             String
   templateId          String?
-  senderId            String
+  // Nullable on Campaign so drafts can exist before the sender is configured.
+  // The send pipeline + the approval flow reject sends when this is null with a
+  // clear "configura un sender" message — but creating a draft does not require
+  // it. This lets the auto-planner draft 30 days ahead before the user has
+  // wired up SES senders for every store.
+  senderId            String?
   promotionId         String?
   name                String
   subject             String // source-language subject (translated per language at render time)
@@ -349,7 +354,7 @@ model Campaign {
 
   store     Store             @relation(fields: [storeId], references: [id], onDelete: Cascade)
   template  Template?         @relation(fields: [templateId], references: [id])
-  sender    Sender            @relation(fields: [senderId], references: [id])
+  sender    Sender?           @relation(fields: [senderId], references: [id])
   promotion Promotion?        @relation(fields: [promotionId], references: [id])
   variants  CampaignVariant[]
   sends     Send[]

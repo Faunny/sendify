@@ -125,7 +125,7 @@ export default async function ApprovalsPage() {
                           city:      c.store.legalCity ?? "",
                         },
                       }}
-                      sender={c.sender}
+                      sender={c.sender ?? { fromEmail: "(sin sender)", fromName: c.store.name }}
                       language={c.store.defaultLanguage}
                       width={380}
                     />
@@ -153,7 +153,7 @@ export default async function ApprovalsPage() {
                       <Stat label="Audience"       value={formatNumber(c.estimatedRecipients)} />
                       <Stat label="Languages"      value={`${c.variants.length || 1}`} />
                       <Stat label="Estimated cost" value={formatCurrency(Number(c.estimatedCost))} />
-                      <Stat label="Sender"         value={c.sender.fromEmail} small />
+                      <Stat label="Sender"         value={c.sender?.fromEmail ?? "— sin asignar —"} small />
                     </div>
 
                     {c.variants.length > 0 && (
