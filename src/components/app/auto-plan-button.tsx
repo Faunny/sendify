@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, Loader2, Check, AlertTriangle } from "lucide-react";
+import Link from "next/link";
+import { Sparkles, Loader2, Check, AlertTriangle, X, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -101,14 +102,19 @@ export function AutoPlanButton() {
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader className="shrink-0">
             <DialogTitle className="flex items-center gap-2 text-[15px]">
-              <Sparkles className="h-4 w-4 text-[color:var(--accent)]" />
+              <Sparkles className="h-4 w-4 text-foreground" />
               Auto-planner · resultados
             </DialogTitle>
           </DialogHeader>
 
+          {/* Scrollable body — the previous build let the body grow until it
+              covered the close button + the footer actions. The whole content
+              is now capped at 85vh, the body scrolls, and the footer with
+              Cerrar / Ir a /approvals stays pinned at the bottom. */}
+          <div className="flex-1 overflow-y-auto -mx-6 px-6 min-h-0">
           {busy && (
             <div className="py-8 flex flex-col items-center justify-center gap-2 text-[14px] text-muted-foreground">
               <div className="flex items-center gap-2">
@@ -242,6 +248,21 @@ export function AutoPlanButton() {
               )}
             </div>
           )}
+          </div>
+
+          {/* Sticky footer — always visible regardless of how long the result
+              list is. The user reported the dialog filling the screen with no
+              way to close or continue; this is the fix. */}
+          <div className="shrink-0 flex items-center justify-end gap-2 pt-3 border-t border-border">
+            <Button variant="outline" size="default" onClick={() => setOpen(false)} disabled={busy}>
+              <X className="h-4 w-4" /> Cerrar
+            </Button>
+            <Button size="default" disabled={busy} asChild>
+              <Link href="/approvals" onClick={() => setOpen(false)}>
+                Ir a Approvals <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </>
