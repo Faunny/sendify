@@ -31,15 +31,13 @@ export type TemplateGenInput = {
 };
 
 type StorePalette = { primary?: string; accent?: string; bg?: string; text?: string };
-// Locked Divain editorial palette — black wordmark on warm cream, gold reserved
-// for accents only. Earlier the generator was reading the store's brandPalette
-// blindly and a stale value put the *primary* on amber/gold, which made every
-// hero render as a saturated yellow block. The /settings/brand page that's
-// supposed to manage palette per store isn't writing to the DB yet, so until
-// it does the generator pins the editorial defaults and ignores brandPalette.
+// Locked Divain editorial palette — pure monochrome. User asked to remove the
+// gold accent entirely after seeing it leak into hero blocks. The /settings/
+// brand page isn't writing to DB yet, so the generator pins these values and
+// ignores store.brandPalette.
 const DEFAULT_PALETTE: Required<StorePalette> = {
-  primary: "#0E0E0E", // brand black — backgrounds, CTAs, headlines
-  accent:  "#D4AF7A", // brand gold — accents/eyebrows only, never a section bg
+  primary: "#0E0E0E", // brand black — section bgs, CTAs, headlines
+  accent:  "#0E0E0E", // intentionally black — gold is BANNED until further notice
   bg:      "#FBF8F3", // warm cream — body background
   text:    "#1A1A1A", // type
 };

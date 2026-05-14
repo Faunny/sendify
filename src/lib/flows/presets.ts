@@ -178,10 +178,10 @@ const heroOffer = (eyebrow: string, offer: string, sub: string, ctaLabel: string
 const heroDark = (eyebrow: string, headline: string, sub: string, ctaLabel: string, ctaUrl: string) => `
   <mj-section background-color="#0E0E0E" padding="64px 20px 52px" css-class="sf-mobile-pad">
     <mj-column>
-      <mj-text align="center" color="#D4AF7A" font-size="11px" letter-spacing="4px" text-transform="uppercase" font-weight="500">${eyebrow}</mj-text>
+      <mj-text align="center" color="#FFFFFF" font-size="11px" letter-spacing="4px" text-transform="uppercase" font-weight="500" opacity="0.7">${eyebrow}</mj-text>
       <mj-text align="center" color="#FFFFFF" font-size="36px" line-height="1.1" font-weight="300" letter-spacing="-0.5px" padding-top="12px" css-class="sf-headline">${headline}</mj-text>
       <mj-text align="center" color="#CCCCCC" font-size="14.5px" line-height="1.55" padding-top="14px" padding-left="20px" padding-right="20px" css-class="sf-sub">${sub}</mj-text>
-      <mj-button background-color="#D4AF7A" color="#0E0E0E" href="${ctaUrl}" padding-top="22px" inner-padding="14px 36px" font-weight="500" font-size="13px" letter-spacing="2.5px" border-radius="0">${ctaLabel}</mj-button>
+      <mj-button background-color="#FFFFFF" color="#0E0E0E" href="${ctaUrl}" padding-top="22px" inner-padding="14px 36px" font-weight="500" font-size="13px" letter-spacing="2.5px" border-radius="0">${ctaLabel}</mj-button>
     </mj-column>
   </mj-section>
 `;

@@ -53,13 +53,15 @@ export type AutoPlanResult = {
 };
 
 const DEFAULT_HORIZON_DAYS = 30;
-// Max drafts per autoPlan invocation. Each draft = 1 LLM call (~5-12s) plus a
-// DB write — at concurrency 4 that's ~20s per batch of 4, so 24 drafts ≈ 120s,
-// well inside Vercel's 300s function cap with margin for the cold start. The
-// rest are returned via pendingCount and processed on the next call.
-const BATCH_MAX = 24;
-// Parallel concurrency. Sized to keep DeepSeek/OpenAI under their typical
-// rate-limit (~5 rpm on basic plans) while still finishing the batch quickly.
+// Max drafts per autoPlan invocation. Each draft = 1 LLM copy call (~8-15s) +
+// 1 Gemini hero render with product reference (~30-50s) + DB writes. At
+// concurrency 4 a draft takes ~45s real time / 4 in flight ≈ 11s amortised,
+// so 16 drafts ≈ 180s of work — well inside Vercel's 300s function cap with
+// margin. The remainder is returned via pendingCount and the client loops
+// callOnce() until pending hits 0.
+const BATCH_MAX = 16;
+// Parallel concurrency. Sized to stay under DeepSeek/OpenAI/Gemini per-second
+// limits while still draining the batch quickly.
 const CONCURRENCY = 4;
 
 export async function autoPlan(opts?: { horizonDays?: number; onlyStoreSlug?: string }): Promise<AutoPlanResult> {
@@ -200,19 +202,17 @@ async function draftCampaignForEvent(args: {
 
   // 1. Call the AI generator with the calendar brief + brand palette.
   //
-  // generateBanner: false — auto-plan runs across all stores × all in-window
-  // events in one Vercel function call (5-min cap). Banner generation via
-  // Gemini takes 30-60s per draft; with image gen on, drafting 5+ events
-  // blows the function timeout. The MJML is created with a placeholder hero;
-  // the reviewer can hit "Generar imagen" per-draft from /approvals when
-  // they're ready to send.
+  // generateBanner: true — each draft gets a real Gemini-rendered hero with
+  // the store's actual product composited into the scene. Concurrency-capped
+  // batches keep total runtime inside Vercel's 5-min function limit
+  // (~45s per draft × 4 concurrent × 16 batch = ~180s).
   const ai = await generateTemplate({
     brief: event.brief,
     pillar: event.pillar,
     storeSlug: store.slug,
     tone: event.tone,
     language: store.defaultLanguage,
-    generateBanner: false,
+    generateBanner: true,
   });
 
   // 2. Create a Promotion row (idempotent on externalId) so the campaign has a
