@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { AutoPlanButton } from "@/components/app/auto-plan-button";
 import { TestSendPromo } from "@/components/app/test-send-promo";
 import { prisma } from "@/lib/db";
-import { MARKETING_CALENDAR_2026, dateForStore, STORE_COUNTRY } from "@/lib/calendar/marketing-events";
+import { MARKETING_CALENDAR_2026, dateForStore, type CalendarEvent } from "@/lib/calendar/marketing-events";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +55,7 @@ export default async function CalendarPage() {
     where: { draftSource: "AUTO_PROMOTION", status: { in: ["DRAFT", "PENDING_APPROVAL", "SCHEDULED", "SENDING", "SENT"] } },
     select: { id: true, storeId: true, status: true, scheduledFor: true, draftReason: true, subject: true },
     orderBy: { scheduledFor: "asc" },
-    take: 200,
+    take: 500,
   }).catch(() => []);
 
   const draftsByKey = new Map<string, typeof drafts[number]>();
@@ -64,6 +64,32 @@ export default async function CalendarPage() {
     const eventSlug = d.draftReason?.split(" · ")[0] ?? "";
     draftsByKey.set(`${d.storeId}::${eventSlug}`, d);
   }
+
+  // Pull the active webhook-pushed promotions and merge with the seeded
+  // calendar so the grid below shows EVERY upcoming event — both the
+  // hard-coded ones (Mother's Day, Black Friday, etc) and whatever the
+  // upstream marketing system pushed via /api/promotions/webhook. Without
+  // this merge the calendar grid was iterating only MARKETING_CALENDAR_2026
+  // and ~50 pushed events were invisible despite being in the DB and
+  // already auto-drafted into /approvals.
+  const pushedPromotions = await prisma.promotion.findMany({
+    where: { active: true },
+    select: { externalId: true, name: true, kind: true, dateByCountry: true, leadDays: true, briefForLlm: true },
+    take: 500,
+  }).catch(() => []);
+  const pushedEvents: CalendarEvent[] = pushedPromotions.map((p) => ({
+    slug: p.externalId ?? `promo-${p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 30)}`,
+    name: p.name,
+    kind: p.kind === "STORE" ? "BRAND_OWN" : p.kind,
+    pillar: "ALL",
+    dateByCountry: (p.dateByCountry ?? {}) as Record<string, string>,
+    brief: p.briefForLlm ?? p.name,
+    tone: "editorial-cálido",
+    leadDays: p.leadDays,
+  }));
+  const eventsBySlug = new Map<string, CalendarEvent>();
+  for (const e of [...pushedEvents, ...MARKETING_CALENDAR_2026]) eventsBySlug.set(e.slug, e);
+  const allEvents = [...eventsBySlug.values()];
 
   // Build the per-store, per-event grid sorted by send date.
   const now = new Date();
@@ -83,7 +109,7 @@ export default async function CalendarPage() {
   }> = [];
 
   for (const store of stores) {
-    for (const event of MARKETING_CALENDAR_2026) {
+    for (const event of allEvents) {
       const dateIso = dateForStore(event, store.slug);
       if (!dateIso) continue;
       const sendDate = new Date(dateIso);
