@@ -116,18 +116,74 @@ export function AutoPlanButton() {
                 </section>
               )}
 
-              {result.skipped && result.skipped.length > 0 && (
-                <section>
-                  <h3 className="text-[13px] font-medium text-muted-foreground mb-1.5">Saltados ({result.skipped.length})</h3>
-                  <div className="space-y-1">
-                    {result.skipped.map((s, i) => (
-                      <div key={i} className="text-[12px] text-muted-foreground">
-                        <span className="font-mono">{s.storeSlug}</span> · {s.eventSlug} · <span className="italic">{s.reason}</span>
+              {result.skipped && result.skipped.length > 0 && (() => {
+                // Group skipped entries by reason category so the user sees the
+                // shape of what needs fixing (vs reading 50 identical lines).
+                const senderless: Record<string, number> = {};
+                const future: typeof result.skipped = [];
+                const alreadyDrafted: typeof result.skipped = [];
+                const other: typeof result.skipped = [];
+                for (const s of result.skipped) {
+                  if (s.reason === "no verified sender on this store") {
+                    senderless[s.storeSlug] = (senderless[s.storeSlug] ?? 0) + 1;
+                  } else if (s.reason.startsWith("lead window opens")) {
+                    future.push(s);
+                  } else if (s.reason === "draft already exists") {
+                    alreadyDrafted.push(s);
+                  } else {
+                    other.push(s);
+                  }
+                }
+                const senderEntries = Object.entries(senderless);
+                return (
+                  <section className="space-y-2">
+                    {senderEntries.length > 0 && (
+                      <div className="rounded-md border border-[color:var(--warning)]/40 bg-[color-mix(in_oklch,var(--warning)_8%,transparent)] p-3 text-[12.5px]">
+                        <div className="font-medium text-[color:var(--warning)] mb-1">
+                          ⚠ Sin sender verificado en {senderEntries.length} store{senderEntries.length === 1 ? "" : "s"} — añade uno en /settings antes de poder enviar:
+                        </div>
+                        <ul className="ml-4 list-disc text-foreground/80">
+                          {senderEntries.map(([slug, n]) => (
+                            <li key={slug}><span className="font-mono">{slug}</span> · {n} draft{n === 1 ? "" : "s"} bloqueados</li>
+                          ))}
+                        </ul>
                       </div>
-                    ))}
-                  </div>
-                </section>
-              )}
+                    )}
+                    {future.length > 0 && (
+                      <details className="rounded-md border border-border bg-card/30">
+                        <summary className="cursor-pointer text-[13px] px-3 py-2 text-muted-foreground">
+                          Eventos futuros, fuera de la ventana de draft ({future.length}) — se draftearán automáticamente cuando entren en su lead window
+                        </summary>
+                        <div className="px-3 pb-3 space-y-1 text-[12px] text-muted-foreground">
+                          {future.map((s, i) => (
+                            <div key={i}><span className="font-mono">{s.storeSlug}</span> · {s.eventSlug} · <span className="italic">{s.reason}</span></div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+                    {alreadyDrafted.length > 0 && (
+                      <details className="rounded-md border border-border bg-card/30">
+                        <summary className="cursor-pointer text-[13px] px-3 py-2 text-muted-foreground">
+                          Ya estaban drafteados ({alreadyDrafted.length})
+                        </summary>
+                        <div className="px-3 pb-3 space-y-1 text-[12px] text-muted-foreground">
+                          {alreadyDrafted.map((s, i) => (
+                            <div key={i}><span className="font-mono">{s.storeSlug}</span> · {s.eventSlug}</div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+                    {other.length > 0 && (
+                      <div className="space-y-1 text-[12px] text-muted-foreground">
+                        <div className="font-medium">Saltados ({other.length})</div>
+                        {other.map((s, i) => (
+                          <div key={i}><span className="font-mono">{s.storeSlug}</span> · {s.eventSlug} · <span className="italic">{s.reason}</span></div>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                );
+              })()}
 
               {result.failed && result.failed.length > 0 && (
                 <section>

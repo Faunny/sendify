@@ -191,13 +191,24 @@ export const MARKETING_CALENDAR_2026: CalendarEvent[] = [
 //      the event slug (e.g. "eu-2026-05-ES-todo-a-11-99eur-9" → 2026-05-09)
 export function dateForStore(event: CalendarEvent, storeSlug: string): string | null {
   const countries = STORE_COUNTRY[storeSlug] ?? [];
+
+  // 1) Try the canonical path: event.dateByCountry has a key matching one of
+  //    the store's countries. Coerce whatever shape upstream pushed.
   for (const c of countries) {
     const raw = event.dateByCountry[c as keyof typeof event.dateByCountry];
     const fromValue = coerceDate(raw);
     if (fromValue) return fromValue;
   }
-  // Slug fallback — most pushed events embed the date in their slug. Pattern
-  // is "<prefix>-YYYY-MM-...-<dayNumber>", e.g. eu-2026-05-ES-foo-9 → 2026-05-09.
+
+  // 2) Slug fallback — but ONLY when the slug's embedded country code matches
+  //    one this store actually sells in. Without this guard a divain-mx run
+  //    pulls in every eu-CZ / eu-DE / uk-UK event because the slug encodes a
+  //    valid-looking date regardless of geography.
+  const slugCountry = extractCountryFromSlug(event.slug);
+  if (!slugCountry) return null;
+  // "COM" / "GLOBAL" mean "everywhere" — accept for any store.
+  const isGlobal = slugCountry === "COM" || slugCountry === "GLOBAL";
+  if (!isGlobal && !countries.includes(slugCountry)) return null;
   return extractDateFromSlug(event.slug);
 }
 
@@ -235,4 +246,13 @@ function extractDateFromSlug(slug: string): string | null {
   const day = parseInt(tail[1], 10);
   if (!(day >= 1 && day <= 31)) return null;
   return `${ym[1]}-${ym[2]}-${String(day).padStart(2, "0")}`;
+}
+
+// Pull the country code segment out of a slug like "eu-2026-05-ES-..." or
+// "uk-2026-05-COM-...". Format the upstream uses:
+//   {region}-YYYY-MM-{COUNTRY|COM|GLOBAL}-{...rest}
+// Returns the country in upper-case or null when no segment matches.
+function extractCountryFromSlug(slug: string): string | null {
+  const m = slug.match(/\d{4}-\d{2}-([A-Z]{2,6})-/);
+  return m ? m[1].toUpperCase() : null;
 }
