@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/app/page-header";
 import { AutoPlanButton } from "@/components/app/auto-plan-button";
+import { RegenerateDraftsButton } from "@/components/app/regenerate-drafts-button";
 import { TestSendPromo } from "@/components/app/test-send-promo";
 import { prisma } from "@/lib/db";
 import { MARKETING_CALENDAR_2026, dateForStore, type CalendarEvent } from "@/lib/calendar/marketing-events";
@@ -144,9 +145,12 @@ export default async function CalendarPage() {
     <div className="flex flex-col gap-5">
       <PageHeader
         title="Calendario de promociones"
-        description="Sendify drafta automáticamente cada email N días antes del envío. Tú solo apruebas. El cron diario a las 06:00 UTC vigila los próximos 30 días por tienda."
+        description="Sendify drafta automáticamente cada email N días antes del envío. Tú solo apruebas. El cron corre cada 5 min en background; no hace falta tener la página abierta."
         actions={
-          <AutoPlanButton />
+          <div className="flex items-center gap-2 flex-wrap">
+            <RegenerateDraftsButton />
+            <AutoPlanButton />
+          </div>
         }
       />
 

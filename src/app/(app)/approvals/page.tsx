@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { EmptyState } from "@/components/app/empty-state";
 import { EmailPreviewCard } from "@/components/app/email-preview-card";
 import { ApprovalRowActions } from "@/components/app/approval-row-actions";
+import { RegenerateDraftsButton } from "@/components/app/regenerate-drafts-button";
 import { LANGUAGES } from "@/lib/languages";
 import { prisma } from "@/lib/db";
 import { renderMjml } from "@/lib/mjml";
@@ -112,6 +113,7 @@ export default async function ApprovalsPage() {
         }
         title="Approvals"
         description="Apruebas la campaña madre y todos los idiomas se liberan."
+        actions={autoCount > 0 ? <RegenerateDraftsButton /> : undefined}
       />
 
       <div className="grid gap-3">
