@@ -108,6 +108,9 @@ export function AutoPlanButton() {
               <Sparkles className="h-4 w-4 text-foreground" />
               Auto-planner · resultados
             </DialogTitle>
+            <p className="text-[12px] text-muted-foreground mt-1">
+              Puedes cerrar el diálogo o navegar — el planner también corre solo cada 15 min en background y termina los drafts que falten.
+            </p>
           </DialogHeader>
 
           {/* Scrollable body — the previous build let the body grow until it
