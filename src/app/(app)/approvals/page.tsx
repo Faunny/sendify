@@ -6,8 +6,10 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyState } from "@/components/app/empty-state";
 import { EmailPreviewCard } from "@/components/app/email-preview-card";
+import { ApprovalRowActions } from "@/components/app/approval-row-actions";
 import { LANGUAGES } from "@/lib/languages";
 import { prisma } from "@/lib/db";
+import { renderMjml } from "@/lib/mjml";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
 // Always re-fetch from DB on every visit — without this Next.js could serve a
@@ -34,7 +36,10 @@ export default async function ApprovalsPage() {
       include: {
         store: true,
         sender: { select: { fromEmail: true, fromName: true } },
-        variants: { select: { language: true }, take: 30 },
+        // Pull the variants' mjml so the preview card can render the actual
+        // email body (not the hardcoded "Día de la Madre 11,99€" mock that
+        // used to show on every campaign regardless of content).
+        variants: { select: { language: true, mjml: true }, take: 30 },
       },
     }).catch(() => []),
     // Diagnostic counts so the page can show what else lives in the DB
@@ -116,6 +121,15 @@ export default async function ApprovalsPage() {
           const daysToSend = c.scheduledFor
             ? Math.round((new Date(c.scheduledFor).getTime() - Date.now()) / 86_400_000)
             : null;
+          // Compile the source-language variant's MJML to HTML server-side so
+          // the preview card renders the REAL email. Falls back to the mock
+          // when no variant exists yet.
+          const sourceVariant = c.variants.find((v) => v.language === c.store.defaultLanguage) ?? c.variants[0];
+          let compiledHtml: string | undefined;
+          if (sourceVariant?.mjml) {
+            try { compiledHtml = renderMjml(sourceVariant.mjml).html; }
+            catch { /* swallow — preview falls back to mockup */ }
+          }
           return (
             <Card key={c.id}>
               <CardHeader className="flex flex-row items-start justify-between gap-3">
@@ -167,6 +181,7 @@ export default async function ApprovalsPage() {
                       sender={c.sender ?? { fromEmail: "(sin sender)", fromName: c.store.name }}
                       language={c.store.defaultLanguage}
                       width={380}
+                      html={compiledHtml}
                     />
                     <Button variant="ghost" size="sm" className="mt-2 -ml-2" asChild>
                       <Link href={`/campaigns/${c.id}`}>
@@ -214,11 +229,7 @@ export default async function ApprovalsPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-                  <Button variant="outline" size="sm"><X className="h-3.5 w-3.5" /> Reject</Button>
-                  <Button variant="outline" size="sm">Edit before approving</Button>
-                  <Button size="sm"><Send className="h-3.5 w-3.5" /> Approve & schedule</Button>
-                </div>
+                <ApprovalRowActions campaignId={c.id} senderConfigured={!!c.sender} />
               </CardContent>
             </Card>
           );

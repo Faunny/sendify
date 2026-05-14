@@ -47,6 +47,11 @@ export type EmailPreviewProps = {
   market?: string;          // ISO-3166-1 — defaults to store.countryCode
   products?: PreviewProduct[];
   width?: number;
+  // When provided, the preview renders this exact HTML in an iframe — the
+  // real compiled MJML of the campaign. Without it we fall back to a generic
+  // Mother's Day mockup so the card still has a visual, but that fallback
+  // should be considered placeholder only.
+  html?: string;
 };
 
 const HERO_BY_LANG: Record<string, { offer: string; sub: string; tagline: string; cta: string; body: string; footer: string }> = {
@@ -60,9 +65,44 @@ const HERO_BY_LANG: Record<string, { offer: string; sub: string; tagline: string
   "pt-PT": { offer: "11,99€",  sub: "TODOS OS PERFUMES A",      tagline: "Dia da Mãe",                      cta: "COMPRAR AGORA",       body: "Uma seleção pensada para o Dia da Mãe. 100ml. Longa duração.",                                 footer: "Não queres receber mais e-mails? Cancelar subscrição." },
 };
 
-export function EmailPreviewCard({ campaign, store, sender, language, products = [], width = 380 }: EmailPreviewProps) {
+export function EmailPreviewCard({ campaign, store, sender, language, products = [], width = 380, html }: EmailPreviewProps) {
   const lang = language ?? store.defaultLanguage;
   const copy = HERO_BY_LANG[lang] ?? HERO_BY_LANG["es-ES"];
+
+  // PREFERRED PATH: render the actual MJML-compiled HTML of the campaign in
+  // an iframe. This is what the recipient will see. The hardcoded mockup
+  // below is only used when no html is provided (e.g. legacy preview without
+  // variants yet).
+  if (html) {
+    return (
+      <div className="rounded-md border border-border overflow-hidden shadow-2xl bg-white" style={{ width, maxWidth: "100%" }}>
+        {/* Inbox chrome */}
+        <div className="px-3 py-2 bg-[#F5F5F7] border-b border-border flex items-center gap-2">
+          <div className="flex gap-1">
+            <span className="h-2 w-2 rounded-full bg-[color:var(--danger)]/40" />
+            <span className="h-2 w-2 rounded-full bg-[color:var(--warning)]/40" />
+            <span className="h-2 w-2 rounded-full bg-[color:var(--positive)]/40" />
+          </div>
+          <span className="text-[9px] text-black/40 ml-1">Inbox</span>
+        </div>
+        {/* From + subject */}
+        <div className="px-4 py-2.5 border-b border-[#eee] flex items-start gap-2.5 bg-white">
+          <div className="h-7 w-7 shrink-0 rounded-full bg-black grid place-items-center text-[9px] text-white font-bold">DP</div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[11px] text-black/60 truncate">{sender.fromName} &lt;{sender.fromEmail}&gt;</div>
+            <div className="text-[12px] font-medium text-black mt-0.5 truncate">{campaign.subject}</div>
+          </div>
+        </div>
+        {/* Compiled email body */}
+        <iframe
+          srcDoc={html}
+          className="w-full block bg-white"
+          style={{ height: 480, border: 0 }}
+          title={`preview-${campaign.subject}`}
+        />
+      </div>
+    );
+  }
 
   // Heuristic: campaigns with a number in the subject get the yellow price-led look;
   // everything else gets the warm rose/sunset gradient.
