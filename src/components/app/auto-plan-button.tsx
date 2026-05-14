@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Sparkles, Loader2, Check, AlertTriangle, X, ArrowRight } from "lucide-react";
+import { Sparkles, Loader2, Check, AlertTriangle, X, ArrowRight, Trash2, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -253,15 +253,31 @@ export function AutoPlanButton() {
           {/* Sticky footer — always visible regardless of how long the result
               list is. The user reported the dialog filling the screen with no
               way to close or continue; this is the fix. */}
-          <div className="shrink-0 flex items-center justify-end gap-2 pt-3 border-t border-border">
-            <Button variant="outline" size="default" onClick={() => setOpen(false)} disabled={busy}>
-              <X className="h-4 w-4" /> Cerrar
+          <div className="shrink-0 flex items-center justify-between gap-2 pt-3 border-t border-border">
+            <Button
+              variant="outline"
+              size="default"
+              className="text-[color:var(--danger)] hover:text-[color:var(--danger)]"
+              disabled={busy}
+              onClick={async () => {
+                if (!confirm("¿Borrar todos los drafts auto-creados pendientes de aprobación y regenerar con la paleta actual? Las campañas ya enviadas / aprobadas / manuales no se tocan.")) return;
+                await fetch("/api/campaigns/auto-drafts", { method: "DELETE" });
+                run();
+              }}
+              title="Borra los drafts existentes (sin tocar manuales / enviados) y vuelve a draftear con la paleta y el diseño actual"
+            >
+              <RefreshCw className="h-4 w-4" /> Borrar + regenerar
             </Button>
-            <Button size="default" disabled={busy} asChild>
-              <Link href="/approvals" onClick={() => setOpen(false)}>
-                Ir a Approvals <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="default" onClick={() => setOpen(false)} disabled={busy}>
+                <X className="h-4 w-4" /> Cerrar
+              </Button>
+              <Button size="default" disabled={busy} asChild>
+                <Link href="/approvals" onClick={() => setOpen(false)}>
+                  Ir a Approvals <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

@@ -31,11 +31,17 @@ export type TemplateGenInput = {
 };
 
 type StorePalette = { primary?: string; accent?: string; bg?: string; text?: string };
+// Locked Divain editorial palette — black wordmark on warm cream, gold reserved
+// for accents only. Earlier the generator was reading the store's brandPalette
+// blindly and a stale value put the *primary* on amber/gold, which made every
+// hero render as a saturated yellow block. The /settings/brand page that's
+// supposed to manage palette per store isn't writing to the DB yet, so until
+// it does the generator pins the editorial defaults and ignores brandPalette.
 const DEFAULT_PALETTE: Required<StorePalette> = {
-  primary: "#000000",
-  accent:  "#000000",
-  bg:      "#FFFFFF",
-  text:    "#1A1A1A",
+  primary: "#0E0E0E", // brand black — backgrounds, CTAs, headlines
+  accent:  "#D4AF7A", // brand gold — accents/eyebrows only, never a section bg
+  bg:      "#FBF8F3", // warm cream — body background
+  text:    "#1A1A1A", // type
 };
 
 export type TemplateGenOutput = {
@@ -334,13 +340,12 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
     privacyUrl   = store?.privacyUrl   ?? null;
     brandLogoUrl     = store?.brandLogoUrl     ?? null;
     brandLogoDarkUrl = store?.brandLogoDarkUrl ?? null;
-    const p = (store?.brandPalette ?? {}) as StorePalette;
-    palette = {
-      primary: p.primary ?? DEFAULT_PALETTE.primary,
-      accent:  p.accent  ?? DEFAULT_PALETTE.accent,
-      bg:      p.bg      ?? DEFAULT_PALETTE.bg,
-      text:    p.text    ?? DEFAULT_PALETTE.text,
-    };
+    // Palette is INTENTIONALLY pinned to DEFAULT_PALETTE for now. Reading
+    // store.brandPalette was producing weird yellow hero blocks because a
+    // stale value put primary on gold. We'll re-enable per-store palettes
+    // once /settings/brand actually writes and the UI sanity-checks values
+    // (primary must be high-contrast against bg, etc).
+    palette = { ...DEFAULT_PALETTE };
   }
 
   const products = await loadProductHints(input.storeSlug, input.pillar);
