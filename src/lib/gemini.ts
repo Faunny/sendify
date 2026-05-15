@@ -75,25 +75,50 @@ nature, surfaces, textures. If you cannot honour this rule, return an error.`;
     }
   }
 
-  // Direct REST call (no SDK) so we can read the key dynamically per request.
-  const model = (cred.meta?.model as string) ?? "gemini-2.5-flash-image";
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cred.value}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts }],
-        generationConfig: { responseModalities: ["IMAGE"] },
-      }),
-    },
-  );
-  if (!res.ok) throw new Error(`Gemini error ${res.status}: ${await res.text()}`);
+  // Model fallback list. Tried in order — if a model is "not found" or "not
+  // available for your account" we move to the next. Today there's only one
+  // public Google image model (gemini-2.5-flash-image, aka Nano Banana). When
+  // Google ships newer (a "Nano Banana 2" or a "Gemini Pro Image") just bump
+  // the list via env GEMINI_IMAGE_MODELS or cred.meta.models — no code change.
+  const userModels = (cred.meta?.models as string[] | undefined)
+    ?? (process.env.GEMINI_IMAGE_MODELS ? process.env.GEMINI_IMAGE_MODELS.split(",").map((s) => s.trim()) : null);
+  const models = userModels ?? [
+    "gemini-2.5-flash-image",          // Nano Banana, the public default
+    "gemini-2.5-flash-image-preview",  // possible preview name; auto-skipped if 404
+  ];
+  // Single-model legacy path kept for the cred.meta.model override.
+  if (typeof cred.meta?.model === "string" && cred.meta.model.length > 0) {
+    models.unshift(cred.meta.model as string);
+  }
 
-  const json = await res.json() as {
-    candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { data: string; mimeType: string } }> } }>;
-  };
-  const part = json.candidates?.[0]?.content?.parts?.find((p) => "inlineData" in p);
-  if (!part?.inlineData) throw new Error("Gemini returned no image — check prompt or quota");
-  return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType };
+  let lastErr = "";
+  for (const model of models) {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${cred.value}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts }],
+          generationConfig: { responseModalities: ["IMAGE"] },
+        }),
+      },
+    );
+    if (res.ok) {
+      const json = await res.json() as {
+        candidates?: Array<{ content?: { parts?: Array<{ inlineData?: { data: string; mimeType: string } }> } }>;
+      };
+      const part = json.candidates?.[0]?.content?.parts?.find((p) => "inlineData" in p);
+      if (!part?.inlineData) throw new Error(`Gemini ${model} returned no image part — check prompt or quota`);
+      return { base64: part.inlineData.data, mimeType: part.inlineData.mimeType };
+    }
+    const body = await res.text();
+    lastErr = `${model} → ${res.status}: ${body.slice(0, 200)}`;
+    // Only move on to the next model when this one says "not found" or "not
+    // supported". For real errors (quota / 5xx) the whole call should fail so
+    // the upstream banner-provider can fall back to OpenAI.
+    const skippable = /not found|not supported|invalid|404|model_not_found/i.test(body);
+    if (!skippable) break;
+  }
+  throw new Error(`All Gemini image models failed: ${lastErr}`);
 }
