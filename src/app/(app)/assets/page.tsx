@@ -2,6 +2,7 @@ import { ImageIcon } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
 import { AssetLibraryClient } from "@/components/app/asset-library-client";
 import { AssetPoolDepth } from "@/components/app/asset-pool-depth";
+import { HiggsfieldConnector } from "@/components/app/higgsfield-connector";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +11,7 @@ export default async function AssetsPage() {
   // Warmup the connection so the first list query is fast.
   await prisma.$queryRaw`SELECT 1`.catch(() => {});
 
-  const [assets, total, unused] = await Promise.all([
+  const [assets, total, unused, stores] = await Promise.all([
     prisma.asset.findMany({
       orderBy: [{ usedCount: "asc" }, { createdAt: "desc" }],
       take: 60,
@@ -22,6 +23,11 @@ export default async function AssetsPage() {
     }).catch(() => []),
     prisma.asset.count().catch(() => 0),
     prisma.asset.count({ where: { usedCount: 0 } }).catch(() => 0),
+    prisma.store.findMany({
+      where: { active: true },
+      select: { slug: true, name: true },
+      orderBy: { name: "asc" },
+    }).catch(() => []),
   ]);
 
   return (
@@ -32,6 +38,8 @@ export default async function AssetsPage() {
       />
 
       <AssetPoolDepth />
+
+      <HiggsfieldConnector stores={stores} />
 
       <AssetLibraryClient
         initialAssets={assets.map((a) => ({ ...a, serveUrl: `/api/assets/${a.id}`, createdAt: a.createdAt.toISOString(), lastUsedAt: a.lastUsedAt?.toISOString() ?? null }))}

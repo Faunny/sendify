@@ -752,11 +752,13 @@ enum ProviderType {
   TRANSLATION_DEEPL // legacy fallback
   IMAGE_GEMINI // banner generation (Nano Banana)
   IMAGE_OPENAI // DALL-E fallback
+  IMAGE_HIGGSFIELD // external pool refill (no public API — connector takes session cookie / email / unofficial endpoint)
   REVIEW_OPENAI // GPT-4 commercial copy review
   SHOPIFY // scoped per store
   AWS_SES // global
   SNS_WEBHOOK_SECRET // global
   PROMOTIONS_WEBHOOK_SECRET // global
+  ASSET_LIBRARY_TOKEN // bearer for external agents POSTing to /api/assets
   S3 // global
   GOOGLE_ADS // global
 }
