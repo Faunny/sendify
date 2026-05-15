@@ -78,23 +78,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, generated: 0, message: "pool full — nothing to refill" });
     }
 
-    // Pre-resolve a product photo per store (used as the bottle reference for
-    // the image gen call). One query upfront, looked up by storeId below.
-    const productByStore = new Map<string, string>();
+    // Pre-resolve a pool of product photos per store so each refill job picks
+    // a DIFFERENT bottle. Without this rotation the cron generates 8 photos
+    // for divain-europa that all feature the same product — no variety.
+    // Keeping the top 20 most-recently-updated active products per store
+    // gives plenty of rotation room.
+    const productsByStore = new Map<string, string[]>();
     for (const store of stores) {
-      const p = await prisma.product.findFirst({
+      const ps = await prisma.product.findMany({
         where: { storeId: store.id, status: "active", imageUrl: { not: null } },
         select: { imageUrl: true },
         orderBy: { shopifyUpdatedAt: "desc" },
-      }).catch(() => null);
-      if (p?.imageUrl) productByStore.set(store.id, p.imageUrl);
+        take: 20,
+      }).catch(() => []);
+      const urls = ps.map((p) => p.imageUrl).filter((u): u is string => !!u);
+      if (urls.length > 0) productsByStore.set(store.id, urls);
     }
 
     let generated = 0;
     const errors: string[] = [];
-    for (const job of work) {
+    for (let idx = 0; idx < work.length; idx++) {
+      const job = work[idx];
       try {
-        const productRef = productByStore.get(job.storeId);
+        // Rotate through the store's product photos so each pool refill cycle
+        // covers different bottles. Indexed by job position + clock so two
+        // consecutive ticks don't pick the same product.
+        const pool = productsByStore.get(job.storeId) ?? [];
+        const productRef = pool.length > 0 ? pool[(idx + Math.floor(Date.now() / 60_000)) % pool.length] : undefined;
         // No store-specific brief from the LLM here — we're filling speculative
         // pool entries that any event can reuse. The pattern-aware prompt
         // already produces a generic editorial scene per layout.
@@ -123,6 +133,9 @@ export async function POST(req: Request) {
             sizeBytes: bytes.length,
             tags: ["ai-generated", "hero", job.layoutPattern, job.storeSlug, PROMPT_VERSION, "pool-refill"],
             prompt: prompt.slice(0, 800),
+            // Notes capture which product was used as the bottle reference,
+            // useful for "why is the wrong perfume in this hero" debugging.
+            notes: productRef ? `Product ref: ${productRef.slice(0, 240)}` : "no product ref (no synced products)",
             generatedBy: `cron:refill-pool · ${img.provider}`,
             usedCount: 0, // available for next email
           },
