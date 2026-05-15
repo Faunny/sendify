@@ -7,7 +7,7 @@
 // owner a glance of which combos are dry.
 
 import { useEffect, useState } from "react";
-import { Image as ImageIcon, RefreshCw, ExternalLink, Copy, Check } from "lucide-react";
+import { Image as ImageIcon, RefreshCw, ExternalLink, Copy, Check, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type PoolTarget = {
@@ -32,6 +32,8 @@ export function AssetPoolDepth() {
   const [data, setData] = useState<PoolStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [refilling, setRefilling] = useState(false);
+  const [refillMessage, setRefillMessage] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -44,6 +46,27 @@ export function AssetPoolDepth() {
     }
   }
   useEffect(() => { load(); }, []);
+
+  async function triggerRefill() {
+    setRefilling(true);
+    setRefillMessage(null);
+    try {
+      const r = await fetch("/api/cron/refill-asset-pool", { method: "POST" });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok || !j.ok) {
+        setRefillMessage(`Error: ${j.error ?? `HTTP ${r.status}`}`);
+      } else if (j.generated === 0) {
+        setRefillMessage("Pool a tope — no había nada que rellenar.");
+      } else {
+        setRefillMessage(`Generadas ${j.generated} fotos · quedan ${j.stillPending} combos por rellenar (el cron de 15 min termina solo).`);
+      }
+      load();
+    } catch (e) {
+      setRefillMessage(`Fallo: ${e instanceof Error ? e.message : "network"}`);
+    } finally {
+      setRefilling(false);
+    }
+  }
 
   if (!data) {
     return (
@@ -74,10 +97,21 @@ export function AssetPoolDepth() {
               : <>Pool a tope. La generación de emails coge de aquí en vez de llamar a Gemini en runtime.</>}
           </div>
         </div>
-        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-          <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refrescar
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button size="sm" onClick={triggerRefill} disabled={refilling}>
+            {refilling ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            {refilling ? "Generando…" : "Rellenar pool ahora"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Refrescar
+          </Button>
+        </div>
       </div>
+      {refillMessage && (
+        <div className="rounded-md border border-border bg-card/40 p-2.5 text-[12.5px] text-muted-foreground">
+          {refillMessage}
+        </div>
+      )}
 
       <div className="overflow-x-auto -mx-1 px-1">
         <table className="w-full text-[12px]">

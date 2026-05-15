@@ -262,6 +262,12 @@ const NO_TEXT_RULE = "The image MUST NOT contain any captions, overlay text, sig
 // user explicit ask: the real Divain bottle must appear in the hero.
 const KEEP_PRODUCT_RULE = "The perfume bottle from the attached reference image MUST appear in this scene. Preserve it EXACTLY: same glass shape, same color, same label artwork, same cap. Do NOT redesign, restyle, recolor, or reinterpret the bottle. Compose the rest of the scene (person, surface, props, lighting) around the bottle as if it were photographed in place.";
 
+// Exported so the asset-pool refill cron can call into the same prompt
+// library (pattern-aware briefs that produce Higgsfield-quality output).
+export function buildHeroPromptForLayout(layoutPattern: string, llmPrompt: string, hasProductRef: boolean): string {
+  return buildHeroPrompt(layoutPattern, llmPrompt, hasProductRef);
+}
+
 function buildHeroPrompt(layoutPattern: string, llmPrompt: string, hasProductRef: boolean): string {
   const seed = (llmPrompt || "").trim();
 
