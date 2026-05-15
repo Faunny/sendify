@@ -371,7 +371,16 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
     palette = { ...DEFAULT_PALETTE };
   }
 
-  const products = await loadProductHints(input.storeSlug, input.pillar);
+  // Shuffle the catalog hints per call so consecutive generations pick a
+  // different featured product. Without this every spotlight + every
+  // productImageUrl was products[0] (the most-recently-updated SKU) — every
+  // email ended up featuring the same bottle. Fisher-Yates on a copy.
+  const rawProducts = await loadProductHints(input.storeSlug, input.pillar);
+  const products = [...rawProducts];
+  for (let i = products.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [products[i], products[j]] = [products[j], products[i]];
+  }
 
   // Pick LLM: OpenAI (better for copy) > DeepSeek (cheaper fallback).
   const openai   = await getCredential("TRANSLATION_OPENAI");
