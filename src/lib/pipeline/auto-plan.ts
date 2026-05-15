@@ -56,10 +56,12 @@ const DEFAULT_HORIZON_DAYS = 30;
 // Max drafts per autoPlan invocation. Each draft = 1 LLM copy call (~8-15s) +
 // 1 Gemini hero render with product reference (~30-50s) + DB writes. At
 // concurrency 4 a draft takes ~45s real time / 4 in flight ≈ 11s amortised,
-// so 16 drafts ≈ 180s of work — well inside Vercel's 300s function cap with
-// margin. The remainder is returned via pendingCount and the client loops
-// callOnce() until pending hits 0.
-const BATCH_MAX = 16;
+// so 8 drafts ≈ 90s of work — well below Vercel's 300s function cap and
+// well below Cloudflare's proxy timeout (which has bitten us as "Failed to
+// fetch" on heavier batches). The cron at /api/calendar/auto-plan runs
+// every 5 min so the queue keeps draining; this just makes each tick
+// safely-sized.
+const BATCH_MAX = 8;
 // Parallel concurrency. Sized to stay under DeepSeek/OpenAI/Gemini per-second
 // limits while still draining the batch quickly.
 const CONCURRENCY = 4;

@@ -36,21 +36,41 @@ export function RegenerateDraftsButton({ label = "Regenerar drafts con diseño n
 
     const tick = setInterval(() => setElapsed((s) => s + 1), 1000);
 
+    // Generous 4-min abort so a Vercel function timeout surfaces as a clear
+    // message rather than the browser's generic "Failed to fetch".
+    const controller = new AbortController();
+    const abortTimer = setTimeout(() => controller.abort(), 4 * 60_000);
+
     try {
       // Phase 1: wipe existing drafts.
-      const delRes = await fetch("/api/campaigns/auto-drafts", { method: "DELETE" });
+      const delRes = await fetch("/api/campaigns/auto-drafts", { method: "DELETE", signal: controller.signal });
       const delJson = await delRes.json().catch(() => ({}));
       if (!delRes.ok || !delJson.ok) throw new Error(delJson.error ?? `Delete failed: HTTP ${delRes.status}`);
       setDeletedCount(delJson.deleted ?? 0);
 
-      // Phase 2: fire one auto-plan batch (the server-side processing
-      // continues even if the user closes; cron drains the rest).
+      // Phase 2: fire one auto-plan batch (server keeps running even if we
+      // close; cron at */5 picks up the remainder).
       setPhase("drafting");
-      const planRes = await fetch("/api/calendar/auto-plan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ horizonDays: 30 }),
-      });
+      let planRes: Response;
+      try {
+        planRes = await fetch("/api/calendar/auto-plan", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ horizonDays: 30 }),
+          signal: controller.signal,
+        });
+      } catch (netErr) {
+        if (controller.signal.aborted) {
+          // We waited 4 min and Vercel still hadn't responded — likely the
+          // function hit its own timeout. Drafts in this batch may have
+          // partially saved server-side; cron will finish the rest.
+          throw new Error("La tanda tardó más de 4 min — Vercel cortó la conexión. Las que terminaron están guardadas. El cron de cada 5 min termina el resto en background.");
+        }
+        // Generic browser fetch failure (504 from edge, connection reset, etc).
+        // The function might have crashed or Cloudflare proxy timed out, but
+        // partial writes are still committed.
+        throw new Error("El servidor cortó la conexión a mitad de la tanda. Los drafts que llegaron a guardarse están en /approvals. El cron de cada 5 min sigue procesando los que falten.");
+      }
       const text = await planRes.text();
       let planJson: {
         ok?: boolean;
@@ -71,6 +91,7 @@ export function RegenerateDraftsButton({ label = "Regenerar drafts con diseño n
       setError(e instanceof Error ? e.message : "regenerate failed");
       setPhase("error");
     } finally {
+      clearTimeout(abortTimer);
       clearInterval(tick);
     }
   }
