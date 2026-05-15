@@ -39,6 +39,7 @@ export function ApprovalsBulkProvider({
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<null | "approve" | "reject">(null);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [result, setResult] = useState<{ ok: number; failed: number; message?: string } | null>(null);
 
   const ctx = useMemo<BulkContextValue>(() => ({
@@ -54,48 +55,70 @@ export function ApprovalsBulkProvider({
   function selectAll() { setSelected(new Set(allIds)); }
   function clearAll() { setSelected(new Set()); }
 
+  // Split a long id list into bounded chunks. Approve is heavy (translate +
+  // render + queue per campaign, ~10-30s each) so chunks of 10 keep each call
+  // safely inside Vercel's 300s function cap. Cancel is cheap (DB update) so
+  // 100/chunk is fine.
+  async function runInChunks(
+    ids: string[],
+    chunkSize: number,
+    endpoint: string,
+    successField: "approved" | "cancelled",
+  ): Promise<{ ok: number; failed: number; lastError?: string }> {
+    const chunks: string[][] = [];
+    for (let i = 0; i < ids.length; i += chunkSize) chunks.push(ids.slice(i, i + chunkSize));
+    let ok = 0;
+    let failed = 0;
+    let lastError: string | undefined;
+    let done = 0;
+    setProgress({ done: 0, total: ids.length });
+    for (const chunk of chunks) {
+      try {
+        const r = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: chunk }),
+        });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || !j.ok) {
+          failed += chunk.length;
+          lastError = j.error ?? `HTTP ${r.status}`;
+        } else {
+          ok += (j[successField] ?? 0) as number;
+          failed += (j.failed?.length ?? 0) as number;
+        }
+      } catch (e) {
+        failed += chunk.length;
+        lastError = e instanceof Error ? e.message : "network";
+      }
+      done += chunk.length;
+      setProgress({ done, total: ids.length });
+    }
+    return { ok, failed, lastError };
+  }
+
   async function bulkApprove() {
     if (selected.size === 0) return;
-    if (!confirm(`¿Aprobar ${selected.size} campaña${selected.size === 1 ? "" : "s"}? Esto traduce a los idiomas, renderiza variantes y encola los Send rows para cada una.`)) return;
+    if (!confirm(`¿Aprobar ${selected.size} campaña${selected.size === 1 ? "" : "s"}? Esto traduce a los idiomas, renderiza variantes y encola los Send rows para cada una. ${selected.size > 10 ? `Se procesa en tandas de 10, tarda ~${Math.ceil(selected.size / 10) * 2} min en total.` : ""}`)) return;
     setBusy("approve"); setResult(null);
-    try {
-      const r = await fetch("/api/campaigns/bulk-approve", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: Array.from(selected) }),
-      });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok || !j.ok) throw new Error(j.error ?? `HTTP ${r.status}`);
-      setResult({ ok: j.approved, failed: (j.failed?.length ?? 0), message: j.failed?.length ? `${j.failed?.length} fallidas (ver detalles en /campaigns)` : undefined });
-      clearAll();
-      router.refresh();
-    } catch (e) {
-      setResult({ ok: 0, failed: selected.size, message: e instanceof Error ? e.message : "approve failed" });
-    } finally {
-      setBusy(null);
-    }
+    const { ok, failed, lastError } = await runInChunks(Array.from(selected), 10, "/api/campaigns/bulk-approve", "approved");
+    setResult({ ok, failed, message: lastError });
+    if (failed === 0) clearAll();
+    setProgress(null);
+    setBusy(null);
+    router.refresh();
   }
 
   async function bulkReject() {
     if (selected.size === 0) return;
     if (!confirm(`¿Rechazar ${selected.size} campaña${selected.size === 1 ? "" : "s"}? Quedan en estado CANCELLED y no se vuelven a tocar.`)) return;
     setBusy("reject"); setResult(null);
-    try {
-      const r = await fetch("/api/campaigns/bulk-cancel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ids: Array.from(selected) }),
-      });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok || !j.ok) throw new Error(j.error ?? `HTTP ${r.status}`);
-      setResult({ ok: j.cancelled, failed: (j.failed?.length ?? 0) });
-      clearAll();
-      router.refresh();
-    } catch (e) {
-      setResult({ ok: 0, failed: selected.size, message: e instanceof Error ? e.message : "reject failed" });
-    } finally {
-      setBusy(null);
-    }
+    const { ok, failed, lastError } = await runInChunks(Array.from(selected), 100, "/api/campaigns/bulk-cancel", "cancelled");
+    setResult({ ok, failed, message: lastError });
+    if (failed === 0) clearAll();
+    setProgress(null);
+    setBusy(null);
+    router.refresh();
   }
 
   const allSelected = selected.size === allIds.length && allIds.length > 0;
@@ -149,7 +172,24 @@ export function ApprovalsBulkProvider({
         </div>
       </div>
 
-      {result && (
+      {progress && busy && (
+        <div className="rounded-md border border-border bg-card/60 p-2.5 text-[12.5px] mb-2">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="font-medium">
+              {busy === "approve" ? "Aprobando" : "Rechazando"} · {progress.done} de {progress.total}
+            </span>
+            <span className="text-muted-foreground tabular-nums">{Math.round((progress.done / progress.total) * 100)}%</span>
+          </div>
+          <div className="h-1.5 rounded bg-secondary overflow-hidden">
+            <div
+              className="h-full bg-foreground transition-[width] duration-300"
+              style={{ width: `${(progress.done / progress.total) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
+
+      {result && !busy && (
         <div className={`rounded-md border p-2.5 text-[12.5px] mb-2 flex items-start gap-2 ${result.failed === 0 ? "border-[color:var(--positive)]/40 bg-[color-mix(in_oklch,var(--positive)_8%,transparent)] text-[color:var(--positive)]" : "border-[color:var(--warning)]/40 bg-[color-mix(in_oklch,var(--warning)_8%,transparent)] text-[color:var(--warning)]"}`}>
           {result.failed === 0 ? <Check className="h-3.5 w-3.5 shrink-0 mt-0.5" /> : <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />}
           <span>
