@@ -741,6 +741,11 @@ function render(template: string, slots: Record<string, string>): string {
 
 function lifestyleHero(s: SkeletonSlots): string {
   const headlineHtml = escapeHtml(s.headline).replace(/\n/g, "<br/>");
+  // CTA accent — when the store has configured a brand-yellow accent the
+  // pill takes that colour instead of pure black-on-cream. Defaults to the
+  // primary so monochrome-only stores still get a contrasted button.
+  const ctaBg = s.accentColor ?? s.primaryColor;
+  const ctaFg = s.accentColor ? s.textColor : s.bgColor;
   // Real divain Klaviyo aesthetic: BACKGROUND PHOTO with text overlaid on top.
   // The headline + subhead sit ON the photo (white type, text-shadow for
   // legibility against any background). Matches the divain campaign style
@@ -752,7 +757,7 @@ function lifestyleHero(s: SkeletonSlots): string {
           ${s.subhead ? `<mj-text align="center" color="#FFFFFF" font-size="13px" letter-spacing="5px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" css-class="sf-hero-text sf-hero-subhead" padding-bottom="12px">${escapeHtml(s.subhead)}</mj-text>` : ""}
           <mj-text align="center" color="#FFFFFF" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="54px" font-weight="600" line-height="1.05" css-class="sf-hero-text sf-hero-headline">${headlineHtml}</mj-text>
           <mj-spacer height="20px" />
-          ${PILL_BUTTON(s.ctaLabel, s.bgColor, s.primaryColor, s.ctaUrl ?? "#")}
+          ${PILL_BUTTON(s.ctaLabel, ctaBg, ctaFg, s.ctaUrl ?? "#")}
         </mj-column>
       </mj-section>`
     : `<mj-section background-color="${s.bgColor}" padding="80px 30px 32px" css-class="sf-hero-section">
@@ -764,7 +769,7 @@ function lifestyleHero(s: SkeletonSlots): string {
       ${(s.products ?? [])[0]?.imageUrl ? `<mj-section background-color="${s.bgColor}" padding="0"><mj-column padding="0"><mj-image src="${(s.products ?? [])[0]!.imageUrl}" alt="" padding="0" border-radius="0" href="${(s.products ?? [])[0]!.productUrl ?? s.ctaUrl ?? "#"}" /></mj-column></mj-section>` : ""}
       <mj-section background-color="${s.bgColor}" padding="32px 30px 60px" css-class="sf-mobile-pad">
         <mj-column>
-          ${PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#")}
+          ${PILL_BUTTON(s.ctaLabel, ctaBg, ctaFg, s.ctaUrl ?? "#")}
         </mj-column>
       </mj-section>`;
 
@@ -865,6 +870,11 @@ function bigNumberHero(s: SkeletonSlots): string {
   const labelFontSize = labelLen > 24 ? "13px" : "15px";
   const label = escapeHtml(rawLabel);
   const body  = escapeHtml(s.body ?? "Solo este fin de semana. Hasta agotar existencias.");
+  // Brand-accent CTA — yellow #FACD37 for divain. Without an accent the
+  // pill stays primary-on-bg (black on cream) so non-branded stores still
+  // render a contrasted button.
+  const ctaBg = s.accentColor ?? s.primaryColor;
+  const ctaFg = s.accentColor ? s.textColor : s.bgColor;
 
   // Hero block. When a banner photo exists we use it as the section background
   // and lay the giant offer number on top — same energy as the lifestyle-hero
@@ -877,7 +887,7 @@ function bigNumberHero(s: SkeletonSlots): string {
           <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="118px" font-weight="700" line-height="1" color="#FFFFFF" css-class="sf-big-number sf-hero-text">${offer}</mj-text>
           <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="${labelFontSize}" letter-spacing="${labelLetterSpacing}" text-transform="uppercase" color="#FFFFFF" padding-top="18px" font-weight="500" css-class="sf-hero-text">${label}</mj-text>
           <mj-spacer height="20px" />
-          ${PILL_BUTTON(s.ctaLabel, "#FFFFFF", s.primaryColor, s.ctaUrl ?? "#")}
+          ${PILL_BUTTON(s.ctaLabel, ctaBg, ctaFg, s.ctaUrl ?? "#")}
         </mj-column>
       </mj-section>`
     : `<mj-section padding="80px 24px 20px" css-class="sf-mobile-pad">
@@ -885,7 +895,7 @@ function bigNumberHero(s: SkeletonSlots): string {
           <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="118px" font-weight="700" line-height="1" color="${s.primaryColor}" css-class="sf-big-number">${offer}</mj-text>
           <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="${labelFontSize}" letter-spacing="${labelLetterSpacing}" text-transform="uppercase" color="${s.textColor}" padding-top="18px" font-weight="500">${label}</mj-text>
           <mj-spacer height="20px" />
-          ${PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#")}
+          ${PILL_BUTTON(s.ctaLabel, ctaBg, ctaFg, s.ctaUrl ?? "#")}
         </mj-column>
       </mj-section>`;
 
@@ -922,21 +932,24 @@ function bigNumberHero(s: SkeletonSlots): string {
 
   const slots: Record<string, string> = {
     preheader: PREHEADER(s.preheader, s.bgColor),
-    wordmark: s.heroUrl ? "" : WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
+    topStrip:  TOP_PROMO_STRIP(s.topPromoStrip),
+    wordmark:  s.heroUrl ? "" : WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
     heroBlock,
     body,
     promoBand,
     productGrid,
     miniGrid,
     promise,
+    service:   SERVICE_CALLOUT(s.serviceCallout, s.accentColor ?? s.primaryColor, s.textColor),
     trustBar,
-    brandBar: BRAND_BAR("#FFFFFF", s.storefrontUrl),
-    bgColor: s.bgColor,
+    brandBar:  BRAND_BAR("#FFFFFF", s.storefrontUrl),
+    bgColor:   s.bgColor,
     textColor: s.textColor,
   };
 
   return render(`<mjml>${HEAD}<mj-body background-color="{{bgColor}}">
 {{preheader}}
+{{topStrip}}
 {{wordmark}}
 {{heroBlock}}
 <mj-section padding="28px 24px 18px" background-color="{{bgColor}}" css-class="sf-mobile-pad">
@@ -948,6 +961,7 @@ function bigNumberHero(s: SkeletonSlots): string {
 {{productGrid}}
 {{promise}}
 {{miniGrid}}
+{{service}}
 {{trustBar}}
 {{brandBar}}
 </mj-body></mjml>`, slots);
@@ -1015,10 +1029,12 @@ function productGridEditorial(s: SkeletonSlots): string {
     headline: escapeHtml(s.headline),
     subhead: s.subhead ? `<mj-text align="center" font-size="14px" letter-spacing="3px" text-transform="uppercase" color="${s.textColor}" padding-top="10px"><span style="opacity:0.65;">${escapeHtml(s.subhead)}</span></mj-text>` : "",
     bigHero: s.heroUrl ? `<mj-section padding="20px 0 0" background-color="${s.bgColor}"><mj-column padding="0"><mj-image src="${s.heroUrl}" alt="" padding="0" border-radius="0" /></mj-column></mj-section>` : "",
+    topStrip: TOP_PROMO_STRIP(s.topPromoStrip),
     introBody,
     cols,
     moreCols,
-    cta: PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#"),
+    cta: PILL_BUTTON(s.ctaLabel, s.accentColor ?? s.primaryColor, s.accentColor ? s.textColor : s.bgColor, s.ctaUrl ?? "#"),
+    service: SERVICE_CALLOUT(s.serviceCallout, s.accentColor ?? s.primaryColor, s.textColor),
     trustBar,
     brandBar: BRAND_BAR("#FFFFFF", s.storefrontUrl),
     bgColor: s.bgColor,
@@ -1027,6 +1043,7 @@ function productGridEditorial(s: SkeletonSlots): string {
 
   return render(`<mjml>${HEAD}<mj-body background-color="{{bgColor}}">
 {{preheader}}
+{{topStrip}}
 {{wordmark}}
 <mj-section padding="36px 24px 8px" css-class="sf-mobile-pad">
   <mj-column>
@@ -1039,6 +1056,7 @@ function productGridEditorial(s: SkeletonSlots): string {
 <mj-section padding="24px 16px" css-class="sf-mobile-pad">{{cols}}</mj-section>
 {{moreCols}}
 <mj-section padding="0 24px 36px" css-class="sf-mobile-pad"><mj-column>{{cta}}</mj-column></mj-section>
+{{service}}
 {{trustBar}}
 {{brandBar}}
 </mj-body></mjml>`, slots);
@@ -1257,11 +1275,13 @@ function brandAnthology(s: SkeletonSlots): string {
     wordmark: WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
     headline: escapeHtml(s.headline),
     heroImage: s.heroUrl ? `<mj-section padding="0 0 16px" background-color="${s.bgColor}"><mj-column padding="0"><mj-image src="${s.heroUrl}" alt="" padding="0" border-radius="0" /></mj-column></mj-section>` : "",
+    topStrip: TOP_PROMO_STRIP(s.topPromoStrip),
     intro,
     pillarSections,
     reasons,
     promise,
     miniGrid,
+    service: SERVICE_CALLOUT(s.serviceCallout, s.accentColor ?? s.primaryColor, s.textColor),
     trustBar,
     brandBar: BRAND_BAR("#FFFFFF", s.storefrontUrl),
     bgColor: s.bgColor,
@@ -1270,6 +1290,7 @@ function brandAnthology(s: SkeletonSlots): string {
 
   return render(`<mjml>${HEAD}<mj-body background-color="{{bgColor}}">
 {{preheader}}
+{{topStrip}}
 {{wordmark}}
 <mj-section padding="40px 24px 14px" css-class="sf-mobile-pad">
   <mj-column>
@@ -1282,6 +1303,7 @@ function brandAnthology(s: SkeletonSlots): string {
 {{reasons}}
 {{promise}}
 {{miniGrid}}
+{{service}}
 {{trustBar}}
 {{brandBar}}
 </mj-body></mjml>`, slots);
@@ -1329,10 +1351,12 @@ function winbackEmpathic(s: SkeletonSlots): string {
     body: escapeHtml(s.body ?? ""),
     heroImage: heroImageBlock,
     incentive: s.customerIncentive ? `<mj-text align="center" font-size="13px" letter-spacing="3px" text-transform="uppercase" color="${s.textColor}" padding-top="6px"><span style="opacity:0.65;">Te guardamos un ${escapeHtml(s.customerIncentive)}</span></mj-text>` : "",
-    cta: PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#"),
+    cta: PILL_BUTTON(s.ctaLabel, s.accentColor ?? s.primaryColor, s.accentColor ? s.textColor : s.bgColor, s.ctaUrl ?? "#"),
+    topStrip: TOP_PROMO_STRIP(s.topPromoStrip),
     newArrivalsSection,
     founderNote,
     promise,
+    service: SERVICE_CALLOUT(s.serviceCallout, s.accentColor ?? s.primaryColor, s.textColor),
     trustBar: TRUST_BAR(s.textColor, "#F5F1EA", s.trustItems),
     brandBar: BRAND_BAR("#FFFFFF", s.storefrontUrl),
     bgColor: s.bgColor,
@@ -1341,6 +1365,7 @@ function winbackEmpathic(s: SkeletonSlots): string {
 
   return render(`<mjml>${HEAD}<mj-body background-color="#F5F1EA">
 {{preheader}}
+{{topStrip}}
 {{wordmark}}
 <mj-section padding="32px 24px 14px" css-class="sf-mobile-pad"><mj-column>
   <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="32px" font-weight="500" color="{{textColor}}" line-height="1.2">{{headline}}</mj-text>
@@ -1354,6 +1379,7 @@ function winbackEmpathic(s: SkeletonSlots): string {
 {{newArrivalsSection}}
 {{founderNote}}
 {{promise}}
+{{service}}
 {{trustBar}}
 {{brandBar}}
 </mj-body></mjml>`, slots);
