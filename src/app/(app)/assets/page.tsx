@@ -1,6 +1,7 @@
 import { ImageIcon } from "lucide-react";
 import { PageHeader } from "@/components/app/page-header";
 import { AssetLibraryClient } from "@/components/app/asset-library-client";
+import { AssetPoolDepth } from "@/components/app/asset-pool-depth";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +30,8 @@ export default async function AssetsPage() {
         title="Asset library"
         description={`${total} assets · ${unused} sin usar · listos para reutilizar en plantillas. Los agentes externos pueden depositar imágenes vía POST /api/assets con bearer token.`}
       />
+
+      <AssetPoolDepth />
 
       <AssetLibraryClient
         initialAssets={assets.map((a) => ({ ...a, serveUrl: `/api/assets/${a.id}`, createdAt: a.createdAt.toISOString(), lastUsedAt: a.lastUsedAt?.toISOString() ?? null }))}
