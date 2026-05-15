@@ -72,14 +72,34 @@ export type SkeletonSlots = {
   };
 };
 
-const BRAND_BAR = (textOnDark = "#FFFFFF") => `
+// Brand-pillar bar. Four columns, black background, links to the four pillar
+// collections on the storefront. CRITICAL: the "divain." wordmark is ALWAYS
+// lowercase (brand rule) — only the pillar name (PARFUMS / CARE / HOME /
+// RITUAL) is uppercase. To preserve the case mix inside a single mj-text we
+// leave the wrapper without text-transform and uppercase the pillar inline
+// via a span. We use the storefrontUrl as the base for each link, with a
+// sensible collection handle per pillar.
+const BRAND_BAR = (textOnDark = "#FFFFFF", storefrontUrl = "https://divainparfums.com") => {
+  const base = storefrontUrl.replace(/\/$/, "");
+  // Each pillar links to the storefront homepage with a utm_content marker
+  // (safer than hard-coding /collections/X handles that may not exist on
+  // every store). Once we know the real collection handles per store we can
+  // route precisely; for now the click lands on the brand site reliably.
+  const pillars = ["PARFUMS", "CARE", "HOME", "RITUAL"] as const;
+  const col = (name: string) => `
+    <mj-column width="25%">
+      <mj-text align="center" color="${textOnDark}" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="3px" font-weight="500">
+        <a href="${base}/?utm_source=sendify&amp;utm_medium=email&amp;utm_content=brandbar-${name.toLowerCase()}" style="color:${textOnDark};text-decoration:none;">
+          <span style="text-transform:none;">divain.</span> <span style="text-transform:uppercase;">${name}</span>
+        </a>
+      </mj-text>
+    </mj-column>`;
+  return `
   <mj-section background-color="#000000" padding="22px 0" css-class="sf-mobile-pad">
-    <mj-column width="25%"><mj-text align="center" color="${textOnDark}" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="3px" text-transform="uppercase" font-weight="500">divain. PARFUMS</mj-text></mj-column>
-    <mj-column width="25%"><mj-text align="center" color="${textOnDark}" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="3px" text-transform="uppercase" font-weight="500">divain. CARE</mj-text></mj-column>
-    <mj-column width="25%"><mj-text align="center" color="${textOnDark}" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="3px" text-transform="uppercase" font-weight="500">divain. HOME</mj-text></mj-column>
-    <mj-column width="25%"><mj-text align="center" color="${textOnDark}" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="3px" text-transform="uppercase" font-weight="500">divain. RITUAL</mj-text></mj-column>
+    ${pillars.map(col).join("")}
   </mj-section>
 `;
+};
 
 // Legal compliance footer — required in every promotional email under
 // EU/UK/US e-commerce rules. Pulls razón social, address, privacy URL and
@@ -363,7 +383,7 @@ ${heroSection}
 ${captionBlock}
 ${productSection}
 ${closerSection}
-${BRAND_BAR()}
+${BRAND_BAR("#FFFFFF", s.storefrontUrl)}
 </mj-body></mjml>`;
 }
 
@@ -410,7 +430,7 @@ function bigNumberHero(s: SkeletonSlots): string {
     wordmark: WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
     heroBlock,
     body,
-    brandBar: BRAND_BAR(),
+    brandBar: BRAND_BAR("#FFFFFF", s.storefrontUrl),
     bgColor: s.bgColor,
     textColor: s.textColor,
   };
@@ -457,7 +477,7 @@ function productGridEditorial(s: SkeletonSlots): string {
     bigHero: s.heroUrl ? `<mj-section padding="20px 24px" css-class="sf-mobile-pad"><mj-column><mj-image src="${s.heroUrl}" alt="" border-radius="6px" /></mj-column></mj-section>` : "",
     cols,
     cta: PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#"),
-    brandBar: BRAND_BAR(),
+    brandBar: BRAND_BAR("#FFFFFF", s.storefrontUrl),
     bgColor: s.bgColor,
     textColor: s.textColor,
   };
