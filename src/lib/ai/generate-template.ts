@@ -705,12 +705,12 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
       // (no DB migration needed) because hasEvery requires the current tag to
       // be present and old assets don't have it.
       //
-      // v7 = AI hero only for lifestyle-hero / big-number-hero / app-promo-
-      // gradient. Other patterns lead with real Shopify product photos +
-      // typography so they're bulletproof (no failed AI, no wrong season,
-      // no hallucinated bottle). Bumping invalidates old library entries
-      // because the prompt rules no longer apply equally to all patterns.
-      const PROMPT_VERSION = "v7-product-led";
+      // v8 = full Klaviyo-grade density. Every skeleton now emits 6-9
+      // distinct sections (hero + product grid + review + trust bar + etc.)
+      // instead of just hero + CTA + brand bar. The skeleton library is the
+      // dominant source of variety so the asset library shouldn't cross
+      // versions.
+      const PROMPT_VERSION = "v8-dense-blocks";
       const libraryTags = [layoutPattern, input.storeSlug ?? "global", PROMPT_VERSION];
       const reusable = await prisma.asset.findFirst({
         where: {
