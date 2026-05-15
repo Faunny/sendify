@@ -277,35 +277,51 @@ ${BRAND_BAR()}
 // Used for Black Friday, "11,99€" promos, hard-sell moments.
 
 function bigNumberHero(s: SkeletonSlots): string {
+  const offer = escapeHtml(s.offerNumber ?? s.headline);
+  const label = escapeHtml(s.offerLabel ?? s.subhead ?? "de descuento");
+  const body  = escapeHtml(s.body ?? "Solo este fin de semana. Hasta agotar existencias.");
+
+  // Hero block. When a banner photo exists we use it as the section background
+  // and lay the giant offer number on top — same energy as the lifestyle-hero
+  // but with the price as the dominant element. Without a photo we fall back
+  // to a flat cream section so the number still reads clean.
+  const heroBlock = s.heroUrl
+    ? `<mj-section background-url="${s.heroUrl}" background-size="cover" background-position="center center" background-repeat="no-repeat" padding="100px 24px" css-class="sf-hero-section">
+        <mj-column>
+          <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="118px" font-weight="700" line-height="1" color="#FFFFFF" css-class="sf-big-number sf-hero-text">${offer}</mj-text>
+          <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="15px" letter-spacing="6px" text-transform="uppercase" color="#FFFFFF" padding-top="18px" font-weight="500" css-class="sf-hero-text">${label}</mj-text>
+          <mj-spacer height="20px" />
+          ${PILL_BUTTON(s.ctaLabel, "#FFFFFF", s.primaryColor, s.ctaUrl ?? "#")}
+        </mj-column>
+      </mj-section>`
+    : `<mj-section padding="80px 24px 20px" css-class="sf-mobile-pad">
+        <mj-column>
+          <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="118px" font-weight="700" line-height="1" color="${s.primaryColor}" css-class="sf-big-number">${offer}</mj-text>
+          <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="15px" letter-spacing="6px" text-transform="uppercase" color="${s.textColor}" padding-top="18px" font-weight="500">${label}</mj-text>
+          <mj-spacer height="20px" />
+          ${PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#")}
+        </mj-column>
+      </mj-section>`;
+
   const slots: Record<string, string> = {
     preheader: PREHEADER(s.preheader, s.bgColor),
     wordmark: WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
-    offerNumber: escapeHtml(s.offerNumber ?? s.headline),
-    offerLabel: escapeHtml(s.offerLabel ?? s.subhead ?? "de descuento"),
-    body: escapeHtml(s.body ?? "Solo este fin de semana. Hasta agotar existencias."),
-    cta: PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#"),
-    heroUrl: s.heroUrl || "",
-    heroSection: s.heroUrl
-      ? `<mj-section padding="20px 24px" css-class="sf-mobile-pad"><mj-column><mj-image src="${s.heroUrl}" alt="" border-radius="6px" /></mj-column></mj-section>`
-      : "",
+    heroBlock,
+    body,
     brandBar: BRAND_BAR(),
     bgColor: s.bgColor,
-    primaryColor: s.primaryColor,
     textColor: s.textColor,
   };
 
   return render(`<mjml>${HEAD}<mj-body background-color="{{bgColor}}">
 {{preheader}}
 {{wordmark}}
-<mj-section padding="44px 24px 8px" css-class="sf-mobile-pad">
+{{heroBlock}}
+<mj-section padding="28px 24px 36px" background-color="{{bgColor}}" css-class="sf-mobile-pad">
   <mj-column>
-    <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="118px" font-weight="700" line-height="1" color="{{primaryColor}}" css-class="sf-big-number">{{offerNumber}}</mj-text>
-    <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="15px" letter-spacing="6px" text-transform="uppercase" color="{{textColor}}" padding-top="18px" font-weight="500">{{offerLabel}}</mj-text>
-    <mj-text align="center" font-size="13px" color="{{textColor}}" padding-top="8px">{{body}}</mj-text>
+    <mj-text align="center" font-size="14px" line-height="1.55" color="{{textColor}}" css-class="sf-body">{{body}}</mj-text>
   </mj-column>
 </mj-section>
-<mj-section padding="18px 24px 24px" css-class="sf-mobile-pad"><mj-column>{{cta}}</mj-column></mj-section>
-{{heroSection}}
 {{brandBar}}
 </mj-body></mjml>`, slots);
 }

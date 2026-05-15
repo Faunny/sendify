@@ -216,7 +216,7 @@ function buildUserPrompt(input: TemplateGenInput, products: ProductHint[]): stri
   const langHint = `Source language: ${input.language ?? "es-ES"} (downstream translation fans out to 22 languages).`;
   const catalogBlock = products.length === 0
     ? "REAL CATALOG: (store not yet synced — write copy without naming specific SKUs)"
-    : `REAL CATALOG SAMPLE (use these exact product names if your chosen pattern needs them):\n${products.map((p, i) => `${i + 1}. ${p.title}${p.price ? ` · ${p.price}` : ""}`).join("\n")}`;
+    : `REAL CATALOG SAMPLE (THESE ARE THE ONLY PRODUCT NAMES YOU MAY USE — do not invent product names, do not mention essential oils, creams or anything not in this list):\n${products.map((p, i) => `${i + 1}. ${p.title}${p.price ? ` · ${p.price}` : ""}`).join("\n")}`;
 
   return `BRIEF:
 """
@@ -227,6 +227,11 @@ ${toneHint}
 ${langHint}
 
 ${catalogBlock}
+
+STRICT RULES:
+- If the body mentions any product, it MUST be exactly one from the catalog above.
+- Do NOT invent or hallucinate product names. If unsure, keep the body generic (e.g. "tu fragancia favorita") rather than naming a product that isn't in the catalog.
+- Do NOT mention "aceite esencial", "crema", "vitamina" or any other product type that isn't visible in the catalog list.
 
 Return the JSON object now.`;
 }
