@@ -19,6 +19,10 @@ export type BannerArgs = {
   quality?: "low" | "medium" | "high";
   preferredModel?: string;          // pin gpt-image-1 to skip the gpt-image-2 fallback dance
   referenceImageUrls?: string[];    // real product photos to compose into the scene
+  // Force a specific provider as the first attempt regardless of refs. When
+  // unset we use the auto-routing (Gemini first if refs exist, OpenAI first
+  // otherwise). The other provider stays as a quota-failure fallback.
+  preferredProvider?: "openai" | "gemini";
 };
 
 export type BannerResult = {
@@ -40,12 +44,13 @@ export async function generateBannerAny(args: BannerArgs): Promise<BannerResult>
 
   const hasRefs = (args.referenceImageUrls ?? []).length > 0;
 
-  // When references are provided we route to Gemini FIRST. Gemini 2.5 Flash
-  // Image (Nano Banana) preserves reference-object appearance much better than
-  // gpt-image-2/edits, which has a habit of inventing bottle designs even when
-  // shown a reference. Without references, OpenAI gpt-image-2 produces nicer
-  // model photography on average, so we keep that as the default.
-  const order: Array<"gemini" | "openai"> = hasRefs ? ["gemini", "openai"] : ["openai", "gemini"];
+  // Auto-routing default: with refs → Gemini first (preserves bottles better);
+  // without refs → OpenAI first (nicer model shots). preferredProvider lets
+  // the caller override (e.g. refill-asset-pool pins OpenAI gpt-image-2).
+  const autoOrder: Array<"gemini" | "openai"> = hasRefs ? ["gemini", "openai"] : ["openai", "gemini"];
+  const order: Array<"gemini" | "openai"> = args.preferredProvider
+    ? [args.preferredProvider, args.preferredProvider === "openai" ? "gemini" : "openai"]
+    : autoOrder;
 
   for (const provider of order) {
     if (provider === "openai" && hasOpenai) {

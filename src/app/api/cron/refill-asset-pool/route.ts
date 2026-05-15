@@ -122,6 +122,11 @@ export async function POST(req: Request) {
           },
           quality: "medium",
           referenceImageUrls: productRef ? [productRef] : [],
+          // User pref: try OpenAI gpt-image-2 first (the openai-image adapter
+          // already auto-downgrades to gpt-image-1 if -2 isn't available on
+          // the account). Gemini Nano Banana remains the fallback on quota
+          // exhaustion so the pool still fills if OpenAI runs out.
+          preferredProvider: "openai",
         });
         const bytes = Buffer.from(img.base64, "base64");
         await prisma.asset.create({
