@@ -58,7 +58,17 @@ async function processOneSendJob(j: SendJob): Promise<void> {
     return;
   }
   const variant = campaign.variants[0];
-  if (!variant) throw new Error(`variant gone: ${j.campaignId}/${j.language}`);
+  if (!variant) {
+    // Mark the Send as FAILED with a clear message instead of throwing —
+    // throwing here caused pg-boss to retry the job, but the variant won't
+    // come back into existence by itself. The retry loop ate SES capacity
+    // for jobs that could never succeed.
+    await prisma.send.update({
+      where: { id: j.sendId },
+      data: { status: "FAILED", errorMessage: `variant missing for ${j.language}` },
+    });
+    return;
+  }
 
   const result = await sendEmail({
     from: `${campaign.sender.fromName} <${campaign.sender.fromEmail}>`,
@@ -117,13 +127,15 @@ export async function processSendBatch({ max = 100, concurrency = SES_RATE_PER_S
       const job = jobs[i];
       try {
         await processOneSendJob(job.data);
-        await boss.complete(job.id).catch(() => {});
-        // Count from Send row state — processOneSendJob may have written
-        // SUPPRESSED_CONSENT instead of SENT.
+        // Read the Send status BEFORE completing the pg-boss job. Reading
+        // after `boss.complete()` introduced a race where a DB failure
+        // between the two would lose the count — the audit caught this.
+        // Order: do the work → read status → tell pg-boss the work is done.
         const row = await prisma.send.findUnique({ where: { id: job.data.sendId }, select: { status: true } }).catch(() => null);
         if (row?.status === "SUPPRESSED_CONSENT") result.suppressed++;
         else if (row?.status === "SENT") result.sent++;
         else if (row?.status === "FAILED") result.failed++;
+        await boss.complete(job.id).catch(() => {});
       } catch (e) {
         result.failed++;
         const msg = e instanceof Error ? e.message.slice(0, 200) : "send failed";

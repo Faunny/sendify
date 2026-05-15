@@ -82,10 +82,17 @@ export async function autoPlan(opts?: { horizonDays?: number; onlyStoreSlug?: st
   // Load every active Promotion row (webhook-pushed events) and treat each one
   // as a CalendarEvent for the planner. The seeded MARKETING_CALENDAR_2026
   // entries provide a fallback when the upstream is silent.
+  // Promotions are user-supplied via the webhook so a query failure here
+  // would silently fall back to ONLY the seeded calendar, dropping every
+  // user-defined campaign. Log loudly when it fails (alerting picks it up
+  // from console.error) so we notice instead of losing days of planning.
   const promotionEvents: CalendarEvent[] = (await prisma.promotion.findMany({
     where: { active: true, autoDraft: true },
     select: { externalId: true, name: true, kind: true, dateByCountry: true, leadDays: true, briefForLlm: true, bannerPrompt: true },
-  }).catch(() => [])).map(promotionToEvent);
+  }).catch((e) => {
+    console.error("[auto-plan] failed to load Promotions, falling back to seeded calendar only:", e);
+    return [];
+  })).map(promotionToEvent);
 
   const allEvents: CalendarEvent[] = [...promotionEvents, ...MARKETING_CALENDAR_2026];
   // Dedupe by slug so a webhook-supplied event with the same slug as a seeded

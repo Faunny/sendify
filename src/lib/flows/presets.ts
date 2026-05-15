@@ -116,10 +116,15 @@ const headerStyle = `
   </mj-style>
 `;
 
+// Brand-strip in the footer — uses the store's name from the merge-context
+// instead of the hardcoded 'divain. parfums / divain. care' columns that
+// branded every non-divain store's flow emails as divain. The store name
+// gets resolved at render time via {{store.name}} (set up in engine.ts).
 const FOOTER = `
   <mj-section background-color="#000000" padding="22px 0">
-    <mj-column width="50%"><mj-text align="center" color="#FFFFFF" font-size="11px" letter-spacing="3px" text-transform="uppercase">divain. parfums</mj-text></mj-column>
-    <mj-column width="50%"><mj-text align="center" color="#FFFFFF" font-size="11px" letter-spacing="3px" text-transform="uppercase">divain. care</mj-text></mj-column>
+    <mj-column>
+      <mj-text align="center" color="#FFFFFF" font-size="11px" letter-spacing="3px" text-transform="uppercase">{{store.name}}</mj-text>
+    </mj-column>
   </mj-section>
   <mj-section background-color="{{store.bgColor}}" padding="22px 20px 44px" css-class="sf-mobile-pad">
     <mj-column>

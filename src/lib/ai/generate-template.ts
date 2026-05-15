@@ -172,9 +172,16 @@ async function loadProductHints(storeSlug: string | undefined, pillar: string | 
   }));
 }
 
-function buildSystemPrompt(): string {
+function buildSystemPrompt(opts: { storeName?: string; storeDescriptor?: string } = {}): string {
   const patternList = LAYOUT_LIBRARY.map((p) => `- ${p.id}: ${p.whenToUse}`).join("\n");
-  return `You are the senior brand copywriter for divain®, a perfume house from Alicante.
+  // Brand the system prompt with the actual store name when we know it. This
+  // was hardcoded to "divain®, a perfume house from Alicante" — any non-
+  // divain store would have ended up with divain language baked into every
+  // generated email. Falls back to a generic descriptor when the store
+  // hasn't been resolved (e.g. brand-bar previews without a storeSlug).
+  const brand = opts.storeName?.trim() || "your brand";
+  const descriptor = opts.storeDescriptor?.trim() || "an e-commerce store";
+  return `You are the senior brand copywriter for ${brand}, ${descriptor}.
 You will choose ONE layout pattern that fits the brief and fill its copy slots. You do NOT write HTML or MJML — the server renders a hand-crafted skeleton with your slot values.
 
 PATTERN CHOICES (pick exactly one):
@@ -685,6 +692,11 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
   // Service callout — recurring "Try & Buy"-style box configured at the
   // store level so every email of that store can include it without invention.
   let serviceCalloutFromStore: SkeletonSlots["serviceCallout"] | undefined;
+  // Brand descriptor — free-text "what is this store" line that goes into
+  // the LLM system prompt so the copy stays on-brand for any store, not
+  // just divain. Read from Store.brandPalette.brandDescriptor JSON key.
+  // Example for divain: "a perfume house from Alicante, Spain".
+  let storeDescriptor = "";
   if (input.storeSlug) {
     const store = await prisma.store.findUnique({
       where: { slug: input.storeSlug },
@@ -734,6 +746,11 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
     if (typeof brandKitJson?.accent === "string" && /^#[0-9A-Fa-f]{3,8}$/.test(brandKitJson.accent)) {
       accentColorFromStore = brandKitJson.accent;
     }
+    // Brand descriptor — used in the LLM system prompt instead of the
+    // hardcoded "divain perfume house from Alicante" line.
+    if (typeof brandKitJson?.brandDescriptor === "string") {
+      storeDescriptor = brandKitJson.brandDescriptor.slice(0, 180);
+    }
     // Service callout — must have at minimum title, body, ctaLabel to render.
     const sc = brandKitJson?.serviceCallout && typeof brandKitJson.serviceCallout === "object" ? brandKitJson.serviceCallout as Record<string, unknown> : null;
     if (sc && typeof sc.title === "string" && typeof sc.body === "string" && typeof sc.ctaLabel === "string") {
@@ -776,7 +793,7 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
     body: JSON.stringify({
       model,
       messages: [
-        { role: "system", content: buildSystemPrompt() },
+        { role: "system", content: buildSystemPrompt({ storeName, storeDescriptor: storeDescriptor || undefined }) },
         { role: "user", content: buildUserPrompt(input, products) },
       ],
       temperature: 0.6,
@@ -806,7 +823,18 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
   try { parsed = JSON.parse(cleaned); }
   catch { throw new Error(`LLM returned invalid JSON: ${cleaned.slice(0, 220)}...`); }
 
-  const layoutPattern: string = LAYOUT_LIBRARY.find((p) => p.id === parsed.layoutPattern)?.id ?? "lifestyle-hero";
+  // Pattern picked by the LLM. If the model hallucinates an id that isn't in
+  // our library we WARN loudly (so we can spot prompt drift) but still fall
+  // back gracefully — throwing here would kill a real campaign over a model
+  // typo. lifestyle-hero is the safest fallback (always works, never asks
+  // for store-specific data we don't have).
+  const llmPick = typeof parsed.layoutPattern === "string" ? parsed.layoutPattern : "";
+  const layoutPattern: string = LAYOUT_LIBRARY.find((p) => p.id === llmPick)?.id ?? (() => {
+    if (llmPick) {
+      console.warn(`[generate-template] LLM returned unknown layoutPattern '${llmPick}', falling back to lifestyle-hero`);
+    }
+    return "lifestyle-hero";
+  })();
   const subject   = String(parsed.subject ?? "").slice(0, 120);
   const preheader = String(parsed.preheader ?? "").slice(0, 180);
   const headline  = String(parsed.headline ?? subject ?? "").slice(0, 200);
@@ -1120,18 +1148,25 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
     })(),
     splitNarrative: (() => {
       if (!Array.isArray(parsed.splitNarrative)) return undefined;
+      // Splits NEED real product photos. Without a catalog there's nothing
+      // useful to show in an image column — return undefined so the section
+      // hides instead of rendering empty boxes.
+      if (products.length === 0) return undefined;
       const items = (parsed.splitNarrative as unknown[])
         .filter((it): it is Record<string, unknown> => typeof it === "object" && it !== null)
-        .map((it, i) => ({
-          // Wire each split's image to a different real product photo from
-          // the catalog so consecutive splits visually rotate. Falls back
-          // to products[0] when not enough catalog entries.
-          imageUrl: products[i % Math.max(1, products.length)]?.imageUrl ?? products[0]?.imageUrl ?? "",
-          tagline: typeof it.tagline === "string" ? it.tagline.slice(0, 80) : "",
-          body:    typeof it.body    === "string" ? it.body.slice(0, 220)   : "",
-          ctaLabel: typeof it.ctaLabel === "string" ? String(it.ctaLabel).toUpperCase().slice(0, 30) : "DESCUBRIR",
-          ctaUrl: products[i % Math.max(1, products.length)]?.productUrl ?? storefrontUrl ?? "#",
-        }))
+        .map((it, i) => {
+          // Rotate through real catalog products so each split shows a
+          // different bottle. Modulo by products.length is safe now because
+          // we early-return above when the catalog is empty.
+          const product = products[i % products.length];
+          return {
+            imageUrl: product?.imageUrl ?? "",
+            tagline:  typeof it.tagline  === "string" ? it.tagline.slice(0, 80) : "",
+            body:     typeof it.body     === "string" ? it.body.slice(0, 220)   : "",
+            ctaLabel: typeof it.ctaLabel === "string" ? String(it.ctaLabel).toUpperCase().slice(0, 30) : "DESCUBRIR",
+            ctaUrl:   product?.productUrl ?? storefrontUrl ?? "#",
+          };
+        })
         .filter((it) => it.tagline && it.body && it.imageUrl)
         .slice(0, 3);
       return items.length > 0 ? items : undefined;

@@ -19,6 +19,13 @@ import { sendEmail } from "@/lib/ses";
 import type { FlowTrigger, FlowEnrollment } from "@prisma/client";
 import { FLOW_PRESETS, type EntryFilter, type FlowGraph, type FlowStep, type FlowStepCondition } from "./presets";
 
+// Local HTML escape used inside the wordmark fallback. Store names come from
+// the DB so this is mostly defensive — but a brand name with quotes or angle
+// brackets would otherwise break the surrounding MJML attributes.
+function escapeHtmlEngine(s: string): string {
+  return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" } as Record<string, string>)[c] ?? c);
+}
+
 // ── Enrollment ───────────────────────────────────────────────────────────────
 
 export async function enrollIntoMatchingFlows(args: {
@@ -288,15 +295,23 @@ async function runStep(step: FlowStep, enrollment: FlowEnrollment & {
   if (!sender) throw new Error(`no verified+active sender for store ${storeId}`);
 
   const palette = (store.brandPalette as { bg?: string; text?: string; primary?: string; accent?: string } | null) ?? {};
-  const storefront = store.storefrontUrl ?? "https://divainparfums.com";
+  // Storefront URL is REQUIRED for flows — without it CTAs would point at
+  // divainparfums.com regardless of which brand is sending. Fail loudly so
+  // the operator fixes the store config instead of shipping wrong-brand links.
+  if (!store.storefrontUrl) {
+    throw new Error(`flow step needs store.storefrontUrl, store=${storeId} has no storefrontUrl`);
+  }
+  const storefront = store.storefrontUrl;
   const textColor  = palette.text ?? "#0E0E0E";
 
-  // Compute the header logo block here so preset MJML can stay generic. If
-  // the store uploaded a brand logo we inject an <mj-image>; otherwise we
-  // fall back to the divain. text wordmark.
+  // Header logo block. If the store uploaded a brand logo we use it; otherwise
+  // we render the store name in the brand wordmark style. NO hardcoded
+  // "divain." text fallback any more — that branded every other store's
+  // flow email with divain when they hadn't uploaded a logo yet.
+  const wordmarkText = store.name || "your brand";
   const logoBlock = store.brandLogoUrl
     ? `<mj-image src="${store.brandLogoUrl}" alt="" width="120px" align="center" href="${storefront}" padding="0" />`
-    : `<mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="24px" font-weight="700" color="${textColor}" letter-spacing="-0.5px"><a href="${storefront}" style="color:${textColor};text-decoration:none;">divain.</a></mj-text>`;
+    : `<mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="24px" font-weight="700" color="${textColor}" letter-spacing="-0.5px"><a href="${storefront}" style="color:${textColor};text-decoration:none;">${escapeHtmlEngine(wordmarkText)}</a></mj-text>`;
 
   const ctx: Record<string, string> = {
     "customer.firstName": enrollment.customer.firstName ?? "",
@@ -314,7 +329,12 @@ async function runStep(step: FlowStep, enrollment: FlowEnrollment & {
     "store.privacyUrl":       store.privacyUrl ?? "",
     "store.logoBlock":        logoBlock,
     "unsubscribeUrl":         `${process.env.NEXT_PUBLIC_APP_URL ?? "https://sendify.divain.space"}/api/unsubscribe?t=${encodeURIComponent(enrollment.customer.email)}`,
-    "discountCode":           (enrollment.context as Record<string, string> | null)?.discountCode ?? "DIVAIN10",
+    // Discount code: ALWAYS comes from the enrollment context (e.g. the
+    // checkout that triggered the flow). NO hardcoded fallback — a Welcome
+    // flow that's never been given a code will render the {{discountCode}}
+    // placeholder verbatim, which is the right outcome because shipping
+    // 'DIVAIN10' to a non-divain store would be a guaranteed support ticket.
+    "discountCode":           (enrollment.context as Record<string, string> | null)?.discountCode ?? "",
     "abandonedCart.checkoutUrl": (enrollment.context as Record<string, string> | null)?.checkoutUrl ?? storefront,
   };
 

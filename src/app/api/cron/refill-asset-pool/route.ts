@@ -90,7 +90,13 @@ export async function POST(req: Request) {
         select: { imageUrl: true },
         orderBy: { shopifyUpdatedAt: "desc" },
         take: 20,
-      }).catch(() => []);
+      }).catch((e) => {
+        // Log + return empty so the cron continues for other stores. Silent
+        // .catch(() => []) used to make this look like "no products" instead
+        // of a DB error (audit fix).
+        console.error(`[refill-asset-pool] failed to load products for store ${store.id}:`, e);
+        return [];
+      });
       const urls = ps.map((p) => p.imageUrl).filter((u): u is string => !!u);
       if (urls.length > 0) productsByStore.set(store.id, urls);
     }

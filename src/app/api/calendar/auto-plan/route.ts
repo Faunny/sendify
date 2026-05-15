@@ -30,9 +30,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
+  // Body parsing — accept missing/invalid body (cron POSTs may have empty
+  // body) but VALIDATE shape when present. Negative or huge horizon days
+  // would either skip all events or run forever, so clamp into a sane range.
   const body = await req.json().catch(() => ({} as { horizonDays?: number; storeSlug?: string }));
-  const horizonDays = typeof body.horizonDays === "number" ? body.horizonDays : 30;
-  const onlyStoreSlug = body.storeSlug;
+  const rawHorizon = typeof body.horizonDays === "number" && Number.isFinite(body.horizonDays) ? body.horizonDays : 30;
+  const horizonDays = Math.max(1, Math.min(180, Math.floor(rawHorizon)));
+  const onlyStoreSlug = typeof body.storeSlug === "string" && body.storeSlug.trim() ? body.storeSlug.trim() : undefined;
 
   try {
     const result = await autoPlan({ horizonDays, onlyStoreSlug });

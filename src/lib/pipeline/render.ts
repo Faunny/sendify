@@ -14,8 +14,11 @@ export async function renderVariant(campaignId: string, language: string): Promi
   if (!variant) throw new Error(`variant missing for ${campaignId}/${language}`);
 
   const { html, hash, errors } = renderMjml(variant.mjml);
-  if (errors.length > 0 && process.env.NODE_ENV !== "production") {
-    console.warn(`[render] ${campaignId}/${language} MJML warnings:`, errors);
+  // MJML warnings used to be dev-only — that silenced cross-client rendering
+  // issues in production where they matter most. Now they ALWAYS log so we
+  // can spot template regressions from server logs (audit fix).
+  if (errors.length > 0) {
+    console.warn(`[render] ${campaignId}/${language} MJML warnings (${errors.length}):`, errors.slice(0, 5));
   }
 
   await prisma.campaignVariant.update({

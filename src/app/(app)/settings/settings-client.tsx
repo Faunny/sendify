@@ -169,15 +169,12 @@ export function SettingsClient({ stores: STORES, senders: SENDERS, users: USERS 
                     </div>
                   </div>
 
-                  <div className="rounded-md border border-border bg-card/40 p-2.5">
-                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">Product pillars</div>
-                    <div className="flex flex-wrap gap-1">
-                      <Badge variant="muted" className="text-[11px]">divain. PARFUMS</Badge>
-                      <Badge variant="muted" className="text-[11px]">divain. CARE</Badge>
-                      <Badge variant="muted" className="text-[11px]">divain. HOME</Badge>
-                      <Badge variant="muted" className="text-[11px]">divain. RITUAL</Badge>
-                    </div>
-                  </div>
+                  {/* Pillars row removed — was hardcoded with divain. PARFUMS /
+                      CARE / HOME / RITUAL, which is brand-specific and would
+                      mislead other tenants. Pillars are now driven by the
+                      LLM brief (input.pillar) and not displayed as a fixed
+                      list. If we need to surface them per-store later, this
+                      should read from a Store.pillars JSON column. */}
 
                   <div className="rounded-md border border-[color:var(--accent)]/30 bg-[color-mix(in_oklch,var(--accent)_4%,transparent)] p-3 text-[12px] mb-2">
                     <div className="font-medium text-foreground mb-1">📘 Dónde sacar Client ID + Client secret en Shopify</div>
@@ -402,13 +399,26 @@ export function SettingsClient({ stores: STORES, senders: SENDERS, users: USERS 
               <div className="rounded-md border border-border bg-card/40 p-3">
                 <div className="text-[12px] uppercase tracking-wider text-muted-foreground mb-1.5">Webhook URL</div>
                 <div className="font-mono text-[14px] flex items-center justify-between gap-2">
-                  <span className="truncate">https://sendify.divain.space/api/promotions/webhook</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-[12px]"
-                    onClick={() => navigator.clipboard?.writeText("https://sendify.divain.space/api/promotions/webhook")}
-                  >Copy</Button>
+                  {/* Build the URL from the live origin so this works on any
+                      deploy (preview branches, custom domains) instead of
+                      hardcoding sendify.divain.space, which would tell the
+                      user to point webhooks at the wrong host. */}
+                  {(() => {
+                    const webhookUrl = typeof window !== "undefined"
+                      ? `${window.location.origin}/api/promotions/webhook`
+                      : "/api/promotions/webhook";
+                    return (
+                      <>
+                        <span className="truncate">{webhookUrl}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-[12px]"
+                          onClick={() => navigator.clipboard?.writeText(webhookUrl)}
+                        >Copy</Button>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
               <div className="rounded-md border border-border bg-card/40 p-3">
@@ -520,7 +530,7 @@ X-Sendify-Signature: sha256=<hmac>
             <CardContent className="pt-0 space-y-3">
               <ComplianceRow label="One-click unsubscribe (RFC 8058)" ok body="List-Unsubscribe + List-Unsubscribe-Post headers injected on every send" />
               <ComplianceRow label="Suppression list (cross-store)" ok body="A bounce or complaint on one store suppresses the email across all 4" />
-              <ComplianceRow label="Preference center" ok body="https://sendify.divain.space/p/{customerId}" />
+              <ComplianceRow label="Preference center" ok body="/p/{customerId} on this dashboard" />
               <ComplianceRow label="Data retention" ok body="Send rows kept 13 months, then archived to S3 Glacier" />
               <ComplianceRow label="Right to erasure" ok body="Tombstone replacement on Customer record, immediate PII purge" />
             </CardContent>

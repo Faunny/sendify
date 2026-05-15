@@ -786,9 +786,13 @@ function lifestyleHero(s: SkeletonSlots): string {
     <mj-section padding="10px 12px 40px" background-color="${s.bgColor}" css-class="sf-mobile-pad">
       ${products.map((p) => {
         const href = p.productUrl ?? "#";
+        // No third-party placeholder fallback — if the catalog row lacks an
+        // image we render JUST the title + price + link. Better an honest
+        // text card than a 'PRODUCT IMAGE' placeholder served from a public
+        // service we don't control (privacy + uptime risk).
         const img = p.imageUrl
           ? `<mj-image src="${p.imageUrl}" alt="${escapeHtml(p.title)}" border-radius="4px" href="${href}" />`
-          : `<mj-image src="https://via.placeholder.com/240x300?text=${encodeURIComponent(p.title)}" alt="${escapeHtml(p.title)}" border-radius="4px" href="${href}" />`;
+          : "";
         return `
         <mj-column width="33.33%" padding="8px">
           ${img}
