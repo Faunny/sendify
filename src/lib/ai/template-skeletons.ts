@@ -254,8 +254,12 @@ const HEAD = `
         .sf-img-bleed td { padding: 0 !important; }
         .sf-img-bleed img { width: 100% !important; height: auto !important; }
         /* Buttons fill width on mobile so tap target is big. */
-        /* CTA pill expands to ~75% width on phones for a generous tap target. */
-        .sf-cta a { width: auto !important; min-width: 70% !important; padding: 18px 24px !important; font-size: 13px !important; }
+        /* CTA pill on mobile: bigger tap target but auto width — full-width
+           was turning into a massive cream rectangle on hero photos. */
+        .sf-cta a { padding: 14px 28px !important; font-size: 12.5px !important; }
+        /* Spotlight image on mobile: cap height so the bottle photo doesn't
+           force a 600px scroll for a single product card. */
+        .sf-img-bleed img { max-height: 360px !important; object-fit: contain !important; }
       }
     </mj-style>
   </mj-head>
@@ -664,9 +668,13 @@ export function renderSkeleton(patternId: string, slots: SkeletonSlots): string 
   // Inject optional Klaviyo-grade content blocks before BRAND_BAR if the LLM
   // populated them. Order: hero (rendered by the skeleton) → editorial story
   // → product spotlight → existing close → brand bar → legal footer.
-  // This makes EVERY skeleton automatically support the richer layout without
-  // editing each one — same pattern we use for LEGAL_FOOTER injection below.
-  const spotlight = PRODUCT_SPOTLIGHT(slots);
+  //
+  // Skip on layouts that ALREADY feature products prominently — otherwise the
+  // email becomes 4-5 stacked bottle photos and reads like a Shopify catalog
+  // page on mobile. product-grid-editorial has its own 3-col grid; premium-
+  // launch is built around a single product hero.
+  const alreadyHasProducts = patternId === "product-grid-editorial" || patternId === "premium-launch";
+  const spotlight = alreadyHasProducts ? "" : PRODUCT_SPOTLIGHT(slots);
   const editorial = EDITORIAL_BLOCK(slots);
   // Anchor: the BRAND_BAR's opening tag (black section, padding 22px 0) is
   // emitted by every skeleton just before </mj-body>. Insert the optional
