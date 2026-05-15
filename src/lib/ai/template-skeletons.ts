@@ -49,6 +49,27 @@ export type SkeletonSlots = {
   // sections so the logo doesn't disappear.
   brandLogoUrl?: string;
   brandLogoDarkUrl?: string;
+  // ── Klaviyo-grade content blocks (NEW) ─────────────────────────────────
+  // Product spotlight — one featured product with rich copy. Renders as a
+  // full-width card with the actual Shopify image, name, price and a longer
+  // story paragraph. Sits below the hero so the email leads with the model
+  // photo and then drills into the actual bottle.
+  spotlight?: {
+    title: string;          // product name, e.g. "DIVAIN-832"
+    notes: string;          // "Notas de jazmín, vainilla, ámbar"
+    story: string;          // 2-3 sentence story
+    price?: string;         // "11,99€"
+    imageUrl: string;       // Shopify CDN URL
+    productUrl?: string;
+    ctaLabel?: string;      // defaults to "DESCUBRIRLO"
+  };
+  // Editorial / story block — 2-3 paragraphs about the brand pillar, ritual,
+  // or "why we made this". Pure copy, no image. Adds depth without bloat.
+  editorialBlock?: {
+    eyebrow: string;        // "LA HISTORIA"
+    headline: string;       // "El perfume como ritual"
+    paragraphs: string[];   // 1-3 short paragraphs
+  };
 };
 
 const BRAND_BAR = (textOnDark = "#FFFFFF") => `
@@ -117,9 +138,78 @@ const WORDMARK = (color: string, logoUrl?: string, href?: string) => {
   `;
 };
 
+// CTA pill. Tighter Klaviyo-style: 13px type, 2px tracking, 16/40 padding
+// so the tap target is generous on mobile but it doesn't read as a giant
+// gradient blob. Wrapped in css-class="sf-cta" so the @media rule can force
+// it full-width on phones.
 const PILL_BUTTON = (label: string, bg: string, color: string, href: string) => `
-  <mj-button background-color="${bg}" color="${color}" border-radius="40px" font-family="Inter, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="1.5px" font-weight="500" inner-padding="14px 36px" text-transform="uppercase" href="${href}">${escapeHtml(label)}</mj-button>
+  <mj-button background-color="${bg}" color="${color}" border-radius="40px" font-family="Inter, Helvetica, Arial, sans-serif" font-size="13px" letter-spacing="2px" font-weight="500" inner-padding="16px 40px" text-transform="uppercase" href="${href}" css-class="sf-cta">${escapeHtml(label)}</mj-button>
 `;
+
+// Klaviyo-style product spotlight. Renders as a single-product card with the
+// real Shopify image (full-width on mobile), name, price, story copy and a
+// CTA. Inserted between the hero and the brand bar in most skeletons so the
+// email leads with the editorial photo, then drills into the actual bottle.
+const PRODUCT_SPOTLIGHT = (s: SkeletonSlots) => {
+  if (!s.spotlight) return "";
+  const sp = s.spotlight;
+  return `
+  <mj-section padding="48px 0 16px" background-color="${s.bgColor}" css-class="sf-mobile-pad">
+    <mj-column>
+      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="4px" text-transform="uppercase" color="${s.textColor}" font-weight="500">Producto destacado</mj-text>
+    </mj-column>
+  </mj-section>
+  <mj-section padding="0 24px 12px" background-color="${s.bgColor}" css-class="sf-mobile-pad">
+    <mj-column>
+      <mj-image src="${sp.imageUrl}" alt="${escapeHtml(sp.title)}" padding="0" href="${sp.productUrl ?? s.ctaUrl ?? "#"}" css-class="sf-img-bleed" />
+    </mj-column>
+  </mj-section>
+  <mj-section padding="20px 24px 8px" background-color="${s.bgColor}" css-class="sf-mobile-pad">
+    <mj-column>
+      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="22px" font-weight="500" letter-spacing="-0.25px" color="${s.textColor}">${escapeHtml(sp.title)}</mj-text>
+      ${sp.notes ? `<mj-text align="center" font-size="12px" letter-spacing="3px" text-transform="uppercase" color="${s.textColor}" opacity="0.6" padding-top="6px">${escapeHtml(sp.notes)}</mj-text>` : ""}
+      ${sp.price ? `<mj-text align="center" font-size="15px" font-weight="500" color="${s.primaryColor}" padding-top="12px">${escapeHtml(sp.price)}</mj-text>` : ""}
+    </mj-column>
+  </mj-section>
+  <mj-section padding="6px 24px 8px" background-color="${s.bgColor}" css-class="sf-mobile-pad">
+    <mj-column>
+      <mj-text align="center" font-size="14px" line-height="1.65" color="${s.textColor}" css-class="sf-body" padding="0 24px">${escapeHtml(sp.story)}</mj-text>
+    </mj-column>
+  </mj-section>
+  <mj-section padding="18px 24px 48px" background-color="${s.bgColor}" css-class="sf-mobile-pad">
+    <mj-column>
+      ${PILL_BUTTON(sp.ctaLabel ?? "DESCUBRIRLO", s.primaryColor, s.bgColor, sp.productUrl ?? s.ctaUrl ?? "#")}
+    </mj-column>
+  </mj-section>
+`;
+};
+
+// Editorial / story block. 2-3 paragraphs that give the email depth without
+// pushing another product. Klaviyo emails for premium brands almost always
+// have one of these between the hero and the product grid. Optional.
+const EDITORIAL_BLOCK = (s: SkeletonSlots) => {
+  if (!s.editorialBlock) return "";
+  const eb = s.editorialBlock;
+  return `
+  <mj-section padding="36px 24px 12px" background-color="${s.bgColor}" css-class="sf-mobile-pad">
+    <mj-column>
+      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="4px" text-transform="uppercase" color="${s.textColor}" opacity="0.65" font-weight="500">${escapeHtml(eb.eyebrow)}</mj-text>
+      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="26px" font-weight="400" line-height="1.2" letter-spacing="-0.25px" color="${s.textColor}" padding-top="10px">${escapeHtml(eb.headline)}</mj-text>
+    </mj-column>
+  </mj-section>
+  ${eb.paragraphs.map((p) => `
+  <mj-section padding="8px 32px" background-color="${s.bgColor}" css-class="sf-mobile-pad">
+    <mj-column>
+      <mj-text align="center" font-size="15px" line-height="1.75" color="${s.textColor}" opacity="0.88" css-class="sf-body">${escapeHtml(p)}</mj-text>
+    </mj-column>
+  </mj-section>`).join("")}
+  <mj-section padding="24px 0 8px" background-color="${s.bgColor}">
+    <mj-column>
+      <mj-divider border-color="${s.textColor}" border-width="1px" css-class="sf-divider" padding="0 36%" />
+    </mj-column>
+  </mj-section>
+`;
+};
 
 const HEAD = `
   <mj-head>
@@ -164,7 +254,8 @@ const HEAD = `
         .sf-img-bleed td { padding: 0 !important; }
         .sf-img-bleed img { width: 100% !important; height: auto !important; }
         /* Buttons fill width on mobile so tap target is big. */
-        .sf-cta a { width: auto !important; min-width: 60% !important; }
+        /* CTA pill expands to ~75% width on phones for a generous tap target. */
+        .sf-cta a { width: auto !important; min-width: 70% !important; padding: 18px 24px !important; font-size: 13px !important; }
       }
     </mj-style>
   </mj-head>
@@ -570,8 +661,19 @@ export const SKELETONS: Record<string, (s: SkeletonSlots) => string> = {
 export function renderSkeleton(patternId: string, slots: SkeletonSlots): string {
   const fn = SKELETONS[patternId] ?? lifestyleHero;
   const raw = fn(slots);
-  // Inject the legal compliance footer right before </mj-body>. Every skeleton
-  // already includes BRAND_BAR before that tag, so the footer slots in directly
-  // beneath. Done here (vs in each skeleton fn) so we never forget a layout.
-  return raw.replace(/<\/mj-body>/, `${LEGAL_FOOTER(slots)}</mj-body>`);
+  // Inject optional Klaviyo-grade content blocks before BRAND_BAR if the LLM
+  // populated them. Order: hero (rendered by the skeleton) → editorial story
+  // → product spotlight → existing close → brand bar → legal footer.
+  // This makes EVERY skeleton automatically support the richer layout without
+  // editing each one — same pattern we use for LEGAL_FOOTER injection below.
+  const spotlight = PRODUCT_SPOTLIGHT(slots);
+  const editorial = EDITORIAL_BLOCK(slots);
+  // Anchor: the BRAND_BAR's opening tag (black section, padding 22px 0) is
+  // emitted by every skeleton just before </mj-body>. Insert the optional
+  // blocks right before that anchor so they sit between the email body and
+  // the brand bar.
+  const enriched = (spotlight || editorial)
+    ? raw.replace(/<mj-section background-color="#000000" padding="22px 0"/, `${editorial}${spotlight}<mj-section background-color="#000000" padding="22px 0"`)
+    : raw;
+  return enriched.replace(/<\/mj-body>/, `${LEGAL_FOOTER(slots)}</mj-body>`);
 }

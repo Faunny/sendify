@@ -194,7 +194,21 @@ OUTPUT — pure JSON, no markdown fences, no commentary:
   "productName": "<used only when premium-launch. Real product name from the catalog if available, otherwise invent a believable one tied to the brief>",
   "productCopy": "<used only when premium-launch. 4-8 word label below the product name — 'Edición limitada · 200 unidades', 'Disponible desde 12 mayo'>",
   "customerIncentive": "<used only when winback-empathic. The incentive as displayed: '-15%', 'envío gratis'>",
-  "bannerPrompt": "<REQUIRED for every layout except countdown-urgency. Describe an editorial fashion scene featuring a REAL-LOOKING WOMAN MODEL — NO products in the photo, no bottles, no boxes, no labels. The actual divain product is displayed SEPARATELY in the email (in the 'Selección destacada' section), not in this photo. Treat this prompt like a magazine cover shoot of a model.\\n\\nDivain's aesthetic is editorial fashion photography: woman on a beach, in a forest, on sand dunes, by the sea, in a garden. Dressed naturally (linen, swimsuit, sundress, knitwear) depending on the brief's season.\\n\\n50-80 words. Describe: the woman, her wardrobe, the setting, the mood, the light, the colour palette. ZERO text/logos/captions/numbers/products in the image.\\n\\nGood examples:\\n - 'A woman in her late twenties in a white linen sundress on warm sand at golden hour, looking out to sea, eyes half-closed. Soft warm light, shallow depth of field, sandy and ivory palette.'\\n - 'A woman in her thirties walking through a pine forest in a knit cardigan, pausing to look up. Autumn light through trees, warm browns and forest greens, magazine fashion editorial.'\\n - 'A young woman reclining on white dunes at sunset. Peaceful expression, hair pulled back, soft pastel sky, refined and aspirational.'>"
+  "bannerPrompt": "<REQUIRED for every layout except countdown-urgency. Describe an editorial fashion scene featuring a REAL-LOOKING WOMAN MODEL — NO products in the photo, no bottles, no boxes, no labels. The actual divain product is displayed SEPARATELY in the email (in the 'Selección destacada' section), not in this photo. Treat this prompt like a magazine cover shoot of a model.\\n\\nDivain's aesthetic is editorial fashion photography: woman on a beach, in a forest, on sand dunes, by the sea, in a garden. Dressed naturally (linen, swimsuit, sundress, knitwear) depending on the brief's season.\\n\\n50-80 words. Describe: the woman, her wardrobe, the setting, the mood, the light, the colour palette. ZERO text/logos/captions/numbers/products in the image.\\n\\nGood examples:\\n - 'A woman in her late twenties in a white linen sundress on warm sand at golden hour, looking out to sea, eyes half-closed. Soft warm light, shallow depth of field, sandy and ivory palette.'\\n - 'A woman in her thirties walking through a pine forest in a knit cardigan, pausing to look up. Autumn light through trees, warm browns and forest greens, magazine fashion editorial.'\\n - 'A young woman reclining on white dunes at sunset. Peaceful expression, hair pulled back, soft pastel sky, refined and aspirational.'>",
+  "spotlight": {
+    "title": "<one real product name from the catalog above — exact spelling>",
+    "notes": "<5-8 words describing the scent in caps · 'NOTAS DE JAZMÍN, VAINILLA, ÁMBAR'>",
+    "story": "<2-3 sentences · 40-60 words · why this product is worth their attention this week. Editorial voice. No exclamation marks. No 'click here'.>",
+    "ctaLabel": "<'DESCUBRIRLO' or 'COMPRAR' — 1-2 words uppercase>"
+  },
+  "editorialBlock": {
+    "eyebrow": "<short uppercase label · 'LA HISTORIA', 'NUESTRO RITUAL', 'POR QUÉ DIVAIN' — 1-3 words>",
+    "headline": "<8-12 words · serif tone · the angle of the story. 'El perfume como recordatorio diario'.>",
+    "paragraphs": [
+      "<paragraph 1 · 25-45 words · sets the scene>",
+      "<paragraph 2 · 25-45 words · pivots to brand/ritual>"
+    ]
+  }
 }
 
 DECISION HEURISTIC:
@@ -539,6 +553,37 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
     // Generic unsubscribe stub — Send-time the campaign worker swaps this for a
     // per-recipient token. Placeholder URL keeps the link valid in previews.
     unsubscribeUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://sendify.divain.space"}/api/unsubscribe`,
+    // Klaviyo-grade rich blocks — injected before the BRAND_BAR via the
+    // PRODUCT_SPOTLIGHT / EDITORIAL_BLOCK helpers in template-skeletons.ts.
+    // We marry the LLM's spotlight copy with the FIRST real Shopify product
+    // (so the image and price come from the catalog, not from invention).
+    spotlight: (() => {
+      const llmSpot = parsed.spotlight && typeof parsed.spotlight === "object" ? parsed.spotlight as Record<string, unknown> : null;
+      const realProduct = products[0];
+      if (!realProduct?.imageUrl) return undefined;
+      return {
+        title: typeof llmSpot?.title === "string" ? String(llmSpot.title).slice(0, 80) : realProduct.title.slice(0, 80),
+        notes: typeof llmSpot?.notes === "string" ? String(llmSpot.notes).slice(0, 60).toUpperCase() : "",
+        story: typeof llmSpot?.story === "string" ? String(llmSpot.story).slice(0, 320) : "",
+        price: realProduct.price ? `${realProduct.price} €` : undefined,
+        imageUrl: realProduct.imageUrl,
+        productUrl: realProduct.productUrl ?? undefined,
+        ctaLabel: typeof llmSpot?.ctaLabel === "string" ? String(llmSpot.ctaLabel).toUpperCase().slice(0, 30) : "DESCUBRIRLO",
+      };
+    })(),
+    editorialBlock: (() => {
+      const eb = parsed.editorialBlock && typeof parsed.editorialBlock === "object" ? parsed.editorialBlock as Record<string, unknown> : null;
+      if (!eb) return undefined;
+      const paras = Array.isArray(eb.paragraphs)
+        ? (eb.paragraphs as unknown[]).filter((p): p is string => typeof p === "string" && p.trim().length > 10).slice(0, 3)
+        : [];
+      if (paras.length === 0) return undefined;
+      return {
+        eyebrow: typeof eb.eyebrow === "string" ? String(eb.eyebrow).toUpperCase().slice(0, 40) : "LA HISTORIA",
+        headline: typeof eb.headline === "string" ? String(eb.headline).slice(0, 140) : "",
+        paragraphs: paras.map((p) => p.slice(0, 320)),
+      };
+    })(),
   };
 
   const mjml = renderSkeleton(layoutPattern, slots);
