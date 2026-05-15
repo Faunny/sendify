@@ -1,8 +1,9 @@
 "use client";
 
+import Link from "next/link";
+import { signOut } from "next-auth/react";
 import { Bell, Search, Sparkles, Command } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -31,17 +32,22 @@ export function Topbar() {
 
       <div className="flex-1 md:hidden" />
 
-      <Button variant="outline" size="sm" className="gap-2">
-        <Sparkles className="h-3.5 w-3.5 text-[color:var(--accent)]" />
-        Generate
+      {/* Generate: shortcut to AI template gen. Used to be a dead button. */}
+      <Button variant="outline" size="sm" className="gap-2" asChild>
+        <Link href="/templates">
+          <Sparkles className="h-3.5 w-3.5" />
+          Generate
+        </Link>
       </Button>
 
-      <div className="relative">
-        <Button variant="ghost" size="icon-sm">
+      {/* Bell: shortcut to /approvals (the only "notification source" today —
+          if a draft is waiting that's where it shows up). Hard-coded "3" badge
+          dropped; real count lives in the sidebar nav. */}
+      <Button variant="ghost" size="icon-sm" asChild>
+        <Link href="/approvals" title="Pending approvals">
           <Bell className="h-4 w-4" />
-        </Button>
-        <Badge variant="accent" className="absolute -right-1 -top-1 h-4 min-w-4 justify-center rounded-full p-0 text-[9px]">3</Badge>
-      </div>
+        </Link>
+      </Button>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -53,14 +59,16 @@ export function Topbar() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuLabel>Account</DropdownMenuLabel>
-          <DropdownMenuItem>Profile</DropdownMenuItem>
-          <DropdownMenuItem>Team & roles</DropdownMenuItem>
-          <DropdownMenuItem>API keys</DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/settings">Profile · Settings</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/settings">Team & API keys</Link>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Documentation</DropdownMenuItem>
-          <DropdownMenuItem>Changelog</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-[color:var(--danger)]">Sign out</DropdownMenuItem>
+          <DropdownMenuItem onClick={() => signOut({ callbackUrl: "/login" })} className="text-[color:var(--danger)]">
+            Sign out
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>

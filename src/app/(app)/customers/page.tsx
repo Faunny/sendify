@@ -108,7 +108,11 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         description={`${formatNumber(totalAll)} clientes sincronizados a través de ${stores.length} tiendas`}
         actions={
           <>
-            <Button variant="outline" size="sm"><Download className="h-3.5 w-3.5" /> Export CSV</Button>
+            <Button variant="outline" size="sm" asChild>
+              <a href="/api/customers/export" download>
+                <Download className="h-3.5 w-3.5" /> Export CSV
+              </a>
+            </Button>
             <Button size="sm" asChild>
               <Link href="/import">Importar más</Link>
             </Button>

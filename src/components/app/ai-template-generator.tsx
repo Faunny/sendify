@@ -255,8 +255,10 @@ export function AiTemplateGenerator({ stores }: { stores: { slug: string; name: 
                     </Link>
                   </Button>
                 ) : (
-                  <Button disabled size="default">
-                    <Mail className="h-4 w-4" /> Sin guardar en DB
+                  <Button size="default" asChild>
+                    <Link href="/templates" onClick={() => setOpen(false)}>
+                      <Mail className="h-4 w-4" /> Ver mis templates →
+                    </Link>
                   </Button>
                 )}
               </div>

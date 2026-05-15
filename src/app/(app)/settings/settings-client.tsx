@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Building2, Check, ChevronRight, ExternalLink, Key, Languages, Mail, Plug, ShieldCheck, Users, Webhook } from "lucide-react";
+import { Building2, Check, ChevronRight, Key, Languages, Mail, Plug, ShieldCheck, Users, Webhook } from "lucide-react";
 import { CredentialCard } from "@/components/app/credential-card";
 import { AwsSesCard } from "@/components/app/aws-ses-card";
 import { ExcludedSkusEditor } from "@/components/app/excluded-skus-editor";
@@ -211,18 +211,13 @@ export function SettingsClient({ stores: STORES, senders: SENDERS, users: USERS 
                   <ExcludedSkusEditor storeSlug={s.slug} storeName={s.name} />
 
                   <div className="rounded-md border border-border bg-card/40 p-3 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Legal entity (footer)</div>
-                      <Button variant="ghost" size="sm" className="h-6 px-2 text-[11px]">Edit</Button>
-                    </div>
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Legal entity (footer)</div>
                     <div className="text-[13px] font-medium">{s.legal.legalName}</div>
                     <div className="text-[12px] text-muted-foreground">{s.legal.vatNumber}</div>
                     <div className="text-[12px] text-muted-foreground leading-relaxed">{s.legal.address}, {s.legal.postalCode} {s.legal.city}, {s.legal.country}</div>
                     <div className="text-[12px] text-muted-foreground">{s.legal.supportEmail} · {s.legal.supportPhone}</div>
-                    <div className="flex gap-2 mt-1.5 text-[11px]">
-                      <a className="text-[color:var(--accent)] hover:underline">Privacy</a>
-                      <a className="text-[color:var(--accent)] hover:underline">Terms</a>
-                      <a className="text-[color:var(--accent)] hover:underline">Cookies</a>
+                    <div className="text-[11px] text-muted-foreground/70 mt-1.5">
+                      Para editar estos datos legales, actualízalos en la Store via Prisma (campos Store.legalName / legalAddress / etc). Editor en UI pendiente.
                     </div>
                   </div>
 
@@ -408,7 +403,12 @@ export function SettingsClient({ stores: STORES, senders: SENDERS, users: USERS 
                 <div className="text-[12px] uppercase tracking-wider text-muted-foreground mb-1.5">Webhook URL</div>
                 <div className="font-mono text-[14px] flex items-center justify-between gap-2">
                   <span className="truncate">https://sendify.divain.space/api/promotions/webhook</span>
-                  <Button variant="ghost" size="sm" className="text-[12px]">Copy</Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-[12px]"
+                    onClick={() => navigator.clipboard?.writeText("https://sendify.divain.space/api/promotions/webhook")}
+                  >Copy</Button>
                 </div>
               </div>
               <div className="rounded-md border border-border bg-card/40 p-3">
@@ -557,7 +557,8 @@ function Integration({ name, hint, status, detail }: { name: string; hint: strin
             <div className="text-[11px] text-muted-foreground">{hint}</div>
             <p className="mt-2 text-[12px] text-muted-foreground">{detail}</p>
           </div>
-          <Button variant="ghost" size="icon-sm"><ChevronRight className="h-3.5 w-3.5" /></Button>
+          {/* No expand-action wired for the integration cards — kept as a
+              visual chevron to hint future drill-down. Hidden until wired. */}
         </div>
       </CardContent>
     </Card>
@@ -587,7 +588,8 @@ function ComplianceRow({ label, body, ok }: { label: string; body: string; ok?: 
         </div>
         <div className="text-[12px] text-muted-foreground mt-0.5">{body}</div>
       </div>
-      <a className="text-[12px] text-[color:var(--accent)] inline-flex items-center gap-1" href="#">Configure <ExternalLink className="h-2.5 w-2.5" /></a>
+      {/* "Configure" link was href="#" — dropped. Compliance items are
+          self-explanatory and configured elsewhere. */}
     </div>
   );
 }

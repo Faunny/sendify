@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowLeft, Check, Palette as PaletteIcon, Save, Type, Upload } from "lucide-react";
+import { ArrowLeft, Check, Palette as PaletteIcon, Type, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -69,13 +69,7 @@ export default function BrandKitEditorPage() {
         </Button>
         <PageHeader
           title="Brand kit"
-          description="Logo, palette and typography for each store. The auto-drafter, the builder and every email template pull from here."
-          actions={
-            <>
-              <Button variant="outline" size="sm">Discard</Button>
-              <Button size="sm"><Save className="h-3.5 w-3.5" /> Save changes</Button>
-            </>
-          }
+          description="Logo, palette and typography for each store. La página todavía es preview (mockup) — los cambios no se guardan a DB. Para subir el logo real ve a /templates (botón inline) o a la sección Stores en /settings."
         />
       </div>
 

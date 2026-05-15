@@ -27,12 +27,12 @@ import { Badge } from "@/components/ui/badge";
 import { STORES } from "@/lib/mock";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-const NAV: { group: string; items: { href: string; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string }[] }[] = [
+const NAV: { group: string; items: { href: string; label: string; icon: React.ComponentType<{ className?: string }> }[] }[] = [
   {
     group: "Overview",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/approvals", label: "Approvals", icon: Inbox, badge: "2" },
+      { href: "/approvals", label: "Approvals", icon: Inbox },
     ],
   },
   {
@@ -86,7 +86,7 @@ const NAV: { group: string; items: { href: string; label: string; icon: React.Co
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({ badges = {} }: { badges?: Record<string, number> }) {
   const pathname = usePathname();
 
   return (
@@ -124,11 +124,15 @@ export function Sidebar() {
                         <Icon className={cn("h-4 w-4", active && "text-[color:var(--accent)]")} />
                         {item.label}
                       </span>
-                      {item.badge && (
-                        <Badge variant="accent" className="h-4 px-1.5 text-[11px]">
-                          {item.badge}
-                        </Badge>
-                      )}
+                      {(() => {
+                        const count = badges[item.href] ?? 0;
+                        if (count <= 0) return null;
+                        return (
+                          <Badge variant="accent" className="h-4 px-1.5 text-[11px] tabular-nums">
+                            {count > 99 ? "99+" : count}
+                          </Badge>
+                        );
+                      })()}
                     </Link>
                   </li>
                 );
