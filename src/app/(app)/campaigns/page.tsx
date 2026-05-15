@@ -69,9 +69,12 @@ export default async function CampaignsPage() {
         title="Campaigns"
         description={`${formatNumber(total)} campañas`}
         actions={
-          <Button size="sm" asChild>
-            <Link href="/campaigns/new"><Plus className="h-3.5 w-3.5" /> New campaign</Link>
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <NewsletterDraftButton stores={stores} />
+            <Button size="sm" asChild>
+              <Link href="/campaigns/new"><Plus className="h-3.5 w-3.5" /> New campaign</Link>
+            </Button>
+          </div>
         }
       />
 
