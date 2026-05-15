@@ -54,26 +54,31 @@ const DIVAIN_BRAND_KIT = {
   },
 } as const;
 
-// Divain stores by slug — these are the four real Shopify Plus storefronts
-// from the project memory (divain-europa = .com, divain-uk = .co.uk,
-// divain-usa = .co — note .co not .com — divain-mx).
-const DIVAIN_STORE_SLUGS = ["divain-europa", "divain-uk", "divain-usa", "divain-mx"];
-
 export async function POST(req: Request) {
   if (!(await authorize(req))) {
     return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
   try {
+    // Match any store whose slug contains "divain" (case-insensitive). This
+    // handles slug variations (divain-europa vs divain-eu vs divain-es,
+    // divain-uk vs divain-co-uk, etc.) without needing the user to keep
+    // the seed route's hardcoded list in sync.
+    const url = new URL(req.url);
+    const slugParam = url.searchParams.get("slugs"); // optional override
     const stores = await prisma.store.findMany({
-      where: { slug: { in: DIVAIN_STORE_SLUGS } },
+      where: slugParam
+        ? { slug: { in: slugParam.split(",").map((s) => s.trim()).filter(Boolean) } }
+        : { slug: { contains: "divain", mode: "insensitive" } },
       select: { id: true, slug: true, brandPalette: true },
     });
 
     if (stores.length === 0) {
+      const all = await prisma.store.findMany({ select: { slug: true } });
       return NextResponse.json({
         ok: false,
         error: "no divain stores found",
-        expectedSlugs: DIVAIN_STORE_SLUGS,
+        availableSlugs: all.map((s) => s.slug),
+        hint: "pass ?slugs=slug-a,slug-b to target specific stores",
       }, { status: 404 });
     }
 
