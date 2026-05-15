@@ -337,12 +337,16 @@ function lifestyleHero(s: SkeletonSlots): string {
           ${PILL_BUTTON(s.ctaLabel, s.bgColor, s.primaryColor, s.ctaUrl ?? "#")}
         </mj-column>
       </mj-section>`
-    : `<mj-section background-color="${s.primaryColor}" padding="130px 30px" css-class="sf-hero-section">
+    : `<mj-section background-color="${s.bgColor}" padding="80px 30px 32px" css-class="sf-hero-section">
         <mj-column>
-          ${s.subhead ? `<mj-text align="center" color="${s.bgColor}" font-size="13px" letter-spacing="5px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" css-class="sf-hero-subhead" padding-bottom="12px">${escapeHtml(s.subhead)}</mj-text>` : ""}
-          <mj-text align="center" color="${s.bgColor}" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="48px" font-weight="600" line-height="1.05" css-class="sf-hero-headline">${headlineHtml}</mj-text>
-          <mj-spacer height="20px" />
-          ${PILL_BUTTON(s.ctaLabel, s.bgColor, s.primaryColor, s.ctaUrl ?? "#")}
+          ${s.subhead ? `<mj-text align="center" color="${s.textColor}" font-size="12px" letter-spacing="5px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" css-class="sf-hero-subhead" padding-bottom="14px"><span style="opacity:0.65;">${escapeHtml(s.subhead)}</span></mj-text>` : ""}
+          <mj-text align="center" color="${s.textColor}" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="52px" font-weight="500" line-height="1.05" letter-spacing="-0.5px" css-class="sf-hero-headline">${headlineHtml}</mj-text>
+        </mj-column>
+      </mj-section>
+      ${(s.products ?? [])[0]?.imageUrl ? `<mj-section background-color="${s.bgColor}" padding="0"><mj-column padding="0"><mj-image src="${(s.products ?? [])[0]!.imageUrl}" alt="" padding="0" border-radius="0" href="${(s.products ?? [])[0]!.productUrl ?? s.ctaUrl ?? "#"}" /></mj-column></mj-section>` : ""}
+      <mj-section background-color="${s.bgColor}" padding="32px 30px 60px" css-class="sf-mobile-pad">
+        <mj-column>
+          ${PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#")}
         </mj-column>
       </mj-section>`;
 

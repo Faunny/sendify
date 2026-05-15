@@ -287,9 +287,27 @@ const MODERN_ERA_RULE = "Contemporary 2020s setting and styling — modern minim
 
 // Exported so the asset-pool refill cron can call into the same prompt
 // library (pattern-aware briefs that produce Higgsfield-quality output).
-export function buildHeroPromptForLayout(layoutPattern: string, llmPrompt: string, hasProductRef: boolean): string {
-  return buildHeroPrompt(layoutPattern, llmPrompt, hasProductRef);
+export function buildHeroPromptForLayout(layoutPattern: string, llmPrompt: string, hasProductRef: boolean, brief?: string): string {
+  return buildHeroPrompt(layoutPattern, llmPrompt, hasProductRef, brief);
 }
+
+// Patterns that NEED an AI-generated scene photo (model in environment) to
+// work visually. Everything else is designed to lead with typography + the
+// real Shopify product photo, which:
+//   • is always correct (no hallucinated bottle, no wrong era, no wrong season)
+//   • doesn't fail when image generation quota runs out
+//   • takes 0ms vs 8-15s per generation
+//
+// This was the fix for "como pretendes que esos diseños estan asi listos para
+// enviar" — most templates were hostage to whether the AI hero came out OK.
+// Now only lifestyle-hero (model + scene is the entire point), big-number-hero
+// (the big number lays over a photo for drama) and app-promo-gradient (phone
+// scene with hands) generate AI heroes. The rest are product-photo + type.
+export const AI_HERO_PATTERNS = new Set<string>([
+  "lifestyle-hero",
+  "big-number-hero",
+  "app-promo-gradient",
+]);
 
 // Pool of composition variants used to break the "aspirational woman holding
 // the bottle in front of her" monotony. Each call picks one randomly so
@@ -482,16 +500,20 @@ function detectSeasonalContext(seed: string): SeasonalContext {
   return { occasion: null, styling: "" };
 }
 
-function withSeasonalOverride(prompt: string, seed: string): string {
-  const ctx = detectSeasonalContext(seed);
+function withSeasonalOverride(prompt: string, seed: string, brief?: string): string {
+  // Check BOTH the LLM-generated banner prompt AND the original brief. The
+  // LLM may strip seasonal keywords ("regalos de navidad únicos" → "luxury
+  // perfume gift photograph") leaving us blind to the season. Scanning the
+  // raw brief catches it regardless.
+  const ctx = detectSeasonalContext(`${brief ?? ""}\n${seed}`);
   if (!ctx.styling) return prompt;
   // The override is appended LAST so the model treats it as the dominant
   // instruction (most LLMs/diffusion models weight later instructions more
   // when they conflict with earlier ones).
-  return `${prompt} CRITICAL SEASONAL OVERRIDE — this rule wins over every other styling cue above, including any default composition: ${ctx.styling}`;
+  return `${prompt} CRITICAL ${ctx.occasion ? `${ctx.occasion.toUpperCase()} ` : ""}SEASONAL OVERRIDE — this rule wins over every other styling cue above, including any default composition: ${ctx.styling}`;
 }
 
-function buildHeroPrompt(layoutPattern: string, llmPrompt: string, hasProductRef: boolean): string {
+function buildHeroPrompt(layoutPattern: string, llmPrompt: string, hasProductRef: boolean, brief?: string): string {
   const seed = (llmPrompt || "").trim();
 
   // With a real product reference (the user's actual Divain bottle), every
@@ -542,7 +564,7 @@ function buildHeroPrompt(layoutPattern: string, llmPrompt: string, hasProductRef
       default:
         prompt = `Editorial luxury perfume advertising photograph: ${seed}. Real model interacting with the perfume bottle from the reference image. Magazine quality, refined mood. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
     }
-    return withSeasonalOverride(prompt, seed);
+    return withSeasonalOverride(prompt, seed, brief);
   }
 
   // No product reference available — generate a clean editorial scene without
@@ -559,7 +581,7 @@ function buildHeroPrompt(layoutPattern: string, llmPrompt: string, hasProductRef
     default:
       basePrompt = `Editorial fashion photograph: ${seed}. Real model, magazine quality, refined mood. ${NO_TEXT_RULE}`;
   }
-  return withSeasonalOverride(basePrompt, seed);
+  return withSeasonalOverride(basePrompt, seed, brief);
 }
 
 export async function generateTemplate(input: TemplateGenInput): Promise<TemplateGenOutput> {
@@ -667,7 +689,14 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
   let bannerUrl: string | undefined;
   let bannerError: string | undefined;
   const bannerPrompt = typeof parsed.bannerPrompt === "string" ? parsed.bannerPrompt.trim() : "";
-  const shouldGenBanner = input.generateBanner !== false && bannerPrompt.length > 10;
+  // Only patterns that need a model-in-scene photograph attempt AI generation.
+  // Product-led patterns (premium-launch, product-grid-editorial, brand-
+  // anthology, winback-empathic, countdown-urgency) skip the AI entirely and
+  // lean on the real Shopify product photo + typography. This makes those
+  // emails bulletproof — no failed AI generations, no wrong seasons, no
+  // hallucinated bottles.
+  const patternUsesAiHero = AI_HERO_PATTERNS.has(layoutPattern);
+  const shouldGenBanner = patternUsesAiHero && input.generateBanner !== false && bannerPrompt.length > 10;
   if (shouldGenBanner) {
     try {
       // 0) Library-first reuse. Strict matching: the asset MUST be tagged with
@@ -676,11 +705,12 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
       // (no DB migration needed) because hasEvery requires the current tag to
       // be present and old assets don't have it.
       //
-      // v6 = seasonal/occasion-aware override. Composition pools still rotate,
-      // but a detected Christmas / Mother's Day / Valentine's / season cue in
-      // the brief forces wardrobe + light + props to match. Stops a summer
-      // terrace from being reused for a Navidad campaign.
-      const PROMPT_VERSION = "v6-seasonal-aware";
+      // v7 = AI hero only for lifestyle-hero / big-number-hero / app-promo-
+      // gradient. Other patterns lead with real Shopify product photos +
+      // typography so they're bulletproof (no failed AI, no wrong season,
+      // no hallucinated bottle). Bumping invalidates old library entries
+      // because the prompt rules no longer apply equally to all patterns.
+      const PROMPT_VERSION = "v7-product-led";
       const libraryTags = [layoutPattern, input.storeSlug ?? "global", PROMPT_VERSION];
       const reusable = await prisma.asset.findFirst({
         where: {
@@ -705,7 +735,10 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
       // pillar/store, so it's the right bottle to show. Without a reference
       // we fall back to a model-only scene (no fabricated bottle).
       const productRefUrl = products[0]?.imageUrl?.trim() || undefined;
-      const heroOnlyPrompt = buildHeroPrompt(layoutPattern, bannerPrompt, !!productRefUrl);
+      // Pass the user's raw brief so the seasonal detector catches "navidad"
+      // / "día de la madre" / etc. even when the LLM stripped them from its
+      // banner prompt during summarisation.
+      const heroOnlyPrompt = buildHeroPrompt(layoutPattern, bannerPrompt, !!productRefUrl, input.brief);
 
       const img = await generateBannerAny({
         prompt: heroOnlyPrompt,
