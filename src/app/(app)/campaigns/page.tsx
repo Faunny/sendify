@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/app/page-header";
 import { EmptyState } from "@/components/app/empty-state";
 import { StatusBadge } from "@/components/app/status-badge";
+import { NewsletterDraftButton } from "@/components/app/newsletter-draft-button";
 import { prisma } from "@/lib/db";
 import { formatCurrency, formatNumber } from "@/lib/utils";
 
@@ -20,7 +21,7 @@ const SOURCE_ICON: Record<string, React.ComponentType<{ className?: string }>> =
 export const dynamic = "force-dynamic";
 
 export default async function CampaignsPage() {
-  const [total, campaigns] = await Promise.all([
+  const [total, campaigns, stores] = await Promise.all([
     prisma.campaign.count().catch(() => 0),
     prisma.campaign.findMany({
       orderBy: [{ scheduledFor: "desc" }, { createdAt: "desc" }],
@@ -28,6 +29,11 @@ export default async function CampaignsPage() {
       include: {
         store: { select: { name: true } },
       },
+    }).catch(() => []),
+    prisma.store.findMany({
+      where: { active: true },
+      select: { slug: true, name: true },
+      orderBy: { name: "asc" },
     }).catch(() => []),
   ]);
 
@@ -38,9 +44,12 @@ export default async function CampaignsPage() {
           title="Campaigns"
           description="Drafts, scheduled and sent campaigns across all stores. Nothing leaves Sendify without your approval."
           actions={
-            <Button size="sm" asChild>
-              <Link href="/campaigns/new"><Plus className="h-3.5 w-3.5" /> New campaign</Link>
-            </Button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <NewsletterDraftButton stores={stores} />
+              <Button size="sm" asChild>
+                <Link href="/campaigns/new"><Plus className="h-3.5 w-3.5" /> New campaign</Link>
+              </Button>
+            </div>
           }
         />
         <EmptyState
