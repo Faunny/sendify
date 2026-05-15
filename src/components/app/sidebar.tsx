@@ -17,7 +17,6 @@ import {
   Settings,
   Languages,
   Boxes,
-  Palette,
   Ticket,
   ShieldOff,
   Upload,
@@ -70,7 +69,11 @@ const NAV: { group: string; items: { href: string; label: string; icon: React.Co
   {
     group: "Studio",
     items: [
-      { href: "/builder", label: "Builder", icon: Palette },
+      // /builder is a mock drag-and-drop sketch from early design exploration.
+      // The real email editing path is /templates → IA Gen → /templates/[id]/edit
+      // (live MJML preview + 22-lang translation + test send). The Builder
+      // page itself stays in the repo for reference but is hidden from the
+      // sidebar so users don't end up in a dead-end with ghost buttons.
       { href: "/assets", label: "Asset library", icon: ImageIcon },
       { href: "/translations", label: "Translations", icon: Languages },
     ],
