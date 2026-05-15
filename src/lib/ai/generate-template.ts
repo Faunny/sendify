@@ -782,9 +782,14 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
       bannerError = e instanceof Error ? e.message.slice(0, 320) : "image gen failed";
       console.warn("[generate-template] banner gen failed:", e);
     }
-  } else if (!bannerPrompt && input.generateBanner !== false) {
-    bannerError = "LLM did not return a bannerPrompt (pattern likely doesn't need one)";
   }
+  // NOTE: we intentionally do NOT emit a bannerError when patternUsesAiHero is
+  // false — those 5 patterns are designed to lead with the real Shopify
+  // product photo + typography, so the absence of an AI hero is a feature,
+  // not a failure. Surfacing it as an error caused user confusion ("Imagen
+  // no generada"). Likewise if the LLM didn't return a bannerPrompt for a
+  // pattern that does use AI heroes, we now ALSO stay silent — the skeleton's
+  // no-photo fallback renders a clean type-led version that looks intentional.
 
   // Render the chosen skeleton with all the slots.
   const slots: SkeletonSlots = {
