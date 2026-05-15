@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/app/page-header";
 import { EmptyState } from "@/components/app/empty-state";
 import { EmailPreviewCard } from "@/components/app/email-preview-card";
 import { ApprovalRowActions } from "@/components/app/approval-row-actions";
+import { ApprovalsBulkProvider, ApprovalRowCheckbox } from "@/components/app/approvals-bulk";
 import { RegenerateDraftsButton } from "@/components/app/regenerate-drafts-button";
 import { LANGUAGES } from "@/lib/languages";
 import { prisma } from "@/lib/db";
@@ -116,6 +117,7 @@ export default async function ApprovalsPage() {
         actions={autoCount > 0 ? <RegenerateDraftsButton /> : undefined}
       />
 
+      <ApprovalsBulkProvider allIds={pending.map((c) => c.id)}>
       <div className="grid gap-3">
         {pending.map((c) => {
           const source = SOURCE_META[c.draftSource] ?? SOURCE_META.MANUAL;
@@ -135,6 +137,8 @@ export default async function ApprovalsPage() {
           return (
             <Card key={c.id}>
               <CardHeader className="flex flex-row items-start justify-between gap-3">
+                <div className="flex items-start gap-2 min-w-0">
+                <ApprovalRowCheckbox id={c.id} />
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
                     <Badge variant={source.tone}>
@@ -150,6 +154,7 @@ export default async function ApprovalsPage() {
                       </>
                     )}
                   </CardDescription>
+                </div>
                 </div>
                 <Badge variant="warning"><Clock className="h-3 w-3" /> Pending</Badge>
               </CardHeader>
@@ -237,6 +242,7 @@ export default async function ApprovalsPage() {
           );
         })}
       </div>
+      </ApprovalsBulkProvider>
     </div>
   );
 }
