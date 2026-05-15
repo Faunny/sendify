@@ -278,7 +278,14 @@ ${BRAND_BAR()}
 
 function bigNumberHero(s: SkeletonSlots): string {
   const offer = escapeHtml(s.offerNumber ?? s.headline);
-  const label = escapeHtml(s.offerLabel ?? s.subhead ?? "de descuento");
+  const rawLabel = s.offerLabel ?? s.subhead ?? "de descuento";
+  // Long labels like "TODOS LOS PERFUMES A 11,99€" wrap awkwardly with 6px
+  // letter-spacing — the trailing "A" jumps to its own line. Tighten the
+  // letter-spacing proportionally to the label length so it stays inline.
+  const labelLen = rawLabel.length;
+  const labelLetterSpacing = labelLen > 24 ? "2px" : labelLen > 18 ? "3px" : labelLen > 12 ? "4px" : "6px";
+  const labelFontSize = labelLen > 24 ? "13px" : "15px";
+  const label = escapeHtml(rawLabel);
   const body  = escapeHtml(s.body ?? "Solo este fin de semana. Hasta agotar existencias.");
 
   // Hero block. When a banner photo exists we use it as the section background
@@ -289,7 +296,7 @@ function bigNumberHero(s: SkeletonSlots): string {
     ? `<mj-section background-url="${s.heroUrl}" background-size="cover" background-position="center center" background-repeat="no-repeat" padding="100px 24px" css-class="sf-hero-section">
         <mj-column>
           <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="118px" font-weight="700" line-height="1" color="#FFFFFF" css-class="sf-big-number sf-hero-text">${offer}</mj-text>
-          <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="15px" letter-spacing="6px" text-transform="uppercase" color="#FFFFFF" padding-top="18px" font-weight="500" css-class="sf-hero-text">${label}</mj-text>
+          <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="${labelFontSize}" letter-spacing="${labelLetterSpacing}" text-transform="uppercase" color="#FFFFFF" padding-top="18px" font-weight="500" css-class="sf-hero-text">${label}</mj-text>
           <mj-spacer height="20px" />
           ${PILL_BUTTON(s.ctaLabel, "#FFFFFF", s.primaryColor, s.ctaUrl ?? "#")}
         </mj-column>
@@ -297,7 +304,7 @@ function bigNumberHero(s: SkeletonSlots): string {
     : `<mj-section padding="80px 24px 20px" css-class="sf-mobile-pad">
         <mj-column>
           <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="118px" font-weight="700" line-height="1" color="${s.primaryColor}" css-class="sf-big-number">${offer}</mj-text>
-          <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="15px" letter-spacing="6px" text-transform="uppercase" color="${s.textColor}" padding-top="18px" font-weight="500">${label}</mj-text>
+          <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="${labelFontSize}" letter-spacing="${labelLetterSpacing}" text-transform="uppercase" color="${s.textColor}" padding-top="18px" font-weight="500">${label}</mj-text>
           <mj-spacer height="20px" />
           ${PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#")}
         </mj-column>

@@ -129,45 +129,44 @@ export function ApprovalsBulkProvider({
       {/* Sticky bulk-action bar. Always visible; counts and buttons update
           live as the user ticks rows. Disabled buttons greyed out when no
           selection. */}
-      <div className="sticky top-0 z-20 -mx-1 mb-2 rounded-md border border-border bg-card/95 backdrop-blur p-3 flex items-center justify-between gap-3 flex-wrap">
-        <div className="flex items-center gap-3 flex-wrap">
-          <label className="flex items-center gap-2 text-[13px] cursor-pointer">
-            <input
-              type="checkbox"
-              checked={allSelected}
-              onChange={() => allSelected ? clearAll() : selectAll()}
-              className="h-4 w-4 rounded border-border"
-            />
-            <span className="font-medium">
-              {someSelected
-                ? `${selected.size} seleccionada${selected.size === 1 ? "" : "s"} de ${allIds.length}`
-                : `Seleccionar las ${allIds.length}`}
-            </span>
-          </label>
+      <div className="sticky top-0 z-20 mb-2 rounded-md border border-border bg-card/95 backdrop-blur px-3 py-2 flex items-center justify-between gap-3 flex-wrap">
+        <label className="flex items-center gap-2 text-[12.5px] cursor-pointer">
+          <input
+            type="checkbox"
+            checked={allSelected}
+            onChange={() => allSelected ? clearAll() : selectAll()}
+            className="h-3.5 w-3.5 rounded border-border"
+          />
+          <span>
+            {someSelected
+              ? <><span className="font-medium">{selected.size}</span> de {allIds.length}</>
+              : <>Seleccionar las {allIds.length}</>}
+          </span>
           {someSelected && (
-            <button onClick={clearAll} className="text-[12px] text-muted-foreground hover:text-foreground underline">
-              limpiar selección
+            <button onClick={(e) => { e.preventDefault(); clearAll(); }} className="ml-1 text-[11px] text-muted-foreground hover:text-foreground underline">
+              limpiar
             </button>
           )}
-        </div>
-        <div className="flex items-center gap-2">
+        </label>
+        <div className="flex items-center gap-1.5">
           <Button
             size="sm"
             variant="outline"
             onClick={bulkReject}
             disabled={busy !== null || !someSelected}
-            className="text-[color:var(--danger)] hover:text-[color:var(--danger)]"
+            className="h-7 px-2.5 text-[12px] text-[color:var(--danger)] hover:text-[color:var(--danger)]"
           >
-            {busy === "reject" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
-            Reject {someSelected ? `(${selected.size})` : ""}
+            {busy === "reject" ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+            Reject{someSelected ? ` (${selected.size})` : ""}
           </Button>
           <Button
             size="sm"
             onClick={bulkApprove}
             disabled={busy !== null || !someSelected}
+            className="h-7 px-2.5 text-[12px]"
           >
-            {busy === "approve" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-            Approve {someSelected ? `(${selected.size})` : ""}
+            {busy === "approve" ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+            Approve{someSelected ? ` (${selected.size})` : ""}
           </Button>
         </div>
       </div>

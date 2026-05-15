@@ -64,11 +64,15 @@ export function ApprovalRowActions({ campaignId, senderConfigured }: { campaignI
           {busy === "reject" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
           Reject
         </Button>
-        <Button variant="outline" size="sm" asChild disabled={busy !== null}>
-          <Link href={`/campaigns/${campaignId}`}>
-            <Pencil className="h-3.5 w-3.5" /> Edit before approving
-          </Link>
-        </Button>
+        {/* asChild + disabled don't mix — disabled gets passed to the <a>
+            which makes Next swallow the click. Plain Link wrapped in button
+            classes instead. */}
+        <Link
+          href={`/campaigns/${campaignId}`}
+          className="inline-flex items-center gap-1 h-9 px-3 rounded-md border border-border bg-card text-[13px] font-medium hover:bg-secondary/60 transition-colors"
+        >
+          <Pencil className="h-3.5 w-3.5" /> Edit before approving
+        </Link>
         <Button size="sm" onClick={approve} disabled={busy !== null}>
           {busy === "approve" ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
           Approve & schedule
