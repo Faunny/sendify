@@ -282,6 +282,112 @@ export function buildHeroPromptForLayout(layoutPattern: string, llmPrompt: strin
   return buildHeroPrompt(layoutPattern, llmPrompt, hasProductRef);
 }
 
+// Pool of composition variants used to break the "aspirational woman holding
+// the bottle in front of her" monotony. Each call picks one randomly so
+// consecutive emails feel different even with the same layout.
+const LIFESTYLE_COMPOSITIONS = [
+  "a real woman in her late 20s on a warm-toned sandy beach at golden hour, the bottle resting on driftwood beside her",
+  "a real woman in a knit cardigan inside a sun-lit Mediterranean apartment, the bottle on a marble side table, her hand reaching for it",
+  "a real woman in a linen sundress walking through a wildflower field, the bottle held casually at her side",
+  "a real woman seated on a stone garden bench at dusk, the bottle on the seat next to her, soft purple light",
+  "a real woman in a silk robe on a balcony with a sea view, the bottle on a small iron table with espresso, morning light",
+  "a real woman in a forest clearing in autumn, knitwear, the bottle on a moss-covered log, gold leaf light",
+  "a real woman in front of an open window with sheer linen curtains, the bottle on the windowsill, soft white light",
+  "a real woman crouched at a stone fountain in an old Spanish patio, the bottle on the edge, warm shade",
+];
+
+const STILL_LIFE_COMPOSITIONS = [
+  "warm-toned marble slab, single white peony beside the bottle, soft side light",
+  "creased linen draped on a dark walnut surface, the bottle centred, golden afternoon sun",
+  "raw silk in champagne tones, the bottle leaning slightly, candle in foreground out of focus",
+  "wet pebble beach surface, bottle catching sea reflection, overcast moody light",
+  "pressed dried botanicals scattered around the bottle on cream paper, overhead flat lay",
+  "weathered terracotta tile with single sprig of lavender, bottle in afternoon shade",
+  "polished obsidian surface, single drop of perfume on it, the bottle reflected, low key dramatic light",
+  "rough natural linen tablecloth with crumbs of dark chocolate, the bottle and a small glass of espresso",
+];
+
+// Close-crop / detail compositions — bottle dominant, human element is just a
+// hand, sleeve, strand of hair. Used for premium launches.
+const CLOSE_CROP_COMPOSITIONS = [
+  "a manicured hand emerging from a cream silk sleeve, holding the bottle near a sunlit window",
+  "the bottle resting on a polished walnut dresser, a hand reaching from frame-left to lift it",
+  "the bottle balanced between two slender fingers above a dark velvet surface, dramatic side light",
+  "the bottle on the curved palm of an open hand, soft directional north light, fingertips out of focus",
+  "the bottle held against a bare collarbone, soft golden skin, neckline of a champagne silk dress",
+  "the bottle photographed at eye level on a marble countertop, a wrist with a thin gold bracelet entering frame",
+  "the bottle nestled in folded ivory linen sheets, a hand lifting one corner of the fabric",
+  "the bottle on a tray with a lit candle, a hand setting it down, motion blur in the wrist only",
+];
+
+// Cinematic / mood compositions for countdown / urgency layouts. Slight tension.
+const URGENCY_COMPOSITIONS = [
+  "the bottle on a candlelit table at dusk, a half-empty espresso cup beside it, low warm light",
+  "the bottle at the edge of a marble counter under a single overhead spot, deep shadows on the surrounding surface",
+  "the bottle in a hand mid-motion reaching across a darkened mahogany table, ambient bar light",
+  "the bottle on a worn leather chair beside an unmade bed at golden hour, low sun cutting through linen curtains",
+  "the bottle on a brass tray with a wax-sealed envelope, late-night warm lamp glow",
+  "the bottle on a bathroom vanity with steam softening the mirror, a robe slipping off a hook in the background",
+  "the bottle on a windowsill at last light, city skyline blurred in the distance, single pendant lamp on inside",
+  "the bottle on a velvet bench in a darkened dressing room, single light beam from above, theatrical mood",
+];
+
+// App promo compositions — phone + bottle, modern lifestyle. Soft daylight.
+const APP_COMPOSITIONS = [
+  "a hand holding a smartphone with a blank dark screen, the bottle just behind it on a marble countertop, soft window light",
+  "the bottle and a smartphone face-down side by side on a pale linen tablecloth, espresso cup half in frame",
+  "a phone resting against the bottle on a sun-lit terrace table, summer haze, the screen reflecting the sky",
+  "the bottle on a bedside table with a phone face-up beside it (screen dark), morning light through sheer curtains",
+  "a phone propped on a small notebook next to the bottle on a wooden desk, single desk lamp lit",
+  "a hand sliding a phone into a leather bag, the bottle visible on a hallway console table behind, daylight",
+  "the bottle and phone on the corner of a wide kitchen island, fresh peonies in a vase out of focus, north light",
+  "a phone resting on an open glossy magazine, the bottle beside it on a velvet ottoman, soft afternoon light",
+];
+
+// Environmental wide shots for product grids — model present in a refined
+// setting with the bottle visible on a surface in the scene.
+const ENVIRONMENT_COMPOSITIONS = [
+  "a real woman in an ivory silk slip dress at a sun-lit vanity, the bottle visible on the vanity surface beside her, magazine campaign feel",
+  "a real woman at a marble kitchen island arranging fresh flowers, the bottle on the island near a glass of water",
+  "a real woman seated by an open terrace door reading a paperback, the bottle on the small side table beside her chair",
+  "a real woman in a linen kaftan on a Mediterranean veranda, the bottle resting on a tiled garden wall beside a small lamp",
+  "a real woman pulling sheer curtains aside at a bedroom window, the bottle on the windowsill catching the light",
+  "a real woman at a dressing table in a soft robe, the bottle among small ceramic dishes and a single ring",
+  "a real woman walking through a wide hallway in a country house, the bottle just behind her on a console table",
+  "a real woman seated on a low daybed beside an open garden door, the bottle on the floor on a small tray of pebbles",
+];
+
+// Cinematic interior portraits — quiet contemplative mood. Brand anthology.
+const INTERIOR_COMPOSITIONS = [
+  "a real woman at a window in soft morning light, the bottle on the inner sill beside her, looking out, no eye contact",
+  "a real woman reclining on a chesterfield sofa in a warm-toned living room, the bottle on a brass side table beside her",
+  "a real woman at a vanity tying her hair up, the bottle reflected in the mirror on the surface in front of her",
+  "a real woman in a kitchen at golden hour, hands resting on the counter, the bottle and a single fig beside her",
+  "a real woman seated on a wooden chair in a stone-walled patio, candle on the table, the bottle just within reach",
+  "a real woman at a desk by candlelight writing a letter, the bottle and a single rose stem beside her hand",
+  "a real woman silhouetted in a doorway with sun behind her, the bottle on the threshold inside the room",
+  "a real woman lying on her side on white sheets at dawn, the bottle on the bedside table, soft cool light",
+];
+
+// Empathic / winback — intimate, quiet, low-key. The bottle is nearby, never
+// the centre of attention. Models in vulnerable, contemplative postures.
+const EMPATHIC_COMPOSITIONS = [
+  "a real woman sitting cross-legged on a wooden floor by a window, the bottle on the floor beside her, soft afternoon light",
+  "a real woman in an oversized cardigan holding a steaming mug, the bottle on the kitchen counter behind her, slightly out of focus",
+  "a real woman lying on her back on rumpled linen sheets, the bottle on the bedside table just inside frame, warm golden hour",
+  "a real woman at a bathroom sink with hair pulled back, the bottle on the marble counter in front of the mirror, north window light",
+  "a real woman seated on a stairwell landing reading a letter, the bottle on the step beside her, single overhead lamp",
+  "a real woman wrapped in a long beige scarf on a balcony at dusk, the bottle on the iron table with an empty teacup",
+  "a real woman crouched packing a small linen bag on the floor of a sunlit bedroom, the bottle on the floor by her knee",
+  "a real woman seated on a velvet armchair in lamplight, the bottle on the side table beside her hand, no eye contact",
+];
+
+// Deterministic per-call pick (uses crypto random) so two consecutive emails
+// for the same layout don't get the same composition.
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
 function buildHeroPrompt(layoutPattern: string, llmPrompt: string, hasProductRef: boolean): string {
   const seed = (llmPrompt || "").trim();
 
@@ -289,29 +395,45 @@ function buildHeroPrompt(layoutPattern: string, llmPrompt: string, hasProductRef
   // pattern places that bottle into a scene matched to the layout's mood.
   if (hasProductRef) {
     switch (layoutPattern) {
-      case "lifestyle-hero":
-        return `Editorial luxury perfume advertising photograph. ${seed}. A real woman model interacts naturally with the perfume bottle (holds it, looks at it, sets it down on a surface near her). Magazine-cover quality, 85mm lens, shallow depth of field, soft natural light, warm refined mood. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+      case "lifestyle-hero": {
+        const comp = pickRandom(LIFESTYLE_COMPOSITIONS);
+        return `Editorial luxury perfume advertising photograph: ${comp}. ${seed}. Magazine-cover quality, 85mm lens, shallow depth of field, warm refined mood. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+      }
 
-      case "big-number-hero":
-        return `Minimalist editorial still life: the perfume bottle from the reference placed on ${seed || "a warm-toned surface with soft natural light, perhaps with a single bloom or a length of silk nearby"}. Clean composition with negative space on one side (text will overlay there in the email). Magazine quality, soft directional light. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+      case "big-number-hero": {
+        const comp = pickRandom(STILL_LIFE_COMPOSITIONS);
+        return `Minimalist editorial still life: ${comp}. ${seed}. Clean composition with negative space on one side (text will overlay there in the email). Magazine quality. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+      }
 
-      case "premium-launch":
-        return `Premium editorial product photograph: the perfume bottle from the reference held in a model's hand, or resting on a refined surface (marble, dark velvet, polished wood). Close-crop framing showing the bottle prominently with a human element (a hand, a sleeve, a strand of hair). ${seed}. Magazine campaign aesthetic, directional light, refined. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+      case "premium-launch": {
+        const comp = pickRandom(CLOSE_CROP_COMPOSITIONS);
+        return `Premium editorial product photograph, close-crop: ${comp}. ${seed}. Magazine campaign aesthetic, directional light, refined and quiet. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+      }
 
-      case "countdown-urgency":
-        return `Cinematic editorial photograph with subtle tension: the perfume bottle from the reference at the heart of the composition — on a table being approached, in a hand mid-motion, or in dramatic golden-hour light. ${seed}. Magazine quality, slight motion or anticipation. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+      case "countdown-urgency": {
+        const comp = pickRandom(URGENCY_COMPOSITIONS);
+        return `Cinematic editorial photograph with subtle tension: ${comp}. ${seed}. Magazine quality, slight anticipation, low-key warm light. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+      }
 
-      case "app-promo-gradient":
-        return `Modern lifestyle photograph: a model's hand holding a smartphone next to (or just behind) the perfume bottle from the reference, both resting on a refined surface. Soft natural daylight, minimal aesthetic, the phone screen is blank/dark. ${seed}. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+      case "app-promo-gradient": {
+        const comp = pickRandom(APP_COMPOSITIONS);
+        return `Modern lifestyle photograph: ${comp}. ${seed}. Soft natural daylight, minimal aesthetic, phone screen blank/dark. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+      }
 
-      case "product-grid-editorial":
-        return `Wide editorial environmental photograph: a real woman model in a refined setting (interior, garden, terrace), with the perfume bottle from the reference visible on a surface in the scene (vanity, table, bedside). ${seed}. Magazine quality, soft natural light. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+      case "product-grid-editorial": {
+        const comp = pickRandom(ENVIRONMENT_COMPOSITIONS);
+        return `Wide editorial environmental photograph: ${comp}. ${seed}. Magazine quality, soft natural light, refined. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+      }
 
-      case "brand-anthology":
-        return `Cinematic editorial portrait: a real woman model in a slow contemplative moment, with the perfume bottle from the reference resting nearby (on a windowsill, dresser, or in her hand). Beautifully lit (window light, golden hour, candlelight). Magazine quality, refined and timeless. ${seed}. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+      case "brand-anthology": {
+        const comp = pickRandom(INTERIOR_COMPOSITIONS);
+        return `Cinematic editorial portrait: ${comp}. ${seed}. Magazine quality, refined and timeless, beautifully lit. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+      }
 
-      case "winback-empathic":
-        return `Warm intimate editorial photograph: a real woman model in a quiet personal moment at home, with the perfume bottle from the reference visible nearby (on a vanity, on a side table, in her hand). Soft golden light, emotional warmth, magazine quality. ${seed}. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+      case "winback-empathic": {
+        const comp = pickRandom(EMPATHIC_COMPOSITIONS);
+        return `Warm intimate editorial photograph: ${comp}. ${seed}. Soft golden light, emotional warmth, magazine quality. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+      }
 
       default:
         return `Editorial luxury perfume advertising photograph: ${seed}. Real model interacting with the perfume bottle from the reference image. Magazine quality, soft natural light, refined mood. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
@@ -568,10 +690,26 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
     // (so the image and price come from the catalog, not from invention).
     spotlight: (() => {
       const llmSpot = parsed.spotlight && typeof parsed.spotlight === "object" ? parsed.spotlight as Record<string, unknown> : null;
-      const realProduct = products[0];
+      const llmTitle = typeof llmSpot?.title === "string" ? llmSpot.title : null;
+
+      // Match the LLM's chosen product to the actual catalog row so the
+      // displayed image, price and title all come from the SAME Shopify
+      // product. Without this match the spotlight showed e.g. "divain.135"
+      // as the title but products[0]'s bottle photo (which was 832) — drift.
+      let realProduct = products[0];
+      if (llmTitle && products.length > 0) {
+        const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const target = norm(llmTitle);
+        const exact   = products.find((p) => norm(p.title) === target);
+        const partial = !exact ? products.find((p) => norm(p.title).includes(target) || target.includes(norm(p.title))) : undefined;
+        const matched = exact ?? partial;
+        if (matched) realProduct = matched;
+      }
       if (!realProduct?.imageUrl) return undefined;
+      // Always use the REAL product's title (not the LLM's spelling) so
+      // image+title+price are guaranteed consistent.
       return {
-        title: typeof llmSpot?.title === "string" ? String(llmSpot.title).slice(0, 80) : realProduct.title.slice(0, 80),
+        title: realProduct.title.slice(0, 80),
         notes: typeof llmSpot?.notes === "string" ? String(llmSpot.notes).slice(0, 60).toUpperCase() : "",
         story: typeof llmSpot?.story === "string" ? String(llmSpot.story).slice(0, 320) : "",
         price: realProduct.price ? `${realProduct.price} €` : undefined,

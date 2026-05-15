@@ -158,6 +158,29 @@ const WORDMARK = (color: string, logoUrl?: string, href?: string) => {
   `;
 };
 
+// Inline brand wordmark for OVERLAY use inside a hero photo. Renders as a
+// small white "divain." text (or compact logo image) with subtle text-shadow
+// so it reads on any background. No standalone section — meant to live inside
+// an existing hero <mj-column> ABOVE the headline.
+//
+// When the user gave the explicit feedback "quiero el logo dentro de la foto
+// tambn porfa y sin marco" they meant: drop the separate cream-coloured
+// header section above the hero photo and burn the brand mark directly into
+// the photographed area. This helper does that.
+const HERO_BRAND_OVERLAY = (logoDarkUrl?: string, href?: string) => {
+  const link = href ?? "#";
+  if (logoDarkUrl) {
+    return `
+      <mj-image src="${logoDarkUrl}" alt="" width="96px" align="center" href="${link}" padding="0 0 22px 0" />
+    `;
+  }
+  return `
+    <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="18px" font-weight="700" color="#FFFFFF" letter-spacing="-0.3px" padding="0 0 22px 0" css-class="sf-hero-text">
+      <a href="${link}" style="color:#FFFFFF;text-decoration:none;">divain.</a>
+    </mj-text>
+  `;
+};
+
 // CTA pill. Tighter Klaviyo-style: 13px type, 2px tracking, 16/40 padding
 // so the tap target is generous on mobile but it doesn't read as a giant
 // gradient blob. Wrapped in css-class="sf-cta" so the @media rule can force
@@ -305,8 +328,9 @@ function lifestyleHero(s: SkeletonSlots): string {
   // legibility against any background). Matches the divain campaign style
   // where the offer reads against the model photo.
   const heroSection = s.heroUrl
-    ? `<mj-section background-url="${s.heroUrl}" background-size="cover" background-position="center center" background-repeat="no-repeat" padding="130px 30px" css-class="sf-hero-section">
+    ? `<mj-section background-url="${s.heroUrl}" background-size="cover" background-position="center center" background-repeat="no-repeat" padding="60px 30px 130px" css-class="sf-hero-section">
         <mj-column>
+          ${HERO_BRAND_OVERLAY(s.brandLogoDarkUrl, s.storefrontUrl)}
           ${s.subhead ? `<mj-text align="center" color="#FFFFFF" font-size="13px" letter-spacing="5px" text-transform="uppercase" font-family="Outfit, Helvetica, Arial, sans-serif" css-class="sf-hero-text sf-hero-subhead" padding-bottom="12px">${escapeHtml(s.subhead)}</mj-text>` : ""}
           <mj-text align="center" color="#FFFFFF" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="54px" font-weight="600" line-height="1.05" css-class="sf-hero-text sf-hero-headline">${headlineHtml}</mj-text>
           <mj-spacer height="20px" />
@@ -376,9 +400,14 @@ function lifestyleHero(s: SkeletonSlots): string {
     </mj-section>
   ` : "";
 
+  // When the hero is a real photo, skip the standalone WORDMARK section above
+  // — the brand mark is already overlaid INSIDE the hero column (no marco).
+  // Without a photo we still need a header so the email starts somewhere.
+  const headerSection = s.heroUrl ? "" : WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl);
+
   return `<mjml>${HEAD}<mj-body background-color="${s.bgColor}">
 ${PREHEADER(s.preheader, s.bgColor)}
-${WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl)}
+${headerSection}
 ${heroSection}
 ${captionBlock}
 ${productSection}
@@ -408,8 +437,9 @@ function bigNumberHero(s: SkeletonSlots): string {
   // but with the price as the dominant element. Without a photo we fall back
   // to a flat cream section so the number still reads clean.
   const heroBlock = s.heroUrl
-    ? `<mj-section background-url="${s.heroUrl}" background-size="cover" background-position="center center" background-repeat="no-repeat" padding="100px 24px" css-class="sf-hero-section">
+    ? `<mj-section background-url="${s.heroUrl}" background-size="cover" background-position="center center" background-repeat="no-repeat" padding="48px 24px 100px" css-class="sf-hero-section">
         <mj-column>
+          ${HERO_BRAND_OVERLAY(s.brandLogoDarkUrl, s.storefrontUrl)}
           <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="118px" font-weight="700" line-height="1" color="#FFFFFF" css-class="sf-big-number sf-hero-text">${offer}</mj-text>
           <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="${labelFontSize}" letter-spacing="${labelLetterSpacing}" text-transform="uppercase" color="#FFFFFF" padding-top="18px" font-weight="500" css-class="sf-hero-text">${label}</mj-text>
           <mj-spacer height="20px" />
@@ -425,9 +455,12 @@ function bigNumberHero(s: SkeletonSlots): string {
         </mj-column>
       </mj-section>`;
 
+  // When the hero is a real photo, the brand mark is overlaid INSIDE the hero
+  // — skip the cream-coloured WORDMARK section above. Without a photo we keep
+  // a small header so the email has an anchor at the top.
   const slots: Record<string, string> = {
     preheader: PREHEADER(s.preheader, s.bgColor),
-    wordmark: WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
+    wordmark: s.heroUrl ? "" : WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
     heroBlock,
     body,
     brandBar: BRAND_BAR("#FFFFFF", s.storefrontUrl),
