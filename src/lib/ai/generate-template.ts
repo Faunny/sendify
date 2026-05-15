@@ -273,8 +273,17 @@ const NO_TEXT_RULE = "The image MUST NOT contain any captions, overlay text, sig
 // When a real product photo is provided as a reference, the prompt instructs
 // the model (Gemini Nano Banana / gpt-image-2 edits) to compose the scene
 // AROUND that exact bottle — preserve its shape, label, glass color, cap. Per
-// user explicit ask: the real Divain bottle must appear in the hero.
-const KEEP_PRODUCT_RULE = "The perfume bottle from the attached reference image MUST appear in this scene. Preserve it EXACTLY: same glass shape, same color, same label artwork, same cap. Do NOT redesign, restyle, recolor, or reinterpret the bottle. Compose the rest of the scene (person, surface, props, lighting) around the bottle as if it were photographed in place.";
+// user explicit ask: the real Divain bottle must appear in the hero AND its
+// "DIVAIN-XXX" label text must remain readable. Without the label the bottle
+// just reads as "generic perfume", which defeats the purpose of using a ref.
+const KEEP_PRODUCT_RULE = "The perfume bottle from the attached reference image MUST appear in this scene as a HERO element — sized prominently so it is the visual anchor of the photograph, NOT a small prop in the corner. Preserve the bottle EXACTLY: same glass shape, same color, same cap, AND the printed label artwork including the 'divain.' wordmark and SKU number must be clearly legible. Do NOT redesign, restyle, recolor, blur, obscure or reinterpret the bottle or its label. Place the bottle close to camera so the label text is readable in the final image.";
+
+// Era / styling guardrail. The model loves to drift into 19th-century vibes
+// (candlelit letter-writing, wax-sealed envelopes, oil lamps) whenever the
+// prompt mentions "intimate" or "warm light". This rule pins everything to
+// present-day fashion editorial — exactly the brand reference (divainparfums
+// Klaviyo emails are 2020s minimalist, not Victorian).
+const MODERN_ERA_RULE = "Contemporary 2020s setting and styling — modern minimalist fashion editorial. NO candles as a light source, NO oil lamps, NO wax-sealed envelopes, NO fountain pens, NO Victorian or vintage period costume, NO sepia tones, NO 19th-century furniture. Modern wardrobe, modern interior design, modern hair and makeup.";
 
 // Exported so the asset-pool refill cron can call into the same prompt
 // library (pattern-aware briefs that produce Higgsfield-quality output).
@@ -286,14 +295,14 @@ export function buildHeroPromptForLayout(layoutPattern: string, llmPrompt: strin
 // the bottle in front of her" monotony. Each call picks one randomly so
 // consecutive emails feel different even with the same layout.
 const LIFESTYLE_COMPOSITIONS = [
-  "a real woman in her late 20s on a warm-toned sandy beach at golden hour, the bottle resting on driftwood beside her",
-  "a real woman in a knit cardigan inside a sun-lit Mediterranean apartment, the bottle on a marble side table, her hand reaching for it",
-  "a real woman in a linen sundress walking through a wildflower field, the bottle held casually at her side",
-  "a real woman seated on a stone garden bench at dusk, the bottle on the seat next to her, soft purple light",
-  "a real woman in a silk robe on a balcony with a sea view, the bottle on a small iron table with espresso, morning light",
-  "a real woman in a forest clearing in autumn, knitwear, the bottle on a moss-covered log, gold leaf light",
-  "a real woman in front of an open window with sheer linen curtains, the bottle on the windowsill, soft white light",
-  "a real woman crouched at a stone fountain in an old Spanish patio, the bottle on the edge, warm shade",
+  "a real woman in her late 20s on a warm-toned sandy beach at golden hour, the bottle held prominently in her hand near her shoulder",
+  "a real woman in a contemporary knit cardigan inside a sun-lit modern Mediterranean apartment, the bottle on a marble side table in the foreground, her hand reaching for it",
+  "a real woman in a linen sundress walking through a wildflower field, the bottle held close to camera in her foreground hand",
+  "a real woman seated on a modern concrete garden bench at dusk, the bottle prominently on the seat beside her hand, soft pastel light",
+  "a real woman in a silk robe on a modern terrace with a sea view, the bottle on a small white table in the foreground, morning light",
+  "a real woman in a sleek wool coat in a park clearing in autumn, the bottle held close to camera in her gloved hand, soft golden leaf light",
+  "a real woman in front of an open window with sheer linen curtains in a modern apartment, the bottle on the windowsill prominently in the foreground, soft white light",
+  "a real woman on a modern rooftop terrace in summer, the bottle on a small side table in the foreground, city light haze behind",
 ];
 
 const STILL_LIFE_COMPOSITIONS = [
@@ -322,14 +331,14 @@ const CLOSE_CROP_COMPOSITIONS = [
 
 // Cinematic / mood compositions for countdown / urgency layouts. Slight tension.
 const URGENCY_COMPOSITIONS = [
-  "the bottle on a candlelit table at dusk, a half-empty espresso cup beside it, low warm light",
-  "the bottle at the edge of a marble counter under a single overhead spot, deep shadows on the surrounding surface",
-  "the bottle in a hand mid-motion reaching across a darkened mahogany table, ambient bar light",
-  "the bottle on a worn leather chair beside an unmade bed at golden hour, low sun cutting through linen curtains",
-  "the bottle on a brass tray with a wax-sealed envelope, late-night warm lamp glow",
-  "the bottle on a bathroom vanity with steam softening the mirror, a robe slipping off a hook in the background",
-  "the bottle on a windowsill at last light, city skyline blurred in the distance, single pendant lamp on inside",
-  "the bottle on a velvet bench in a darkened dressing room, single light beam from above, theatrical mood",
+  "the bottle on a marble bathroom counter under a single overhead spot, modern brass faucet behind, deep shadows",
+  "the bottle in a hand mid-motion reaching across a dark concrete table, ambient pendant light",
+  "the bottle on a sleek nightstand beside an unmade bed at golden hour, low sun cutting through linen curtains",
+  "the bottle on a brass tray with a folded note and a modern matte-black pen, late-night warm lamp glow",
+  "the bottle on a bathroom vanity with steam softening a back-lit mirror, a robe on a chrome hook in the background",
+  "the bottle on a windowsill at last light, city skyline blurred in the distance, single modern pendant lamp inside",
+  "the bottle on a velvet bench in a darkened dressing room, single overhead light beam, theatrical contemporary mood",
+  "the bottle on a glass coffee table next to a folded copy of a fashion magazine, low evening light through floor-to-ceiling windows",
 ];
 
 // App promo compositions — phone + bottle, modern lifestyle. Soft daylight.
@@ -359,14 +368,14 @@ const ENVIRONMENT_COMPOSITIONS = [
 
 // Cinematic interior portraits — quiet contemplative mood. Brand anthology.
 const INTERIOR_COMPOSITIONS = [
-  "a real woman at a window in soft morning light, the bottle on the inner sill beside her, looking out, no eye contact",
-  "a real woman reclining on a chesterfield sofa in a warm-toned living room, the bottle on a brass side table beside her",
-  "a real woman at a vanity tying her hair up, the bottle reflected in the mirror on the surface in front of her",
-  "a real woman in a kitchen at golden hour, hands resting on the counter, the bottle and a single fig beside her",
-  "a real woman seated on a wooden chair in a stone-walled patio, candle on the table, the bottle just within reach",
-  "a real woman at a desk by candlelight writing a letter, the bottle and a single rose stem beside her hand",
-  "a real woman silhouetted in a doorway with sun behind her, the bottle on the threshold inside the room",
-  "a real woman lying on her side on white sheets at dawn, the bottle on the bedside table, soft cool light",
+  "a real woman at a floor-to-ceiling window in soft morning light, the bottle on the inner sill beside her, looking out, modern minimalist apartment",
+  "a real woman reclining on a low cream linen sofa in a contemporary living room, the bottle on a sculptural side table beside her",
+  "a real woman at a modern lacquer vanity tying her hair up, the bottle reflected in the round mirror in front of her",
+  "a real woman in a sleek kitchen at golden hour, hands resting on a concrete island, the bottle and a single fresh fig beside her",
+  "a real woman seated on a modern teak chair on a minimalist terrace, the bottle on the table beside a glass of water",
+  "a real woman at a streamlined writing desk in a contemporary loft, the bottle and a closed notebook beside her hand, daylight",
+  "a real woman silhouetted in a doorway with sun behind her, the bottle on a polished concrete threshold inside the room",
+  "a real woman lying on her side on white sheets at dawn, the bottle on a modern bedside table, soft cool morning light",
 ];
 
 // Empathic / winback — intimate, quiet, low-key. The bottle is nearby, never
@@ -397,46 +406,46 @@ function buildHeroPrompt(layoutPattern: string, llmPrompt: string, hasProductRef
     switch (layoutPattern) {
       case "lifestyle-hero": {
         const comp = pickRandom(LIFESTYLE_COMPOSITIONS);
-        return `Editorial luxury perfume advertising photograph: ${comp}. ${seed}. Magazine-cover quality, 85mm lens, shallow depth of field, warm refined mood. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        return `Editorial luxury perfume advertising photograph: ${comp}. ${seed}. Magazine-cover quality, 85mm lens, shallow depth of field, warm refined mood. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
       }
 
       case "big-number-hero": {
         const comp = pickRandom(STILL_LIFE_COMPOSITIONS);
-        return `Minimalist editorial still life: ${comp}. ${seed}. Clean composition with negative space on one side (text will overlay there in the email). Magazine quality. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        return `Minimalist editorial still life: ${comp}. ${seed}. Clean composition with negative space on one side (text will overlay there in the email). Magazine quality. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
       }
 
       case "premium-launch": {
         const comp = pickRandom(CLOSE_CROP_COMPOSITIONS);
-        return `Premium editorial product photograph, close-crop: ${comp}. ${seed}. Magazine campaign aesthetic, directional light, refined and quiet. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        return `Premium editorial product photograph, close-crop: ${comp}. ${seed}. Magazine campaign aesthetic, directional light, refined and quiet. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
       }
 
       case "countdown-urgency": {
         const comp = pickRandom(URGENCY_COMPOSITIONS);
-        return `Cinematic editorial photograph with subtle tension: ${comp}. ${seed}. Magazine quality, slight anticipation, low-key warm light. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        return `Cinematic editorial photograph with subtle tension: ${comp}. ${seed}. Magazine quality, slight anticipation, low-key warm light. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
       }
 
       case "app-promo-gradient": {
         const comp = pickRandom(APP_COMPOSITIONS);
-        return `Modern lifestyle photograph: ${comp}. ${seed}. Soft natural daylight, minimal aesthetic, phone screen blank/dark. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        return `Modern lifestyle photograph: ${comp}. ${seed}. Soft natural daylight, minimal aesthetic, phone screen blank/dark. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
       }
 
       case "product-grid-editorial": {
         const comp = pickRandom(ENVIRONMENT_COMPOSITIONS);
-        return `Wide editorial environmental photograph: ${comp}. ${seed}. Magazine quality, soft natural light, refined. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        return `Wide editorial environmental photograph: ${comp}. ${seed}. Magazine quality, soft natural light, refined. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
       }
 
       case "brand-anthology": {
         const comp = pickRandom(INTERIOR_COMPOSITIONS);
-        return `Cinematic editorial portrait: ${comp}. ${seed}. Magazine quality, refined and timeless, beautifully lit. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        return `Cinematic contemporary editorial portrait: ${comp}. ${seed}. Magazine quality, refined and minimalist, beautifully lit. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
       }
 
       case "winback-empathic": {
         const comp = pickRandom(EMPATHIC_COMPOSITIONS);
-        return `Warm intimate editorial photograph: ${comp}. ${seed}. Soft golden light, emotional warmth, magazine quality. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        return `Warm intimate contemporary editorial photograph: ${comp}. ${seed}. Soft natural light, emotional warmth, magazine quality. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
       }
 
       default:
-        return `Editorial luxury perfume advertising photograph: ${seed}. Real model interacting with the perfume bottle from the reference image. Magazine quality, soft natural light, refined mood. ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        return `Editorial luxury perfume advertising photograph: ${seed}. Real model interacting with the perfume bottle from the reference image. Magazine quality, soft natural light, refined mood. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
     }
   }
 
@@ -569,10 +578,11 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
       // (no DB migration needed) because hasEvery requires the current tag to
       // be present and old assets don't have it.
       //
-      // v4 = bottle FROM the real Shopify product photo is composed into the
-      // hero scene via Gemini Nano Banana. Pre-v4 assets either had no bottle
-      // or had an AI-invented bottle, neither of which we want anymore.
-      const PROMPT_VERSION = "v4-with-product";
+      // v5 = composition variant pools (per-layout pick), modern-era guardrail
+      // (no candlelight letter-writing nonsense), and bottle prominent enough
+      // that its label remains readable. Bumping invalidates v4 assets so
+      // we don't reuse "writing a letter in 1850" generations.
+      const PROMPT_VERSION = "v5-modern-prominent";
       const libraryTags = [layoutPattern, input.storeSlug ?? "global", PROMPT_VERSION];
       const reusable = await prisma.asset.findFirst({
         where: {
@@ -622,6 +632,10 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
           data: bytes,
           sizeBytes: bytes.length,
           tags: ["ai-generated", "hero", layoutPattern, input.pillar.toLowerCase(), input.storeSlug ?? "global", PROMPT_VERSION],
+          // (PROMPT_VERSION is also part of libraryTags above — the asset
+          // pool only reuses when tags.hasEvery includes the current version,
+          // so bumping it cleanly invalidates the old library without a DB
+          // migration.)
           prompt: bannerPrompt,
           generatedBy: img.provider,
           usedCount: 1,

@@ -507,7 +507,10 @@ function productGridEditorial(s: SkeletonSlots): string {
     wordmark: WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
     headline: escapeHtml(s.headline),
     subhead: s.subhead ? `<mj-text align="center" font-size="14px" letter-spacing="3px" text-transform="uppercase" color="${s.textColor}" opacity="0.65" padding-top="10px">${escapeHtml(s.subhead)}</mj-text>` : "",
-    bigHero: s.heroUrl ? `<mj-section padding="20px 24px" css-class="sf-mobile-pad"><mj-column><mj-image src="${s.heroUrl}" alt="" border-radius="6px" /></mj-column></mj-section>` : "",
+    // Edge-to-edge hero — no side padding so the photograph fills the email
+    // width without a cream frame on each side. The image keeps its own
+    // padding="0" so corners go all the way to 600px.
+    bigHero: s.heroUrl ? `<mj-section padding="20px 0 0" background-color="${s.bgColor}"><mj-column padding="0"><mj-image src="${s.heroUrl}" alt="" padding="0" border-radius="0" /></mj-column></mj-section>` : "",
     cols,
     cta: PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#"),
     brandBar: BRAND_BAR("#FFFFFF", s.storefrontUrl),
@@ -646,7 +649,9 @@ function brandAnthology(s: SkeletonSlots): string {
     preheader: PREHEADER(s.preheader, s.bgColor),
     wordmark: WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
     headline: escapeHtml(s.headline),
-    heroImage: s.heroUrl ? `<mj-section padding="0 24px 16px" css-class="sf-mobile-pad"><mj-column><mj-image src="${s.heroUrl}" alt="" border-radius="6px" /></mj-column></mj-section>` : "",
+    // Edge-to-edge hero in brand-anthology — drop the 24px side gutters so the
+    // photograph fills the email width with no cream frames.
+    heroImage: s.heroUrl ? `<mj-section padding="0 0 16px" background-color="${s.bgColor}"><mj-column padding="0"><mj-image src="${s.heroUrl}" alt="" padding="0" border-radius="0" /></mj-column></mj-section>` : "",
     pillarSections,
     bgColor: s.bgColor,
     textColor: s.textColor,
@@ -668,8 +673,10 @@ function brandAnthology(s: SkeletonSlots): string {
 // ── winback-empathic ───────────────────────────────────────────────────────
 
 function winbackEmpathic(s: SkeletonSlots): string {
+  // Edge-to-edge winback hero — no side padding, the photo bleeds out to the
+  // 600px email rails so we don't get cream bands on the sides.
   const heroImageBlock = s.heroUrl
-    ? `<mj-section padding="0" background-color="#F5F1EA" css-class="sf-mobile-pad"><mj-column><mj-image src="${s.heroUrl}" alt="" padding="0" /></mj-column></mj-section>`
+    ? `<mj-section padding="0" background-color="#F5F1EA"><mj-column padding="0"><mj-image src="${s.heroUrl}" alt="" padding="0" border-radius="0" /></mj-column></mj-section>`
     : "";
 
   const slots: Record<string, string> = {
