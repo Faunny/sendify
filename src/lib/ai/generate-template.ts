@@ -208,8 +208,60 @@ OUTPUT — pure JSON, no markdown fences, no commentary:
       "<paragraph 1 · 25-45 words · sets the scene>",
       "<paragraph 2 · 25-45 words · pivots to brand/ritual>"
     ]
+  },
+  "brandPromise": {
+    "eyebrow": "<optional · 'Nuestra promesa' / 'Lo que prometemos' — 1-3 words>",
+    "body": "<1-2 SHORT sentences · brand-voice positioning statement · NEVER a customer testimonial · NO fake names · NO quote marks · max 18 words. Examples: 'El mismo acorde, sin la marca encima.' / 'Hechos en Alicante. Pensados para durar.' / 'Calidad de niche, precio honesto.'>",
+    "caption": "<optional · 3-6 words · small caption under the promise, e.g. 'Desde 2007 · Alicante' OR omit>"
+  },
+  "reasons": [
+    { "title": "<3-4 word reason title>", "copy": "<1 sentence · 12-18 words · explains the reason>" },
+    { "title": "<…>", "copy": "<…>" },
+    { "title": "<…>", "copy": "<…>" }
+  ],
+  "fragranceNotes": {
+    "_HINT": "ONLY include this object when layoutPattern is 'premium-launch'. Extract notes from the spotlight product description if mentioned, otherwise OMIT this entire field (do NOT invent notes that aren't in the catalog).",
+    "top":   ["<note 1>", "<note 2>"],
+    "heart": ["<note 1>", "<note 2>"],
+    "base":  ["<note 1>", "<note 2>"]
+  },
+  "processBlock": {
+    "_HINT": "ONLY include this object when layoutPattern is 'premium-launch'.",
+    "eyebrow": "<optional · 'Detrás de la fragancia' / 'Cómo se hace' · 1-4 words>",
+    "headline": "<8-12 words · editorial story angle for the process behind the product>",
+    "paragraphs": [
+      "<paragraph 1 · 25-40 words · how this came to be>",
+      "<paragraph 2 · 25-40 words · what makes it different>"
+    ]
+  },
+  "founderNote": {
+    "_HINT": "ONLY include this object when layoutPattern is 'winback-empathic'.",
+    "eyebrow": "<optional · 'Una nota del equipo' / 'Personal' · 1-4 words>",
+    "headline": "<5-9 words · warm, sincere, NOT salesy>",
+    "body": "<1-2 sentences · 25-40 words · personal, warm, acknowledges absence without guilt-tripping>"
+  },
+  "appBenefits": [
+    { "title": "<2-4 word benefit name>", "copy": "<1 short sentence · 10-15 words>" },
+    { "title": "<…>", "copy": "<…>" },
+    { "title": "<…>", "copy": "<…>" }
+  ],
+  "urgencyReasons": [
+    { "title": "<2-4 word reason>", "copy": "<1 sentence · 10-15 words>" },
+    { "title": "<…>", "copy": "<…>" },
+    { "title": "<…>", "copy": "<…>" }
+  ],
+  "promoCode": {
+    "_HINT": "ONLY include when the brief explicitly mentions a discount code or you are 100% certain the campaign needs one. Otherwise OMIT this field — we do NOT invent promo codes that don't exist at checkout.",
+    "code": "<the actual code · uppercase · no spaces · 4-15 chars>",
+    "label": "<optional · 'Código en el checkout' / 'Aplica al pagar'>"
   }
 }
+
+CRITICAL RULES FOR THE NEW BLOCKS:
+- NEVER invent customer testimonials, names, or quotes. The brandPromise is BRAND voice, not a fake review.
+- NEVER invent product fragrance notes unless they're literally in the catalog product description above.
+- NEVER invent a promo code unless the brief gives you one — leave promoCode out otherwise.
+- For winback-empathic ALWAYS include founderNote. For premium-launch ALWAYS include processBlock and (when possible) fragranceNotes. For brand-anthology ALWAYS include reasons (3 items) and brandPromise. For app-promo-gradient ALWAYS include appBenefits (3 items). For countdown-urgency ALWAYS include urgencyReasons (3 items). For lifestyle-hero include brandPromise. For big-number-hero include brandPromise + promoCode if you have one.
 
 DECISION HEURISTIC:
 - Brief mentions hard sell + big % → big-number-hero
@@ -596,6 +648,10 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
   let privacyUrl: string | null = null;
   let brandLogoUrl: string | null = null;
   let brandLogoDarkUrl: string | null = null;
+  // Trust band items pulled from Store config. Defaults to [] so the trust
+  // bar simply doesn't render when no store-level policy is configured —
+  // we don't ship invented shipping promises.
+  let trustItems: Array<{ label: string; sub?: string }> = [];
   if (input.storeSlug) {
     const store = await prisma.store.findUnique({
       where: { slug: input.storeSlug },
@@ -620,6 +676,22 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
     // once /settings/brand actually writes and the UI sanity-checks values
     // (primary must be high-contrast against bg, etc).
     palette = { ...DEFAULT_PALETTE };
+    // Trust items: read from brandPalette JSON (we piggy-back on the
+    // existing Json column to avoid a migration). Expected shape:
+    //   { trustItems: [{ label: "...", sub?: "..." }, ...] }
+    // When the key is missing the trust band simply doesn't render — we
+    // intentionally do NOT default to "Envío gratis 30€" because that's
+    // a store-specific claim we can't ship without knowing it's true.
+    const brandKitJson = (store?.brandPalette ?? null) as Record<string, unknown> | null;
+    const rawTrust = brandKitJson && Array.isArray(brandKitJson.trustItems) ? brandKitJson.trustItems : [];
+    trustItems = (rawTrust as unknown[])
+      .filter((it): it is Record<string, unknown> => typeof it === "object" && it !== null)
+      .map((it) => ({
+        label: typeof it.label === "string" ? it.label.slice(0, 40) : "",
+        sub:   typeof it.sub   === "string" ? it.sub.slice(0, 50)   : undefined,
+      }))
+      .filter((it) => it.label.length > 0)
+      .slice(0, 3);
   }
 
   // Shuffle the catalog hints per call so consecutive generations pick a
@@ -656,7 +728,12 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
       ],
       temperature: 0.6,
       response_format: { type: "json_object" },
-      max_tokens: 1500,
+      // Bumped from 1500 → 2400 because the system prompt now asks the LLM
+      // for ~7 additional content blocks (brandPromise, reasons, processBlock,
+      // founderNote, appBenefits, urgencyReasons, fragranceNotes) on top of
+      // the original copy. Truncating at 1500 was silently cutting half of
+      // the new blocks and leaving the email looking empty.
+      max_tokens: 2400,
     }),
   });
   if (!res.ok) {
@@ -705,12 +782,13 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
       // (no DB migration needed) because hasEvery requires the current tag to
       // be present and old assets don't have it.
       //
-      // v8 = full Klaviyo-grade density. Every skeleton now emits 6-9
-      // distinct sections (hero + product grid + review + trust bar + etc.)
-      // instead of just hero + CTA + brand bar. The skeleton library is the
-      // dominant source of variety so the asset library shouldn't cross
-      // versions.
-      const PROMPT_VERSION = "v8-dense-blocks";
+      // v9 = NO hardcoded fake content. All review-style blocks removed.
+      // brandPromise / reasons / fragranceNotes / processBlock / founderNote /
+      // appBenefits / urgencyReasons / promoCode are all LLM-driven and HIDE
+      // when not populated. trustItems come from Store config (no defaults).
+      // Templates are now genuinely scalable across stores and never ship
+      // invented testimonials, invented promo codes, or invented policies.
+      const PROMPT_VERSION = "v9-no-fake-content";
       const libraryTags = [layoutPattern, input.storeSlug ?? "global", PROMPT_VERSION];
       const reusable = await prisma.asset.findFirst({
         where: {
@@ -881,6 +959,101 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
         paragraphs: paras.map((p) => p.slice(0, 320)),
       };
     })(),
+    // ── LLM-DRIVEN BLOCKS (NEW) ─────────────────────────────────────────
+    // Each block returns undefined when the LLM didn't populate it, so the
+    // corresponding skeleton helper silently renders "". No hardcoded
+    // fallbacks: better an empty section than fake content shipped to a
+    // real recipient.
+    brandPromise: (() => {
+      const bp = parsed.brandPromise && typeof parsed.brandPromise === "object" ? parsed.brandPromise as Record<string, unknown> : null;
+      const body = typeof bp?.body === "string" ? bp.body.trim() : "";
+      if (!body) return undefined;
+      return {
+        eyebrow: typeof bp?.eyebrow === "string" ? String(bp.eyebrow).slice(0, 40) : undefined,
+        body: body.slice(0, 220),
+        caption: typeof bp?.caption === "string" ? String(bp.caption).slice(0, 60) : undefined,
+      };
+    })(),
+    reasons: (() => {
+      if (!Array.isArray(parsed.reasons)) return undefined;
+      const items = (parsed.reasons as unknown[])
+        .filter((r): r is Record<string, unknown> => typeof r === "object" && r !== null)
+        .map((r) => ({
+          title: typeof r.title === "string" ? r.title.slice(0, 40) : "",
+          copy:  typeof r.copy  === "string" ? r.copy.slice(0, 180) : "",
+        }))
+        .filter((r) => r.title && r.copy)
+        .slice(0, 3);
+      return items.length === 3 ? items : undefined;
+    })(),
+    fragranceNotes: (() => {
+      const fn = parsed.fragranceNotes && typeof parsed.fragranceNotes === "object" ? parsed.fragranceNotes as Record<string, unknown> : null;
+      if (!fn) return undefined;
+      const arr = (v: unknown): string[] => Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.trim().length > 0).slice(0, 3).map((s) => s.slice(0, 30)) : [];
+      const top = arr(fn.top), heart = arr(fn.heart), base = arr(fn.base);
+      if (top.length + heart.length + base.length === 0) return undefined;
+      return { top, heart, base };
+    })(),
+    processBlock: (() => {
+      const pb = parsed.processBlock && typeof parsed.processBlock === "object" ? parsed.processBlock as Record<string, unknown> : null;
+      const paras = Array.isArray(pb?.paragraphs) ? (pb.paragraphs as unknown[]).filter((p): p is string => typeof p === "string" && p.trim().length > 15).slice(0, 2) : [];
+      const headline = typeof pb?.headline === "string" ? pb.headline.trim() : "";
+      if (!headline || paras.length === 0) return undefined;
+      return {
+        eyebrow: typeof pb?.eyebrow === "string" ? String(pb.eyebrow).slice(0, 40) : undefined,
+        headline: headline.slice(0, 140),
+        paragraphs: paras.map((p) => p.slice(0, 300)),
+      };
+    })(),
+    founderNote: (() => {
+      const fn = parsed.founderNote && typeof parsed.founderNote === "object" ? parsed.founderNote as Record<string, unknown> : null;
+      const headline = typeof fn?.headline === "string" ? fn.headline.trim() : "";
+      const body     = typeof fn?.body     === "string" ? fn.body.trim() : "";
+      if (!headline || !body) return undefined;
+      return {
+        eyebrow: typeof fn?.eyebrow === "string" ? String(fn.eyebrow).slice(0, 40) : undefined,
+        headline: headline.slice(0, 100),
+        body: body.slice(0, 320),
+      };
+    })(),
+    appBenefits: (() => {
+      if (!Array.isArray(parsed.appBenefits)) return undefined;
+      const items = (parsed.appBenefits as unknown[])
+        .filter((r): r is Record<string, unknown> => typeof r === "object" && r !== null)
+        .map((r) => ({
+          title: typeof r.title === "string" ? r.title.slice(0, 40) : "",
+          copy:  typeof r.copy  === "string" ? r.copy.slice(0, 160) : "",
+        }))
+        .filter((r) => r.title && r.copy)
+        .slice(0, 3);
+      return items.length === 3 ? items : undefined;
+    })(),
+    urgencyReasons: (() => {
+      if (!Array.isArray(parsed.urgencyReasons)) return undefined;
+      const items = (parsed.urgencyReasons as unknown[])
+        .filter((r): r is Record<string, unknown> => typeof r === "object" && r !== null)
+        .map((r) => ({
+          title: typeof r.title === "string" ? r.title.slice(0, 40) : "",
+          copy:  typeof r.copy  === "string" ? r.copy.slice(0, 160) : "",
+        }))
+        .filter((r) => r.title && r.copy)
+        .slice(0, 3);
+      return items.length === 3 ? items : undefined;
+    })(),
+    promoCode: (() => {
+      const pc = parsed.promoCode && typeof parsed.promoCode === "object" ? parsed.promoCode as Record<string, unknown> : null;
+      const code = typeof pc?.code === "string" ? pc.code.trim() : "";
+      if (!code) return undefined;
+      return {
+        code: code.toUpperCase().slice(0, 20),
+        label: typeof pc?.label === "string" ? String(pc.label).slice(0, 60) : undefined,
+      };
+    })(),
+    // Trust items — pulled from Store config when available. We do NOT make
+    // up shipping policies; if the store hasn't configured them the trust
+    // bar simply doesn't render. Read from Store.trustItems (JSON) field —
+    // null-safe so older stores without the column don't break.
+    trustItems: trustItems.length > 0 ? trustItems : undefined,
   };
 
   const mjml = renderSkeleton(layoutPattern, slots);

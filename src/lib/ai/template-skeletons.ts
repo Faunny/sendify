@@ -70,6 +70,52 @@ export type SkeletonSlots = {
     headline: string;       // "El perfume como ritual"
     paragraphs: string[];   // 1-3 short paragraphs
   };
+  // ── LLM-DRIVEN OPTIONAL CONTENT BLOCKS (NEW) ───────────────────────────
+  // None of these fall back to hardcoded fake content. If the LLM doesn't
+  // populate them, the block stays hidden. This is what makes the templates
+  // scalable across stores: the LLM writes brand-voice copy per generation,
+  // we never ship invented testimonials or invented product notes.
+  //
+  // Trust band — pulled from Store config (real shipping / returns policy).
+  // Up to 3 items. Block hidden if zero items configured.
+  trustItems?: Array<{ label: string; sub?: string }>;
+  // Brand promise — single-line positioning statement. Replaces the
+  // hallucinated customer-review block until we have a real Review table.
+  // Optional eyebrow + 1-2 sentence promise + optional small caption.
+  brandPromise?: {
+    eyebrow?: string;       // "Nuestra promesa" / "Lo que prometemos"
+    body: string;           // 1-2 sentence positioning (e.g. "El mismo acorde, sin la marca encima.")
+    caption?: string;       // "Desde 2007 · Alicante"
+  };
+  // Numbered reasons — store / brand reasons (3 cards). LLM writes them
+  // per generation so different stores can have different reasons.
+  reasons?: Array<{ title: string; copy: string }>;
+  // Perfume notes pyramid — only renders for premium-launch when LLM
+  // extracts notes from the product description. Up to 3 items per tier.
+  fragranceNotes?: {
+    top: string[];          // ["Bergamota", "Pimienta rosa"]
+    heart: string[];        // ["Jazmín", "Iris"]
+    base: string[];         // ["Vainilla", "Ámbar"]
+  };
+  // Process / "behind the scenes" block — LLM-written 2-paragraph story
+  // for premium-launch. No hardcoded fallback.
+  processBlock?: {
+    eyebrow?: string;       // "Detrás de la fragancia"
+    headline: string;       // 8-12 words editorial line
+    paragraphs: string[];   // 1-2 paragraphs
+  };
+  // Founder / team note — used by winback-empathic. LLM writes it.
+  founderNote?: {
+    eyebrow?: string;       // "Una nota del equipo"
+    headline: string;       // "Gracias por probarnos un día."
+    body: string;           // 1-2 sentence personal message
+  };
+  // App benefits — used by app-promo-gradient. Up to 3 numbered items.
+  appBenefits?: Array<{ title: string; copy: string }>;
+  // Urgency reasons — used by countdown-urgency. Up to 3 numbered items.
+  urgencyReasons?: Array<{ title: string; copy: string }>;
+  // Promo code — used by big-number-hero / countdown-urgency. Optional.
+  promoCode?: { code: string; label?: string };
 };
 
 // Brand-pillar bar. Four columns, black background, links to the four pillar
@@ -259,56 +305,58 @@ const EDITORIAL_BLOCK = (s: SkeletonSlots) => {
 // them in a different order, so emails stop feeling like the same hero +
 // CTA + brand-bar skeleton over and over.
 
-// Free shipping / returns / authenticity trust band. Three icons + labels in
-// a row. Klaviyo emails for luxury brands almost always have a version of
-// this — communicates safety without screaming it. Renders as a thin band
-// just above the brand bar.
-const TRUST_BAR = (textColor: string, bgColor: string) => `
+// Trust band — only renders when the Store has policy data configured.
+// No hardcoded "Envío gratis a partir de 30€" anymore (that wasn't
+// guaranteed to be true for every store + region). Falls back to "" so
+// the block silently disappears when there's no data.
+const TRUST_BAR = (textColor: string, bgColor: string, items: SkeletonSlots["trustItems"]) => {
+  if (!items || items.length === 0) return "";
+  const cells = items.slice(0, 3);
+  const colWidth = `${(100 / cells.length).toFixed(2)}%`;
+  return `
   <mj-section background-color="${bgColor}" padding="32px 16px 24px" border-top="1px solid rgba(0,0,0,0.08)" css-class="sf-mobile-pad">
-    <mj-column width="33.33%">
-      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="2.5px" text-transform="uppercase" color="${textColor}" font-weight="500" line-height="1.5"><span style="opacity:0.85;">Envío gratis</span><br/><span style="font-size:10.5px;opacity:0.55;letter-spacing:1.5px;">A partir de 30€</span></mj-text>
-    </mj-column>
-    <mj-column width="33.33%">
-      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="2.5px" text-transform="uppercase" color="${textColor}" font-weight="500" line-height="1.5"><span style="opacity:0.85;">Devolución 30 días</span><br/><span style="font-size:10.5px;opacity:0.55;letter-spacing:1.5px;">Sin preguntas</span></mj-text>
-    </mj-column>
-    <mj-column width="33.33%">
-      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="2.5px" text-transform="uppercase" color="${textColor}" font-weight="500" line-height="1.5"><span style="opacity:0.85;">Hecho en España</span><br/><span style="font-size:10.5px;opacity:0.55;letter-spacing:1.5px;">Alicante · 2007</span></mj-text>
-    </mj-column>
+    ${cells.map((it) => `
+    <mj-column width="${colWidth}">
+      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="2.5px" text-transform="uppercase" color="${textColor}" font-weight="500" line-height="1.5"><span style="opacity:0.85;">${escapeHtml(it.label)}</span>${it.sub ? `<br/><span style="font-size:10.5px;opacity:0.55;letter-spacing:1.5px;">${escapeHtml(it.sub)}</span>` : ""}</mj-text>
+    </mj-column>`).join("")}
   </mj-section>
 `;
+};
 
-// Customer quote / social proof. Big stars + a one-line testimonial + the
-// reviewer's name. Used in winback / brand-anthology to add credibility.
-const REVIEW_QUOTE = (textColor: string, bgColor: string, quote: string, name: string) => `
-  <mj-section background-color="${bgColor}" padding="40px 32px 12px" css-class="sf-mobile-pad">
+// Brand promise — replaces the previous REVIEW_QUOTE block. We no longer
+// emit fake testimonials with hallucinated customer names (legal risk +
+// dishonest). Instead this is a brand-voice positioning statement the LLM
+// writes per generation. If LLM doesn't populate, block is hidden.
+const BRAND_PROMISE = (textColor: string, bgColor: string, promise: SkeletonSlots["brandPromise"]) => {
+  if (!promise || !promise.body) return "";
+  return `
+  <mj-section background-color="${bgColor}" padding="48px 32px 16px" css-class="sf-mobile-pad">
     <mj-column>
-      <mj-text align="center" color="#D4A65A" font-size="16px" letter-spacing="3px" padding-bottom="14px">★ ★ ★ ★ ★</mj-text>
-      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="20px" font-weight="400" line-height="1.4" color="${textColor}" letter-spacing="-0.2px" css-class="sf-h2">"${escapeHtml(quote)}"</mj-text>
-      <mj-text align="center" font-size="11px" letter-spacing="3px" text-transform="uppercase" color="${textColor}" padding-top="14px"><span style="opacity:0.55;">— ${escapeHtml(name)}</span></mj-text>
+      ${promise.eyebrow ? `<mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="4px" text-transform="uppercase" color="${textColor}" font-weight="500" padding-bottom="14px"><span style="opacity:0.65;">${escapeHtml(promise.eyebrow)}</span></mj-text>` : ""}
+      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="24px" font-weight="400" line-height="1.35" color="${textColor}" letter-spacing="-0.2px" css-class="sf-h2">${escapeHtml(promise.body)}</mj-text>
+      ${promise.caption ? `<mj-text align="center" font-size="11px" letter-spacing="3px" text-transform="uppercase" color="${textColor}" padding-top="14px"><span style="opacity:0.55;">${escapeHtml(promise.caption)}</span></mj-text>` : ""}
     </mj-column>
   </mj-section>
 `;
+};
 
-// Three numbered reasons. "Por qué divain" → "01 / Equivalencia 1:1, 02 / Precio
-// justo, 03 / Hecho en España". Each as a small numbered card. Good for
-// winback + brand-anthology to articulate value props.
-const NUMBERED_REASONS = (textColor: string, bgColor: string) => {
-  const reasons: Array<{ n: string; title: string; copy: string }> = [
-    { n: "01", title: "Equivalencia 1:1", copy: "Replicamos los acordes de las grandes casas con la fórmula más fiel del mercado." },
-    { n: "02", title: "Precio justo", copy: "Sin marketing inflado. Pagas lo que vale la fragancia, no la etiqueta." },
-    { n: "03", title: "Hecho en España", copy: "Alicante, 2007. Cada lote pasa por las mismas manos que crearon la marca." },
-  ];
+// Three numbered reasons. LLM writes them per generation so different
+// stores / different campaigns get different reasons. No hardcoded fallback
+// — block hides when the LLM didn't populate.
+const NUMBERED_REASONS = (textColor: string, bgColor: string, reasons: SkeletonSlots["reasons"], eyebrow?: string, headline?: string) => {
+  if (!reasons || reasons.length === 0) return "";
+  const cells = reasons.slice(0, 3);
   return `
   <mj-section background-color="${bgColor}" padding="42px 16px 10px" css-class="sf-mobile-pad">
     <mj-column>
-      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="4px" text-transform="uppercase" color="${textColor}" font-weight="500"><span style="opacity:0.65;">Por qué divain</span></mj-text>
-      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="26px" font-weight="500" line-height="1.2" letter-spacing="-0.3px" color="${textColor}" padding-top="10px">Tres razones, sin más</mj-text>
+      ${eyebrow ? `<mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="4px" text-transform="uppercase" color="${textColor}" font-weight="500"><span style="opacity:0.65;">${escapeHtml(eyebrow)}</span></mj-text>` : ""}
+      ${headline ? `<mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="26px" font-weight="500" line-height="1.2" letter-spacing="-0.3px" color="${textColor}" padding-top="10px">${escapeHtml(headline)}</mj-text>` : ""}
     </mj-column>
   </mj-section>
   <mj-section background-color="${bgColor}" padding="18px 8px 36px" css-class="sf-mobile-pad">
-    ${reasons.map((r) => `
+    ${cells.map((r, i) => `
       <mj-column width="33.33%" padding="12px">
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="36px" font-weight="200" color="${textColor}" line-height="1" letter-spacing="-1px"><span style="opacity:0.5;">${r.n}</span></mj-text>
+        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="36px" font-weight="200" color="${textColor}" line-height="1" letter-spacing="-1px"><span style="opacity:0.5;">${String(i + 1).padStart(2, "0")}</span></mj-text>
         <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="15px" font-weight="500" color="${textColor}" padding-top="10px">${escapeHtml(r.title)}</mj-text>
         <mj-text align="center" font-size="13px" line-height="1.55" color="${textColor}" padding-top="6px"><span style="opacity:0.7;">${escapeHtml(r.copy)}</span></mj-text>
       </mj-column>
@@ -353,30 +401,94 @@ const MINI_GRID_6 = (
   `;
 };
 
-// Notes pyramid for perfume spotlights — top / heart / base notes presented
-// as a clean three-tier breakdown. Used inside premium-launch to give
-// fragrance shoppers what they actually want to know.
-const NOTES_PYRAMID = (textColor: string, bgColor: string) => `
+// Notes pyramid for perfume spotlights — top / heart / base notes. Only
+// renders when the LLM extracted real notes from the product description
+// (it knows the SKU because it picked the headline product). No hardcoded
+// fallback — block hides if notes weren't returned.
+const NOTES_PYRAMID = (textColor: string, bgColor: string, notes: SkeletonSlots["fragranceNotes"]) => {
+  if (!notes || ((notes.top?.length ?? 0) + (notes.heart?.length ?? 0) + (notes.base?.length ?? 0)) === 0) return "";
+  const tier = (label: string, items: string[] | undefined) => `
+    <mj-column width="33.33%">
+      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="10.5px" letter-spacing="3px" text-transform="uppercase" color="${textColor}"><span style="opacity:0.55;">${escapeHtml(label)}</span></mj-text>
+      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="15px" font-weight="500" color="${textColor}" padding-top="6px" line-height="1.4">${(items ?? []).map(escapeHtml).join("<br/>") || "—"}</mj-text>
+    </mj-column>
+  `;
+  return `
   <mj-section background-color="${bgColor}" padding="32px 24px 12px" css-class="sf-mobile-pad">
     <mj-column>
       <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="4px" text-transform="uppercase" color="${textColor}" font-weight="500"><span style="opacity:0.65;">La fragancia</span></mj-text>
     </mj-column>
   </mj-section>
   <mj-section background-color="${bgColor}" padding="8px 24px 18px" css-class="sf-mobile-pad">
-    <mj-column width="33.33%">
-      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="10.5px" letter-spacing="3px" text-transform="uppercase" color="${textColor}"><span style="opacity:0.55;">Salida</span></mj-text>
-      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="15px" font-weight="500" color="${textColor}" padding-top="6px" line-height="1.4">Bergamota<br/>Pimienta rosa</mj-text>
-    </mj-column>
-    <mj-column width="33.33%">
-      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="10.5px" letter-spacing="3px" text-transform="uppercase" color="${textColor}"><span style="opacity:0.55;">Corazón</span></mj-text>
-      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="15px" font-weight="500" color="${textColor}" padding-top="6px" line-height="1.4">Jazmín<br/>Iris</mj-text>
-    </mj-column>
-    <mj-column width="33.33%">
-      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="10.5px" letter-spacing="3px" text-transform="uppercase" color="${textColor}"><span style="opacity:0.55;">Fondo</span></mj-text>
-      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="15px" font-weight="500" color="${textColor}" padding-top="6px" line-height="1.4">Vainilla<br/>Ámbar</mj-text>
-    </mj-column>
+    ${tier("Salida", notes.top)}
+    ${tier("Corazón", notes.heart)}
+    ${tier("Fondo", notes.base)}
   </mj-section>
 `;
+};
+
+// Process / "detrás de" block — LLM-driven. Renders only when populated.
+const PROCESS_BLOCK = (textColor: string, accentBg: string, block: SkeletonSlots["processBlock"]) => {
+  if (!block || !block.paragraphs || block.paragraphs.length === 0) return "";
+  return `
+    <mj-section background-color="${accentBg}" padding="50px 32px 20px" css-class="sf-mobile-pad">
+      <mj-column>
+        ${block.eyebrow ? `<mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="4px" text-transform="uppercase" color="${textColor}" font-weight="500"><span style="opacity:0.65;">${escapeHtml(block.eyebrow)}</span></mj-text>` : ""}
+        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="24px" font-weight="500" line-height="1.25" letter-spacing="-0.2px" color="${textColor}" padding-top="12px">${escapeHtml(block.headline)}</mj-text>
+      </mj-column>
+    </mj-section>
+    ${block.paragraphs.slice(0, 2).map((p, i) => `
+      <mj-section background-color="${accentBg}" padding="${i === 0 ? "6px" : "0"} 36px ${i === block.paragraphs.length - 1 ? "46px" : "14px"}" css-class="sf-mobile-pad">
+        <mj-column>
+          <mj-text align="center" font-size="15px" line-height="1.7" color="${textColor}" css-class="sf-body"><span style="opacity:0.88;">${escapeHtml(p)}</span></mj-text>
+        </mj-column>
+      </mj-section>`).join("")}
+  `;
+};
+
+// Founder / team note. LLM-driven.
+const FOUNDER_NOTE = (textColor: string, bgColor: string, note: SkeletonSlots["founderNote"]) => {
+  if (!note || !note.headline || !note.body) return "";
+  return `
+    <mj-section background-color="${bgColor}" padding="48px 36px 14px" css-class="sf-mobile-pad">
+      <mj-column>
+        ${note.eyebrow ? `<mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="4px" text-transform="uppercase" color="${textColor}" font-weight="500"><span style="opacity:0.65;">${escapeHtml(note.eyebrow)}</span></mj-text>` : ""}
+        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="22px" font-weight="500" line-height="1.3" letter-spacing="-0.2px" color="${textColor}" padding-top="14px">${escapeHtml(note.headline)}</mj-text>
+      </mj-column>
+    </mj-section>
+    <mj-section background-color="${bgColor}" padding="2px 36px 44px" css-class="sf-mobile-pad">
+      <mj-column>
+        <mj-text align="center" font-size="15px" line-height="1.7" color="${textColor}" css-class="sf-body"><span style="opacity:0.85;">${escapeHtml(note.body)}</span></mj-text>
+      </mj-column>
+    </mj-section>
+  `;
+};
+
+// Numbered 3-card row. Reusable for both app-promo-gradient's "benefits" and
+// countdown-urgency's "urgency reasons" — same visual, different copy.
+const NUMBERED_ROW_3 = (textColor: string, bgColor: string, items: Array<{ title: string; copy: string }> | undefined, eyebrow?: string, headline?: string) => {
+  if (!items || items.length === 0) return "";
+  const cells = items.slice(0, 3);
+  return `
+    ${eyebrow || headline ? `
+      <mj-section background-color="${bgColor}" padding="44px 16px 24px" css-class="sf-mobile-pad">
+        <mj-column>
+          ${eyebrow ? `<mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="4px" text-transform="uppercase" color="${textColor}" font-weight="500"><span style="opacity:0.65;">${escapeHtml(eyebrow)}</span></mj-text>` : ""}
+          ${headline ? `<mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="26px" font-weight="500" line-height="1.2" letter-spacing="-0.3px" color="${textColor}" padding-top="10px">${escapeHtml(headline)}</mj-text>` : ""}
+        </mj-column>
+      </mj-section>
+    ` : ""}
+    <mj-section background-color="${bgColor}" padding="0 8px 38px" css-class="sf-mobile-pad">
+      ${cells.map((it, i) => `
+        <mj-column width="33.33%" padding="12px">
+          <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="32px" font-weight="200" color="${textColor}" line-height="1"><span style="opacity:0.5;">${String(i + 1).padStart(2, "0")}</span></mj-text>
+          <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="15px" font-weight="500" color="${textColor}" padding-top="10px">${escapeHtml(it.title)}</mj-text>
+          <mj-text align="center" font-size="13px" line-height="1.55" color="${textColor}" padding-top="6px"><span style="opacity:0.7;">${escapeHtml(it.copy)}</span></mj-text>
+        </mj-column>
+      `).join("")}
+    </mj-section>
+  `;
+};
 
 // Section divider — used between blocks so the email reads as distinct
 // chapters rather than one long scroll.
@@ -388,16 +500,20 @@ const SECTION_DIVIDER = (color: string, bgColor: string) => `
   </mj-section>
 `;
 
-// Promo / code banner. Wide black band with a discount code on it. Used by
-// big-number-hero and countdown-urgency to make the offer impossible to miss.
-const PROMO_BAND = (code: string, label: string, primaryColor: string, bgColor: string) => `
+// Promo / code banner. Only renders when the LLM supplied a real promo code.
+// We no longer invent codes like "DIVAIN55" — that would create fake codes
+// recipients can't actually use at checkout.
+const PROMO_BAND = (primaryColor: string, bgColor: string, promo: SkeletonSlots["promoCode"]) => {
+  if (!promo || !promo.code) return "";
+  return `
   <mj-section background-color="${primaryColor}" padding="22px 24px" css-class="sf-mobile-pad">
     <mj-column>
-      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="4px" text-transform="uppercase" color="${bgColor}"><span style="opacity:0.75;">${escapeHtml(label)}</span></mj-text>
-      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="22px" font-weight="700" letter-spacing="6px" color="${bgColor}" padding-top="6px">${escapeHtml(code)}</mj-text>
+      ${promo.label ? `<mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="4px" text-transform="uppercase" color="${bgColor}"><span style="opacity:0.75;">${escapeHtml(promo.label)}</span></mj-text>` : ""}
+      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="22px" font-weight="700" letter-spacing="6px" color="${bgColor}" padding-top="6px">${escapeHtml(promo.code)}</mj-text>
     </mj-column>
   </mj-section>
 `;
+};
 
 const HEAD = `
   <mj-head>
@@ -555,17 +671,11 @@ function lifestyleHero(s: SkeletonSlots): string {
   const headerSection = s.heroUrl ? "" : WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl);
 
   // Full structure: header → hero → caption → 3-col products → editorial
-  // closer → customer review → 6-product mini-grid → trust bar → brand bar.
-  // That's 8 distinct sections — same approximate density as a real Klaviyo
-  // luxury email (Aesop, Le Labo, Glossier all sit in this range).
-  const review = REVIEW_QUOTE(
-    s.textColor,
-    "#F5F1EA",
-    "Es el primer perfume al que vuelvo sin pensar. Calidad sin el precio inflado.",
-    "Marta R. · cliente desde 2022",
-  );
+  // closer → brand promise (LLM-driven) → 6-product mini-grid → trust bar
+  // → brand bar. Promise / trust hide silently if no data.
+  const promise = BRAND_PROMISE(s.textColor, "#F5F1EA", s.brandPromise);
   const miniGrid = MINI_GRID_6((s.products ?? []).slice(3, 9), s.textColor, s.bgColor, "También para ti");
-  const trustBar = TRUST_BAR(s.textColor, s.bgColor);
+  const trustBar = TRUST_BAR(s.textColor, s.bgColor, s.trustItems);
 
   return `<mjml>${HEAD}<mj-body background-color="${s.bgColor}">
 ${PREHEADER(s.preheader, s.bgColor)}
@@ -574,7 +684,7 @@ ${heroSection}
 ${captionBlock}
 ${productSection}
 ${closerSection}
-${review}
+${promise}
 ${miniGrid}
 ${trustBar}
 ${BRAND_BAR("#FFFFFF", s.storefrontUrl)}
@@ -620,12 +730,10 @@ function bigNumberHero(s: SkeletonSlots): string {
         </mj-column>
       </mj-section>`;
 
-  // Structure: header → big-number hero → urgency body → promo band
-  // → 3-col product grid (the deals themselves) → trust bar → 6-product
-  // mini-grid → review → brand bar. The promo band hammers the offer once
-  // more and the product grid + mini-grid let the recipient act on it.
-  const promoCode = "DIVAIN" + (s.offerNumber ?? "").replace(/[^0-9]/g, "").padStart(2, "0").slice(-2);
-  const promoBand = PROMO_BAND(promoCode || "DIVAIN", "Código en el checkout", s.primaryColor, s.bgColor);
+  // Structure: header → big-number hero → urgency body → promo band (only
+  // when LLM gave us a real code) → 3-col product grid → 6-product mini-grid
+  // → brand promise → trust bar → brand bar.
+  const promoBand = PROMO_BAND(s.primaryColor, s.bgColor, s.promoCode);
 
   // 3-col product grid using the FIRST 3 catalog products. Same structure as
   // productGridEditorial uses but inlined so big-number-hero owns it.
@@ -650,13 +758,8 @@ function bigNumberHero(s: SkeletonSlots): string {
   ` : "";
 
   const miniGrid = MINI_GRID_6((s.products ?? []).slice(3, 9), s.textColor, s.bgColor, "Y también");
-  const trustBar = TRUST_BAR(s.textColor, s.bgColor);
-  const review = REVIEW_QUOTE(
-    s.textColor,
-    "#F5F1EA",
-    "He comparado lado a lado con el original. La diferencia no la nota nadie. El precio sí.",
-    "Laura M.",
-  );
+  const trustBar = TRUST_BAR(s.textColor, s.bgColor, s.trustItems);
+  const promise = BRAND_PROMISE(s.textColor, "#F5F1EA", s.brandPromise);
 
   const slots: Record<string, string> = {
     preheader: PREHEADER(s.preheader, s.bgColor),
@@ -666,7 +769,7 @@ function bigNumberHero(s: SkeletonSlots): string {
     promoBand,
     productGrid,
     miniGrid,
-    review,
+    promise,
     trustBar,
     brandBar: BRAND_BAR("#FFFFFF", s.storefrontUrl),
     bgColor: s.bgColor,
@@ -684,7 +787,7 @@ function bigNumberHero(s: SkeletonSlots): string {
 </mj-section>
 {{promoBand}}
 {{productGrid}}
-{{review}}
+{{promise}}
 {{miniGrid}}
 {{trustBar}}
 {{brandBar}}
@@ -745,16 +848,13 @@ function productGridEditorial(s: SkeletonSlots): string {
     </mj-section>
   ` : "";
 
-  const trustBar = TRUST_BAR(s.textColor, s.bgColor);
+  const trustBar = TRUST_BAR(s.textColor, s.bgColor, s.trustItems);
 
   const slots: Record<string, string> = {
     preheader: PREHEADER(s.preheader, s.bgColor),
     wordmark: WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
     headline: escapeHtml(s.headline),
     subhead: s.subhead ? `<mj-text align="center" font-size="14px" letter-spacing="3px" text-transform="uppercase" color="${s.textColor}" padding-top="10px"><span style="opacity:0.65;">${escapeHtml(s.subhead)}</span></mj-text>` : "",
-    // Edge-to-edge hero — no side padding so the photograph fills the email
-    // width without a cream frame on each side. The image keeps its own
-    // padding="0" so corners go all the way to 600px.
     bigHero: s.heroUrl ? `<mj-section padding="20px 0 0" background-color="${s.bgColor}"><mj-column padding="0"><mj-image src="${s.heroUrl}" alt="" padding="0" border-radius="0" /></mj-column></mj-section>` : "",
     introBody,
     cols,
@@ -789,25 +889,10 @@ function productGridEditorial(s: SkeletonSlots): string {
 // Single product hero · poetic copy · no price · minimal frame. RITUAL drops.
 
 function premiumLaunch(s: SkeletonSlots): string {
-  // Process block — "detrás de la fragancia" — 2 paragraphs about how the
-  // launch came to be. Hand-coded copy because the LLM rarely produces it
-  // for premium-launch (it stops at the product description).
-  const processBlock = `
-    <mj-section background-color="#F5F1EA" padding="50px 32px 20px" css-class="sf-mobile-pad">
-      <mj-column>
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="4px" text-transform="uppercase" color="${s.textColor}" font-weight="500"><span style="opacity:0.65;">Detrás de la fragancia</span></mj-text>
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="24px" font-weight="500" line-height="1.25" letter-spacing="-0.2px" color="${s.textColor}" padding-top="12px">No nace en un laboratorio.<br/>Nace en una conversación.</mj-text>
-      </mj-column>
-    </mj-section>
-    <mj-section background-color="#F5F1EA" padding="6px 36px 46px" css-class="sf-mobile-pad">
-      <mj-column>
-        <mj-text align="center" font-size="15px" line-height="1.7" color="${s.textColor}" css-class="sf-body"><span style="opacity:0.88;">Cada lanzamiento empieza igual: una nota que no encontramos en el mercado, un acorde que queremos rescatar. Pasamos meses afinando hasta que el resultado nos convence a nosotros primero.</span></mj-text>
-        <mj-text align="center" font-size="15px" line-height="1.7" color="${s.textColor}" padding-top="14px" css-class="sf-body"><span style="opacity:0.88;">Solo entonces sale del taller. Pequeñas series, controladas a mano, en la misma fábrica de Alicante en la que empezó todo.</span></mj-text>
-      </mj-column>
-    </mj-section>
-  `;
-
-  // Similar products mini-grid using the rest of the catalog.
+  // Process block + notes pyramid are both LLM-driven now. If neither is
+  // populated the email is product image + name + CTA + similar + trust +
+  // brand bar — still complete, just tighter.
+  const processBlock = PROCESS_BLOCK(s.textColor, "#F5F1EA", s.processBlock);
   const similar = MINI_GRID_6((s.products ?? []).slice(1, 7), s.textColor, s.bgColor, "También te puede interesar");
 
   const slots: Record<string, string> = {
@@ -818,9 +903,9 @@ function premiumLaunch(s: SkeletonSlots): string {
       ? `<mj-image src="${s.productImageUrl ?? s.heroUrl}" alt="${escapeHtml(s.productName ?? "")}" padding="0" href="${s.productPageUrl ?? s.ctaUrl ?? "#"}" />`
       : "",
     productName: escapeHtml(s.productName ?? s.headline),
-    productCopy: escapeHtml(s.productCopy ?? s.body ?? "Edición limitada · 200 unidades"),
+    productCopy: escapeHtml(s.productCopy ?? s.body ?? ""),
     cta: PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#"),
-    notes: NOTES_PYRAMID(s.textColor, s.bgColor),
+    notes: NOTES_PYRAMID(s.textColor, s.bgColor, s.fragranceNotes),
     story: s.body ? `
       <mj-section background-color="${s.bgColor}" padding="20px 36px 8px" css-class="sf-mobile-pad">
         <mj-column>
@@ -830,7 +915,7 @@ function premiumLaunch(s: SkeletonSlots): string {
     ` : "",
     processBlock,
     similar,
-    trustBar: TRUST_BAR(s.textColor, s.bgColor),
+    trustBar: TRUST_BAR(s.textColor, s.bgColor, s.trustItems),
     brandBar: BRAND_BAR("#FFFFFF", s.storefrontUrl),
     bgColor: s.bgColor,
     textColor: s.textColor,
@@ -858,33 +943,9 @@ function premiumLaunch(s: SkeletonSlots): string {
 // Black background, all-white type, no photo, single big CTA.
 
 function countdownUrgency(s: SkeletonSlots): string {
-  // 3-col band of bullet-point urgency reasons on white inside a black email.
-  // Klaviyo BFCM emails almost always have an "antes de irte" countdown panel
-  // listing the actual benefits — without it the email reads as a single CTA.
-  const urgencyPoints = `
-    <mj-section background-color="#FFFFFF" padding="38px 16px 28px" css-class="sf-mobile-pad">
-      <mj-column>
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="4px" text-transform="uppercase" color="#0E0E0E" font-weight="500"><span style="opacity:0.6;">Antes de cerrar</span></mj-text>
-      </mj-column>
-    </mj-section>
-    <mj-section background-color="#FFFFFF" padding="0 8px 38px" css-class="sf-mobile-pad">
-      <mj-column width="33.33%" padding="12px">
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="32px" font-weight="200" color="#0E0E0E" line-height="1"><span style="opacity:0.45;">01</span></mj-text>
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="14px" font-weight="500" color="#0E0E0E" padding-top="8px">Quedan horas</mj-text>
-        <mj-text align="center" font-size="13px" line-height="1.5" color="#0E0E0E" padding-top="4px"><span style="opacity:0.7;">A medianoche se acaba el descuento.</span></mj-text>
-      </mj-column>
-      <mj-column width="33.33%" padding="12px">
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="32px" font-weight="200" color="#0E0E0E" line-height="1"><span style="opacity:0.45;">02</span></mj-text>
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="14px" font-weight="500" color="#0E0E0E" padding-top="8px">Envío gratis</mj-text>
-        <mj-text align="center" font-size="13px" line-height="1.5" color="#0E0E0E" padding-top="4px"><span style="opacity:0.7;">A partir de 30€, en toda la península.</span></mj-text>
-      </mj-column>
-      <mj-column width="33.33%" padding="12px">
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="32px" font-weight="200" color="#0E0E0E" line-height="1"><span style="opacity:0.45;">03</span></mj-text>
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="14px" font-weight="500" color="#0E0E0E" padding-top="8px">Sin códigos</mj-text>
-        <mj-text align="center" font-size="13px" line-height="1.5" color="#0E0E0E" padding-top="4px"><span style="opacity:0.7;">El precio ya está aplicado en la web.</span></mj-text>
-      </mj-column>
-    </mj-section>
-  `;
+  // Urgency reasons — LLM writes them per generation. Block hides if empty.
+  // Sits on a white section inside the black email so it pops.
+  const urgencyPoints = NUMBERED_ROW_3("#0E0E0E", "#FFFFFF", s.urgencyReasons, "Antes de cerrar");
 
   // Feature one real product photo from the catalog (the first product hint).
   const product = (s.products ?? [])[0];
@@ -943,39 +1004,9 @@ function countdownUrgency(s: SkeletonSlots): string {
 
 function appPromoGradient(s: SkeletonSlots): string {
   const heroUrl = s.heroUrl || "";
-  // Three-benefit row: "ofertas, anticipos, puntos". Sells the app instead of
-  // just announcing it.
-  const benefits = `
-    <mj-section background-color="#FFFFFF" padding="44px 16px 24px" css-class="sf-mobile-pad">
-      <mj-column>
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="4px" text-transform="uppercase" color="#1A1A1A" font-weight="500"><span style="opacity:0.65;">Qué te llevas</span></mj-text>
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="26px" font-weight="500" line-height="1.2" letter-spacing="-0.3px" color="#1A1A1A" padding-top="10px">Más por tener la app</mj-text>
-      </mj-column>
-    </mj-section>
-    <mj-section background-color="#FFFFFF" padding="0 8px 38px" css-class="sf-mobile-pad">
-      <mj-column width="33.33%" padding="12px">
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="32px" font-weight="200" color="#1A1A1A" line-height="1"><span style="opacity:0.5;">01</span></mj-text>
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="15px" font-weight="500" color="#1A1A1A" padding-top="10px">−10% bienvenida</mj-text>
-        <mj-text align="center" font-size="13px" line-height="1.55" color="#1A1A1A" padding-top="6px"><span style="opacity:0.7;">Automático en tu primera compra desde la app.</span></mj-text>
-      </mj-column>
-      <mj-column width="33.33%" padding="12px">
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="32px" font-weight="200" color="#1A1A1A" line-height="1"><span style="opacity:0.5;">02</span></mj-text>
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="15px" font-weight="500" color="#1A1A1A" padding-top="10px">Anticipo de drops</mj-text>
-        <mj-text align="center" font-size="13px" line-height="1.55" color="#1A1A1A" padding-top="6px"><span style="opacity:0.7;">Cada lanzamiento, 24h antes que en la web.</span></mj-text>
-      </mj-column>
-      <mj-column width="33.33%" padding="12px">
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="32px" font-weight="200" color="#1A1A1A" line-height="1"><span style="opacity:0.5;">03</span></mj-text>
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="15px" font-weight="500" color="#1A1A1A" padding-top="10px">Puntos divain</mj-text>
-        <mj-text align="center" font-size="13px" line-height="1.55" color="#1A1A1A" padding-top="6px"><span style="opacity:0.7;">1€ = 1 punto. Se canjean por descuentos.</span></mj-text>
-      </mj-column>
-    </mj-section>
-  `;
-  const review = REVIEW_QUOTE(
-    "#1A1A1A",
-    "#FFFFFF",
-    "La uso para descubrir lo nuevo antes de que llegue a la web. Vale la pena.",
-    "Andrea G.",
-  );
+  // Benefits — LLM-driven. Block hides if not populated.
+  const benefits = NUMBERED_ROW_3("#1A1A1A", "#FFFFFF", s.appBenefits, "Qué te llevas", "Más por tener la app");
+  const promise = BRAND_PROMISE("#1A1A1A", "#FFFFFF", s.brandPromise);
   const slots: Record<string, string> = {
     preheader: PREHEADER(s.preheader, "#FFFFFF"),
     headline: escapeHtml(s.headline),
@@ -983,7 +1014,7 @@ function appPromoGradient(s: SkeletonSlots): string {
     appStoreBtn: PILL_BUTTON(s.ctaLabel || "DESCARGAR EN APP STORE", "#FFFFFF", "#000000", "#"),
     heroImage: heroUrl ? `<mj-image src="${heroUrl}" alt="" border-radius="8px" />` : "",
     benefits,
-    review,
+    promise,
     brandBar: BRAND_BAR("#FFFFFF", s.storefrontUrl),
   };
 
@@ -999,7 +1030,7 @@ function appPromoGradient(s: SkeletonSlots): string {
 <mj-section background-color="#FFBDCF" padding="14px 24px 22px" css-class="sf-mobile-pad"><mj-column>{{heroImage}}</mj-column></mj-section>
 <mj-section background-color="#FFBDCF" padding="0 24px 44px" css-class="sf-mobile-pad"><mj-column>{{appStoreBtn}}</mj-column></mj-section>
 {{benefits}}
-{{review}}
+{{promise}}
 {{brandBar}}
 </mj-body></mjml>`, slots);
 }
@@ -1040,27 +1071,21 @@ function brandAnthology(s: SkeletonSlots): string {
     </mj-section>
   ` : "";
 
-  const reasons = NUMBERED_REASONS(s.textColor, s.bgColor);
-  const review = REVIEW_QUOTE(
-    s.textColor,
-    "#F5F1EA",
-    "Llevo cinco años con divain. He probado de todo, vuelvo siempre.",
-    "Carmen S. · cliente desde 2019",
-  );
+  // Numbered reasons + brand promise: both LLM-driven, both hide if empty.
+  const reasons = NUMBERED_REASONS(s.textColor, s.bgColor, s.reasons, "Por qué nosotros", "Tres razones, sin más");
+  const promise = BRAND_PROMISE(s.textColor, "#F5F1EA", s.brandPromise);
   const miniGrid = MINI_GRID_6((s.products ?? []).slice(0, 6), s.textColor, s.bgColor, "Los más queridos");
-  const trustBar = TRUST_BAR(s.textColor, s.bgColor);
+  const trustBar = TRUST_BAR(s.textColor, s.bgColor, s.trustItems);
 
   const slots: Record<string, string> = {
     preheader: PREHEADER(s.preheader, s.bgColor),
     wordmark: WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
     headline: escapeHtml(s.headline),
-    // Edge-to-edge hero in brand-anthology — drop the 24px side gutters so the
-    // photograph fills the email width with no cream frames.
     heroImage: s.heroUrl ? `<mj-section padding="0 0 16px" background-color="${s.bgColor}"><mj-column padding="0"><mj-image src="${s.heroUrl}" alt="" padding="0" border-radius="0" /></mj-column></mj-section>` : "",
     intro,
     pillarSections,
     reasons,
-    review,
+    promise,
     miniGrid,
     trustBar,
     brandBar: BRAND_BAR("#FFFFFF", s.storefrontUrl),
@@ -1080,7 +1105,7 @@ function brandAnthology(s: SkeletonSlots): string {
 {{heroImage}}
 {{pillarSections}}
 {{reasons}}
-{{review}}
+{{promise}}
 {{miniGrid}}
 {{trustBar}}
 {{brandBar}}
@@ -1118,39 +1143,22 @@ function winbackEmpathic(s: SkeletonSlots): string {
     </mj-section>
   ` : "";
 
-  const founderNote = `
-    <mj-section background-color="${s.bgColor}" padding="48px 36px 14px" css-class="sf-mobile-pad">
-      <mj-column>
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="4px" text-transform="uppercase" color="${s.textColor}" font-weight="500"><span style="opacity:0.65;">Una nota del equipo</span></mj-text>
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="22px" font-weight="500" line-height="1.3" letter-spacing="-0.2px" color="${s.textColor}" padding-top="14px">Gracias por probarnos un día.</mj-text>
-      </mj-column>
-    </mj-section>
-    <mj-section background-color="${s.bgColor}" padding="2px 36px 44px" css-class="sf-mobile-pad">
-      <mj-column>
-        <mj-text align="center" font-size="15px" line-height="1.7" color="${s.textColor}" css-class="sf-body"><span style="opacity:0.85;">Sabemos que hay muchas marcas. Que tu tiempo no es infinito y que probar perfume cuesta dinero. Si quieres volver, nuestra puerta sigue abierta y con un detalle dentro.</span></mj-text>
-      </mj-column>
-    </mj-section>
-  `;
-
-  const review = REVIEW_QUOTE(
-    s.textColor,
-    "#FFFFFF",
-    "Lo dejé y volví. Mismo perfume, mismo precio. Eso ya dice algo.",
-    "Pablo D.",
-  );
+  // Founder note + brand promise: both LLM-driven, hide if empty.
+  const founderNote = FOUNDER_NOTE(s.textColor, s.bgColor, s.founderNote);
+  const promise = BRAND_PROMISE(s.textColor, "#FFFFFF", s.brandPromise);
 
   const slots: Record<string, string> = {
     preheader: PREHEADER(s.preheader, "#F5F1EA"),
     wordmark: WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
     headline: escapeHtml(s.headline),
-    body: escapeHtml(s.body ?? "Hemos seguido trabajando estos meses. Pensamos que quizá quieras volver a oler lo que hemos hecho. Si te apetece volver, tu próxima compra lleva un detalle nuestro."),
+    body: escapeHtml(s.body ?? ""),
     heroImage: heroImageBlock,
     incentive: s.customerIncentive ? `<mj-text align="center" font-size="13px" letter-spacing="3px" text-transform="uppercase" color="${s.textColor}" padding-top="6px"><span style="opacity:0.65;">Te guardamos un ${escapeHtml(s.customerIncentive)}</span></mj-text>` : "",
     cta: PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#"),
     newArrivalsSection,
     founderNote,
-    review,
-    trustBar: TRUST_BAR(s.textColor, "#F5F1EA"),
+    promise,
+    trustBar: TRUST_BAR(s.textColor, "#F5F1EA", s.trustItems),
     brandBar: BRAND_BAR("#FFFFFF", s.storefrontUrl),
     bgColor: s.bgColor,
     textColor: s.textColor,
@@ -1170,7 +1178,7 @@ function winbackEmpathic(s: SkeletonSlots): string {
 <mj-section padding="20px 24px 30px" css-class="sf-mobile-pad"><mj-column>{{cta}}</mj-column></mj-section>
 {{newArrivalsSection}}
 {{founderNote}}
-{{review}}
+{{promise}}
 {{trustBar}}
 {{brandBar}}
 </mj-body></mjml>`, slots);
