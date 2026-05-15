@@ -397,71 +397,169 @@ function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
+// ── Seasonal / occasion context detection ────────────────────────────────
+//
+// The composition pools above are tuned for general editorial use, so a
+// random pick can produce "sun-lit Mediterranean terrace" right when the
+// campaign is about Navidad. Without seasonal awareness the model picks the
+// more concrete cue (the composition) and ignores the brief's "Christmas"
+// signal. We detect the season/occasion from the LLM's banner-prompt seed
+// and inject a hard override that the model must respect.
+//
+// Why we don't just delete the composition pools when seasonal context is
+// detected: the compositions add specific camera + lighting + framing rules
+// the model otherwise can't infer ("close-crop", "85mm", "shallow DoF"). We
+// want both — but the season has to win the styling/wardrobe/props fight.
+
+type SeasonalContext = {
+  occasion: string | null;
+  styling: string;
+};
+
+function detectSeasonalContext(seed: string): SeasonalContext {
+  const t = seed.toLowerCase();
+
+  // Order matters — more specific occasions first, fallback seasons last.
+  if (/navidad|christmas|xmas|nochebuena|noche\s*buena|no[eë]l|advent/.test(t)) {
+    return {
+      occasion: "Christmas",
+      styling: "WINTER CHRISTMAS SETTING: warm cosy interior with subtle holiday cues — fir branches, eucalyptus, neutral linen ribbon, small white candles (unlit or behind glass), fairy lights softly glowing, evergreen sprigs. Wardrobe MUST be winter: cashmere knitwear, wool coats, silk blouses with long sleeves, faux-fur trim, neutral tones (cream, camel, soft black). Lighting: warm tungsten lamps mixed with cool window light from a snowy or grey outdoor view. ABSOLUTELY NO: bare arms, beach, terrace, sun-bleached light, summer florals, wildflowers, sand, swimsuits, sundresses, exposed skin in daylight, pine forests in summer green.",
+    };
+  }
+  if (/black\s*friday|cyber\s*monday|cybermonday/.test(t)) {
+    return {
+      occasion: "Black Friday",
+      styling: "LATE-AUTUMN EVENING SETTING: moody contemporary urban scene — dark concrete interior, tungsten pools of light, city windows at night with reflections, late-autumn coats. Wardrobe: dark wool coats, knitwear, leather, deep neutrals. ABSOLUTELY NO summer or spring scenes, NO golden-hour beaches, NO sundresses.",
+    };
+  }
+  if (/halloween|all\s*hallows|samhain/.test(t)) {
+    return {
+      occasion: "Halloween",
+      styling: "AUTUMN MOODY SETTING: contemporary atmospheric scene with deep shadow, late-October colour palette of burnt orange / charcoal / blackberry. Modern wardrobe in dark tones, soft theatrical light. NO costumes, NO horror props. NO summer cues.",
+    };
+  }
+  if (/valent|14\s*de\s*febrero|san\s*valent[íi]n|saint\s*valentine/.test(t)) {
+    return {
+      occasion: "Valentine's Day",
+      styling: "LATE-WINTER INTIMATE SETTING: cosy contemporary indoor — silk slip in burgundy or champagne, soft rose petals scattered, modern minimalist warm interior. Soft red, blush, and warm gold accents (subtly — not kitsch). Wardrobe: long sleeves, silk, knitwear. NO summer terrace, NO beach, NO golden-hour outdoor.",
+    };
+  }
+  if (/d[íi]a\s*de\s*la\s*madre|mother'?s\s*day|festa\s*della\s*mamma|f[eê]te\s*des\s*m[eè]res|muttertag/.test(t)) {
+    return {
+      occasion: "Mother's Day",
+      styling: "SPRING SETTING: peonies, magnolia, fresh greenery, soft pastel daylight through sheer linen curtains, modern minimalist home or garden. Wardrobe: light spring knit, silk blouse, soft linen. NO Christmas cues, NO winter coats, NO snow.",
+    };
+  }
+  if (/pascua|easter|p[âa]ques|ostern/.test(t)) {
+    return {
+      occasion: "Easter",
+      styling: "EARLY-SPRING SETTING: garden in fresh bloom, white tulips, almond blossom, soft morning light. Wardrobe: pastel linen, light cardigan. NO heavy winter wear, NO summer beach.",
+    };
+  }
+  if (/d[íi]a\s*del\s*padre|father'?s\s*day|festa\s*del\s*pap[àa]|f[eê]te\s*des\s*p[eè]res/.test(t)) {
+    return {
+      occasion: "Father's Day",
+      styling: "EARLY-SUMMER MASCULINE SETTING: tailored linen, warm dusk light, refined dark wood or stone interior. NO floral spring, NO Christmas cues.",
+    };
+  }
+  if (/rebajas|sales|soldes|saldi|outlet/.test(t) && !/black|cyber|navid|christmas/.test(t)) {
+    // Generic sale — let composition lead, no override.
+    return { occasion: null, styling: "" };
+  }
+  // Generic seasons — only used when no occasion matches.
+  if (/invierno|winter|enero|febrero|nieve|snow|hiver/.test(t)) {
+    return { occasion: "Winter", styling: "WINTER SETTING: cool grey light, cashmere and wool wardrobe, modern cosy interior, NO bare arms or summer cues." };
+  }
+  if (/primavera|spring|abril|mayo|printemps/.test(t)) {
+    return { occasion: "Spring", styling: "SPRING SETTING: fresh blooms, soft daylight, light linen wardrobe, gentle pastel palette. NO Christmas cues, NO snow." };
+  }
+  if (/verano|summer|julio|agosto|playa|vacaciones\s*de\s*verano|été/.test(t)) {
+    return { occasion: "Summer", styling: "SUMMER SETTING: warm golden light, linen sundresses, light fabrics, sandy or terrace setting OK. NO winter coats." };
+  }
+  if (/oto[ñn]o|autumn|fall|noviembre|octubre|automne/.test(t)) {
+    return { occasion: "Autumn", styling: "AUTUMN SETTING: warm amber light, knitwear and wool, late-October colour palette. NO summer terrace, NO snow." };
+  }
+  return { occasion: null, styling: "" };
+}
+
+function withSeasonalOverride(prompt: string, seed: string): string {
+  const ctx = detectSeasonalContext(seed);
+  if (!ctx.styling) return prompt;
+  // The override is appended LAST so the model treats it as the dominant
+  // instruction (most LLMs/diffusion models weight later instructions more
+  // when they conflict with earlier ones).
+  return `${prompt} CRITICAL SEASONAL OVERRIDE — this rule wins over every other styling cue above, including any default composition: ${ctx.styling}`;
+}
+
 function buildHeroPrompt(layoutPattern: string, llmPrompt: string, hasProductRef: boolean): string {
   const seed = (llmPrompt || "").trim();
 
   // With a real product reference (the user's actual Divain bottle), every
   // pattern places that bottle into a scene matched to the layout's mood.
   if (hasProductRef) {
+    let prompt: string;
     switch (layoutPattern) {
       case "lifestyle-hero": {
         const comp = pickRandom(LIFESTYLE_COMPOSITIONS);
-        return `Editorial luxury perfume advertising photograph: ${comp}. ${seed}. Magazine-cover quality, 85mm lens, shallow depth of field, warm refined mood. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        prompt = `Editorial luxury perfume advertising photograph: ${comp}. ${seed}. Magazine-cover quality, 85mm lens, shallow depth of field, refined mood. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        break;
       }
-
       case "big-number-hero": {
         const comp = pickRandom(STILL_LIFE_COMPOSITIONS);
-        return `Minimalist editorial still life: ${comp}. ${seed}. Clean composition with negative space on one side (text will overlay there in the email). Magazine quality. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        prompt = `Minimalist editorial still life: ${comp}. ${seed}. Clean composition with negative space on one side (text will overlay there in the email). Magazine quality. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        break;
       }
-
       case "premium-launch": {
         const comp = pickRandom(CLOSE_CROP_COMPOSITIONS);
-        return `Premium editorial product photograph, close-crop: ${comp}. ${seed}. Magazine campaign aesthetic, directional light, refined and quiet. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        prompt = `Premium editorial product photograph, close-crop: ${comp}. ${seed}. Magazine campaign aesthetic, directional light, refined and quiet. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        break;
       }
-
       case "countdown-urgency": {
         const comp = pickRandom(URGENCY_COMPOSITIONS);
-        return `Cinematic editorial photograph with subtle tension: ${comp}. ${seed}. Magazine quality, slight anticipation, low-key warm light. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        prompt = `Cinematic editorial photograph with subtle tension: ${comp}. ${seed}. Magazine quality, slight anticipation, low-key light. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        break;
       }
-
       case "app-promo-gradient": {
         const comp = pickRandom(APP_COMPOSITIONS);
-        return `Modern lifestyle photograph: ${comp}. ${seed}. Soft natural daylight, minimal aesthetic, phone screen blank/dark. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        prompt = `Modern lifestyle photograph: ${comp}. ${seed}. Soft natural daylight, minimal aesthetic, phone screen blank/dark. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        break;
       }
-
       case "product-grid-editorial": {
         const comp = pickRandom(ENVIRONMENT_COMPOSITIONS);
-        return `Wide editorial environmental photograph: ${comp}. ${seed}. Magazine quality, soft natural light, refined. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        prompt = `Wide editorial environmental photograph: ${comp}. ${seed}. Magazine quality, soft natural light, refined. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        break;
       }
-
       case "brand-anthology": {
         const comp = pickRandom(INTERIOR_COMPOSITIONS);
-        return `Cinematic contemporary editorial portrait: ${comp}. ${seed}. Magazine quality, refined and minimalist, beautifully lit. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        prompt = `Cinematic contemporary editorial portrait: ${comp}. ${seed}. Magazine quality, refined and minimalist, beautifully lit. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        break;
       }
-
       case "winback-empathic": {
         const comp = pickRandom(EMPATHIC_COMPOSITIONS);
-        return `Warm intimate contemporary editorial photograph: ${comp}. ${seed}. Soft natural light, emotional warmth, magazine quality. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        prompt = `Warm intimate contemporary editorial photograph: ${comp}. ${seed}. Soft natural light, emotional warmth, magazine quality. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        break;
       }
-
       default:
-        return `Editorial luxury perfume advertising photograph: ${seed}. Real model interacting with the perfume bottle from the reference image. Magazine quality, soft natural light, refined mood. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
+        prompt = `Editorial luxury perfume advertising photograph: ${seed}. Real model interacting with the perfume bottle from the reference image. Magazine quality, refined mood. ${MODERN_ERA_RULE} ${KEEP_PRODUCT_RULE} ${NO_TEXT_RULE}`;
     }
+    return withSeasonalOverride(prompt, seed);
   }
 
   // No product reference available — generate a clean editorial scene without
   // any fabricated bottle (since AI-invented bottles look generic and don't
   // match the brand). Person + setting only.
+  let basePrompt: string;
   switch (layoutPattern) {
     case "lifestyle-hero":
-      return `Editorial fashion photograph in the style of high-end perfume brand advertising. ${seed}. Real woman model, natural skin, candid expression, magazine-cover quality, 85mm lens, shallow depth of field, soft natural light, refined mood. No products in frame. ${NO_TEXT_RULE}`;
-
+      basePrompt = `Editorial fashion photograph in the style of high-end perfume brand advertising. ${seed}. Real woman model, natural skin, candid expression, magazine-cover quality, 85mm lens, shallow depth of field, refined mood. No products in frame. ${NO_TEXT_RULE}`;
+      break;
     case "big-number-hero":
-      return `Minimalist editorial still life: ${seed}. Abstract textural composition — silk, marble, blooms, warm linen — refined and quiet, with negative space for text overlay. ${NO_TEXT_RULE}`;
-
+      basePrompt = `Minimalist editorial still life: ${seed}. Abstract textural composition with negative space for text overlay. ${NO_TEXT_RULE}`;
+      break;
     default:
-      return `Editorial fashion photograph: ${seed}. Real model, magazine quality, soft natural light, refined mood. ${NO_TEXT_RULE}`;
+      basePrompt = `Editorial fashion photograph: ${seed}. Real model, magazine quality, refined mood. ${NO_TEXT_RULE}`;
   }
+  return withSeasonalOverride(basePrompt, seed);
 }
 
 export async function generateTemplate(input: TemplateGenInput): Promise<TemplateGenOutput> {
@@ -578,11 +676,11 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
       // (no DB migration needed) because hasEvery requires the current tag to
       // be present and old assets don't have it.
       //
-      // v5 = composition variant pools (per-layout pick), modern-era guardrail
-      // (no candlelight letter-writing nonsense), and bottle prominent enough
-      // that its label remains readable. Bumping invalidates v4 assets so
-      // we don't reuse "writing a letter in 1850" generations.
-      const PROMPT_VERSION = "v5-modern-prominent";
+      // v6 = seasonal/occasion-aware override. Composition pools still rotate,
+      // but a detected Christmas / Mother's Day / Valentine's / season cue in
+      // the brief forces wardrobe + light + props to match. Stops a summer
+      // terrace from being reused for a Navidad campaign.
+      const PROMPT_VERSION = "v6-seasonal-aware";
       const libraryTags = [layoutPattern, input.storeSlug ?? "global", PROMPT_VERSION];
       const reusable = await prisma.asset.findFirst({
         where: {

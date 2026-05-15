@@ -210,7 +210,7 @@ const PRODUCT_SPOTLIGHT = (s: SkeletonSlots) => {
   <mj-section padding="20px 24px 8px" background-color="${s.bgColor}" css-class="sf-mobile-pad">
     <mj-column>
       <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="22px" font-weight="500" letter-spacing="-0.25px" color="${s.textColor}">${escapeHtml(sp.title)}</mj-text>
-      ${sp.notes ? `<mj-text align="center" font-size="12px" letter-spacing="3px" text-transform="uppercase" color="${s.textColor}" opacity="0.6" padding-top="6px">${escapeHtml(sp.notes)}</mj-text>` : ""}
+      ${sp.notes ? `<mj-text align="center" font-size="12px" letter-spacing="3px" text-transform="uppercase" color="${s.textColor}" padding-top="6px"><span style="opacity:0.6;">${escapeHtml(sp.notes)}</span></mj-text>` : ""}
       ${sp.price ? `<mj-text align="center" font-size="15px" font-weight="500" color="${s.primaryColor}" padding-top="12px">${escapeHtml(sp.price)}</mj-text>` : ""}
     </mj-column>
   </mj-section>
@@ -236,14 +236,14 @@ const EDITORIAL_BLOCK = (s: SkeletonSlots) => {
   return `
   <mj-section padding="36px 24px 12px" background-color="${s.bgColor}" css-class="sf-mobile-pad">
     <mj-column>
-      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="4px" text-transform="uppercase" color="${s.textColor}" opacity="0.65" font-weight="500">${escapeHtml(eb.eyebrow)}</mj-text>
+      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="4px" text-transform="uppercase" color="${s.textColor}" font-weight="500"><span style="opacity:0.65;">${escapeHtml(eb.eyebrow)}</span></mj-text>
       <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="26px" font-weight="400" line-height="1.2" letter-spacing="-0.25px" color="${s.textColor}" padding-top="10px">${escapeHtml(eb.headline)}</mj-text>
     </mj-column>
   </mj-section>
   ${eb.paragraphs.map((p) => `
   <mj-section padding="8px 32px" background-color="${s.bgColor}" css-class="sf-mobile-pad">
     <mj-column>
-      <mj-text align="center" font-size="15px" line-height="1.75" color="${s.textColor}" opacity="0.88" css-class="sf-body">${escapeHtml(p)}</mj-text>
+      <mj-text align="center" font-size="15px" line-height="1.75" color="${s.textColor}" css-class="sf-body"><span style="opacity:0.88;">${escapeHtml(p)}</span></mj-text>
     </mj-column>
   </mj-section>`).join("")}
   <mj-section padding="24px 0 8px" background-color="${s.bgColor}">
@@ -353,7 +353,7 @@ function lifestyleHero(s: SkeletonSlots): string {
   const productSection = products.length > 0 ? `
     <mj-section padding="40px 16px 10px" background-color="${s.bgColor}" css-class="sf-mobile-pad">
       <mj-column>
-        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="12px" letter-spacing="3px" text-transform="uppercase" color="${s.textColor}" opacity="0.7">Selección destacada</mj-text>
+        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="12px" letter-spacing="3px" text-transform="uppercase" color="${s.textColor}"><span style="opacity:0.7;">Selección destacada</span></mj-text>
       </mj-column>
     </mj-section>
     <mj-section padding="10px 12px 40px" background-color="${s.bgColor}" css-class="sf-mobile-pad">
@@ -366,7 +366,7 @@ function lifestyleHero(s: SkeletonSlots): string {
         <mj-column width="33.33%" padding="8px">
           ${img}
           <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="13px" color="${s.textColor}" font-weight="500" padding-top="10px"><a href="${href}" style="color:${s.textColor};text-decoration:none;">${escapeHtml(p.title)}</a></mj-text>
-          ${p.price ? `<mj-text align="center" font-size="12px" color="${s.textColor}" opacity="0.65" padding-top="2px">${escapeHtml(p.price)}</mj-text>` : ""}
+          ${p.price ? `<mj-text align="center" font-size="12px" color="${s.textColor}" padding-top="2px"><span style="opacity:0.65;">${escapeHtml(p.price)}</span></mj-text>` : ""}
         </mj-column>
       `;
       }).join("")}
@@ -395,7 +395,7 @@ function lifestyleHero(s: SkeletonSlots): string {
   const captionBlock = s.body ? `
     <mj-section padding="32px 20px 12px" background-color="${s.bgColor}" css-class="sf-mobile-pad">
       <mj-column>
-        <mj-text align="center" font-size="15px" line-height="1.6" color="${s.textColor}" opacity="0.88" css-class="sf-body">${escapeHtml(s.body)}</mj-text>
+        <mj-text align="center" font-size="15px" line-height="1.6" color="${s.textColor}" css-class="sf-body"><span style="opacity:0.88;">${escapeHtml(s.body)}</span></mj-text>
       </mj-column>
     </mj-section>
   ` : "";
@@ -497,7 +497,7 @@ function productGridEditorial(s: SkeletonSlots): string {
     <mj-column width="33.33%" padding="8px">
       ${p.imageUrl ? `<mj-image src="${p.imageUrl}" alt="${escapeHtml(p.title)}" border-radius="4px" href="${href}" />` : ""}
       <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="14px" color="${s.textColor}" font-weight="500" padding-top="12px"><a href="${href}" style="color:${s.textColor};text-decoration:none;">${escapeHtml(p.title)}</a></mj-text>
-      ${p.price ? `<mj-text align="center" font-size="13px" color="${s.textColor}" opacity="0.6" padding-top="2px">${escapeHtml(p.price)}</mj-text>` : ""}
+      ${p.price ? `<mj-text align="center" font-size="13px" color="${s.textColor}" padding-top="2px"><span style="opacity:0.6;">${escapeHtml(p.price)}</span></mj-text>` : ""}
     </mj-column>
   `;
   }).join("");
@@ -506,7 +506,7 @@ function productGridEditorial(s: SkeletonSlots): string {
     preheader: PREHEADER(s.preheader, s.bgColor),
     wordmark: WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
     headline: escapeHtml(s.headline),
-    subhead: s.subhead ? `<mj-text align="center" font-size="14px" letter-spacing="3px" text-transform="uppercase" color="${s.textColor}" opacity="0.65" padding-top="10px">${escapeHtml(s.subhead)}</mj-text>` : "",
+    subhead: s.subhead ? `<mj-text align="center" font-size="14px" letter-spacing="3px" text-transform="uppercase" color="${s.textColor}" padding-top="10px"><span style="opacity:0.65;">${escapeHtml(s.subhead)}</span></mj-text>` : "",
     // Edge-to-edge hero — no side padding so the photograph fills the email
     // width without a cream frame on each side. The image keeps its own
     // padding="0" so corners go all the way to 600px.
@@ -558,7 +558,7 @@ function premiumLaunch(s: SkeletonSlots): string {
 <mj-section padding="56px 32px 22px" css-class="sf-mobile-pad"><mj-column>{{productImage}}</mj-column></mj-section>
 <mj-section padding="8px 32px" css-class="sf-mobile-pad"><mj-column>
   <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="26px" font-weight="500" letter-spacing="0.5px" color="{{textColor}}">{{productName}}</mj-text>
-  <mj-text align="center" font-size="13px" letter-spacing="3px" text-transform="uppercase" color="{{textColor}}" opacity="0.6" padding-top="10px">{{productCopy}}</mj-text>
+  <mj-text align="center" font-size="13px" letter-spacing="3px" text-transform="uppercase" color="{{textColor}}" padding-top="10px"><span style="opacity:0.6;">{{productCopy}}</span></mj-text>
 </mj-column></mj-section>
 <mj-section padding="28px 32px 60px" css-class="sf-mobile-pad"><mj-column>{{cta}}</mj-column></mj-section>
 </mj-body></mjml>`, slots);
@@ -584,10 +584,10 @@ function countdownUrgency(s: SkeletonSlots): string {
 {{wordmark}}
 <mj-section background-color="#000000" padding="48px 24px 18px" css-class="sf-mobile-pad"><mj-column>
   <mj-text align="center" color="#FFFFFF" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="46px" font-weight="700" line-height="1.1" letter-spacing="-0.5px">{{headline}}</mj-text>
-  <mj-text align="center" color="#FFFFFF" font-size="14px" letter-spacing="5px" text-transform="uppercase" padding-top="18px" opacity="0.7">{{subhead}}</mj-text>
+  <mj-text align="center" color="#FFFFFF" font-size="14px" letter-spacing="5px" text-transform="uppercase" padding-top="18px"><span style="opacity:0.7;">{{subhead}}</span></mj-text>
 </mj-column></mj-section>
 <mj-section background-color="#000000" padding="14px 24px 48px" css-class="sf-mobile-pad"><mj-column>
-  <mj-text align="center" color="#FFFFFF" font-size="14px" padding-bottom="24px" opacity="0.8">{{body}}</mj-text>
+  <mj-text align="center" color="#FFFFFF" font-size="14px" padding-bottom="24px"><span style="opacity:0.8;">{{body}}</span></mj-text>
   {{cta}}
 </mj-column></mj-section>
 </mj-body></mjml>`, slots);
@@ -685,7 +685,7 @@ function winbackEmpathic(s: SkeletonSlots): string {
     headline: escapeHtml(s.headline),
     body: escapeHtml(s.body ?? "Hemos seguido trabajando estos meses. Pensamos que quizá quieras volver a oler lo que hemos hecho. Si te apetece volver, tu próxima compra lleva un detalle nuestro."),
     heroImage: heroImageBlock,
-    incentive: s.customerIncentive ? `<mj-text align="center" font-size="13px" letter-spacing="3px" text-transform="uppercase" color="${s.textColor}" padding-top="6px" opacity="0.65">Te guardamos un ${escapeHtml(s.customerIncentive)}</mj-text>` : "",
+    incentive: s.customerIncentive ? `<mj-text align="center" font-size="13px" letter-spacing="3px" text-transform="uppercase" color="${s.textColor}" padding-top="6px"><span style="opacity:0.65;">Te guardamos un ${escapeHtml(s.customerIncentive)}</span></mj-text>` : "",
     cta: PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#"),
     bgColor: s.bgColor,
     textColor: s.textColor,
