@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { PageHeader } from "@/components/app/page-header";
 import { AutoPlanButton } from "@/components/app/auto-plan-button";
 import { RegenerateDraftsButton } from "@/components/app/regenerate-drafts-button";
+import { NewsletterDraftButton } from "@/components/app/newsletter-draft-button";
 import { TestSendPromo } from "@/components/app/test-send-promo";
 import { prisma } from "@/lib/db";
 import { MARKETING_CALENDAR_2026, dateForStore, type CalendarEvent } from "@/lib/calendar/marketing-events";
@@ -148,6 +149,7 @@ export default async function CalendarPage() {
         description="Sendify drafta automáticamente cada email N días antes del envío. Tú solo apruebas. El cron corre cada 5 min en background; no hace falta tener la página abierta."
         actions={
           <div className="flex items-center gap-2 flex-wrap">
+            <NewsletterDraftButton stores={stores.map((s) => ({ slug: s.slug, name: s.name }))} />
             <RegenerateDraftsButton />
             <AutoPlanButton />
           </div>

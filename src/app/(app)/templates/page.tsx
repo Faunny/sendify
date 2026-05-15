@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { Palette, Sparkles, FileText, Clock, Edit3 } from "lucide-react";
+import { Sparkles, FileText, Clock, Edit3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/app/page-header";
 import { AiTemplateGenerator } from "@/components/app/ai-template-generator";
 import { SamplePackButton } from "@/components/app/sample-pack-button";
+import { NewsletterDraftButton } from "@/components/app/newsletter-draft-button";
 import { StoreLogosStrip } from "@/components/app/store-logos-strip";
 import { Card, CardContent } from "@/components/ui/card";
 import { prisma } from "@/lib/db";
@@ -34,11 +35,9 @@ export default async function TemplatesPage() {
         description="Plantillas MJML para renderizado pixel-correcto en Outlook, Gmail, Apple Mail. Genera con IA, edita en el builder, traduce a 22 idiomas automáticamente."
         actions={
           <div className="flex items-center gap-2 flex-wrap">
+            <NewsletterDraftButton stores={storesForUi} />
             <SamplePackButton stores={storesForUi} />
             <AiTemplateGenerator stores={storesForUi} />
-            <Button size="sm" variant="outline" asChild>
-              <Link href="/builder"><Palette className="h-3.5 w-3.5" /> Abrir builder</Link>
-            </Button>
           </div>
         }
       />
