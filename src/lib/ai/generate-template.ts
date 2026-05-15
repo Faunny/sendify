@@ -254,8 +254,34 @@ OUTPUT — pure JSON, no markdown fences, no commentary:
     "_HINT": "ONLY include when the brief explicitly mentions a discount code or you are 100% certain the campaign needs one. Otherwise OMIT this field — we do NOT invent promo codes that don't exist at checkout.",
     "code": "<the actual code · uppercase · no spaces · 4-15 chars>",
     "label": "<optional · 'Código en el checkout' / 'Aplica al pagar'>"
+  },
+  "topPromoStrip": {
+    "_HINT": "Thin coloured band at the very top of the email. ONLY include when the brief explicitly mentions a sitewide offer or promo. Example: 'Todos los perfumes al 50%'.",
+    "text": "<single short line · max 60 chars · the headline offer>"
+  },
+  "splitNarrative": [
+    {
+      "_HINT": "Two or three alternating image+text sections that tell the product story. Each section: short ALL-CAPS tagline (2 lines), 1-2 sentence body, CTA. ONLY include for premium-launch when telling a single product's narrative.",
+      "tagline": "<2 lines of ALL CAPS tagline separated by \\n · 4-7 words total · e.g. 'NO HUELE A POSTRE.\\nTIENE CARÁCTER.'>",
+      "body": "<1-2 sentences · 20-35 words · concrete, sensorial, in lowercase>",
+      "ctaLabel": "<2-3 words UPPERCASE · 'QUIERO OLER ASÍ', 'DESCUBRIR', 'COMPRAR AHORA'>"
+    }
+  ],
+  "collectionCallout": {
+    "_HINT": "ONLY include for premium-launch when the product belongs to a specific collection you want to highlight. Ties one product to the broader line.",
+    "bridgeText": "<1-2 lines · sets up the collection · 'divain.1087 no está sola. Forma parte de nuestra colección más intensa.'>",
+    "bodyText": "<1 sentence · names other SKUs from the catalog that share the theme · 25-40 words>",
+    "italicCloser": "<optional · 1-2 lines of poetic italic closer · 'Porque hay perfumes que te acompañan. Y hay perfumes que definen.'>",
+    "ctaLabel": "<UPPERCASE · 'EXPLORA LA COLECCIÓN'>"
   }
 }
+
+ADDITIONAL HINTS FOR PRODUCT-NARRATIVE FLOWS (premium-launch):
+- splitNarrative is the heart of premium-launch. Aim for 2 sections that tell the perfume's story: top notes → heart → base. Each tagline must be PUNCHY, 2 lines of caps separated by \\n. The body sensorialises the notes.
+- collectionCallout ties this drop to the broader collection. Only include when the brief mentions a collection.
+- topPromoStrip appears literally only when there's a sitewide offer.
+
+DO NOT include topPromoStrip / splitNarrative / collectionCallout for non-premium-launch patterns.
 
 CRITICAL RULES FOR THE NEW BLOCKS:
 - NEVER invent customer testimonials, names, or quotes. The brandPromise is BRAND voice, not a fake review.
@@ -652,6 +678,13 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
   // bar simply doesn't render when no store-level policy is configured —
   // we don't ship invented shipping promises.
   let trustItems: Array<{ label: string; sub?: string }> = [];
+  // Brand accent colour (e.g. divain yellow #FACD37). Read from
+  // Store.brandPalette.accent JSON. Falls back to undefined → skeleton uses
+  // primaryColor as accent so the email still looks intentional.
+  let accentColorFromStore: string | undefined;
+  // Service callout — recurring "Try & Buy"-style box configured at the
+  // store level so every email of that store can include it without invention.
+  let serviceCalloutFromStore: SkeletonSlots["serviceCallout"] | undefined;
   if (input.storeSlug) {
     const store = await prisma.store.findUnique({
       where: { slug: input.storeSlug },
@@ -676,12 +709,17 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
     // once /settings/brand actually writes and the UI sanity-checks values
     // (primary must be high-contrast against bg, etc).
     palette = { ...DEFAULT_PALETTE };
-    // Trust items: read from brandPalette JSON (we piggy-back on the
-    // existing Json column to avoid a migration). Expected shape:
-    //   { trustItems: [{ label: "...", sub?: "..." }, ...] }
-    // When the key is missing the trust band simply doesn't render — we
-    // intentionally do NOT default to "Envío gratis 30€" because that's
-    // a store-specific claim we can't ship without knowing it's true.
+    // Trust items + brand accent + service callout: read from brandPalette
+    // JSON (we piggy-back on the existing Json column to avoid a migration).
+    // Expected shape:
+    //   {
+    //     accent: "#FACD37",
+    //     trustItems: [{ label, sub? }, ...],
+    //     serviceCallout: { eyebrow?, title, body, ctaLabel, ctaUrl? }
+    //   }
+    // When a key is missing, the corresponding block simply doesn't render —
+    // we intentionally do NOT default to "Envío gratis 30€" or invent a
+    // Try&Buy block, because those are store-specific claims.
     const brandKitJson = (store?.brandPalette ?? null) as Record<string, unknown> | null;
     const rawTrust = brandKitJson && Array.isArray(brandKitJson.trustItems) ? brandKitJson.trustItems : [];
     trustItems = (rawTrust as unknown[])
@@ -692,6 +730,21 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
       }))
       .filter((it) => it.label.length > 0)
       .slice(0, 3);
+    // Accent colour — hex like #FACD37 — used for service callout bg + CTAs.
+    if (typeof brandKitJson?.accent === "string" && /^#[0-9A-Fa-f]{3,8}$/.test(brandKitJson.accent)) {
+      accentColorFromStore = brandKitJson.accent;
+    }
+    // Service callout — must have at minimum title, body, ctaLabel to render.
+    const sc = brandKitJson?.serviceCallout && typeof brandKitJson.serviceCallout === "object" ? brandKitJson.serviceCallout as Record<string, unknown> : null;
+    if (sc && typeof sc.title === "string" && typeof sc.body === "string" && typeof sc.ctaLabel === "string") {
+      serviceCalloutFromStore = {
+        eyebrow: typeof sc.eyebrow === "string" ? sc.eyebrow.slice(0, 60) : undefined,
+        title:   sc.title.slice(0, 80),
+        body:    sc.body.slice(0, 360),
+        ctaLabel: sc.ctaLabel.toUpperCase().slice(0, 30),
+        ctaUrl:   typeof sc.ctaUrl === "string" ? sc.ctaUrl : (storefrontUrl || "#"),
+      };
+    }
   }
 
   // Shuffle the catalog hints per call so consecutive generations pick a
@@ -782,13 +835,13 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
       // (no DB migration needed) because hasEvery requires the current tag to
       // be present and old assets don't have it.
       //
-      // v9 = NO hardcoded fake content. All review-style blocks removed.
-      // brandPromise / reasons / fragranceNotes / processBlock / founderNote /
-      // appBenefits / urgencyReasons / promoCode are all LLM-driven and HIDE
-      // when not populated. trustItems come from Store config (no defaults).
-      // Templates are now genuinely scalable across stores and never ship
-      // invented testimonials, invented promo codes, or invented policies.
-      const PROMPT_VERSION = "v9-no-fake-content";
+      // v10 = product-narrative pattern. Premium-launch redone to follow the
+      // divain Klaviyo flagship flow: top promo strip → photo hero → intro →
+      // alternating split-narrative (image-left / image-right with CAPS
+      // tagline) → collection callout → Try&Buy service callout with brand
+      // yellow → trust + brand bar. Lifestyle/big-number also gain the top
+      // promo strip + service callout when configured at the store level.
+      const PROMPT_VERSION = "v10-product-narrative";
       const libraryTags = [layoutPattern, input.storeSlug ?? "global", PROMPT_VERSION];
       const reusable = await prisma.asset.findFirst({
         where: {
@@ -1054,6 +1107,57 @@ export async function generateTemplate(input: TemplateGenInput): Promise<Templat
     // bar simply doesn't render. Read from Store.trustItems (JSON) field —
     // null-safe so older stores without the column don't break.
     trustItems: trustItems.length > 0 ? trustItems : undefined,
+    // ── PRODUCT-NARRATIVE BLOCKS (NEW) ──────────────────────────────────
+    topPromoStrip: (() => {
+      const tps = parsed.topPromoStrip && typeof parsed.topPromoStrip === "object" ? parsed.topPromoStrip as Record<string, unknown> : null;
+      const text = typeof tps?.text === "string" ? tps.text.trim() : "";
+      if (!text) return undefined;
+      return {
+        text: text.slice(0, 80),
+        bgColor: typeof tps?.bgColor === "string" ? tps.bgColor : undefined,
+        textColor: typeof tps?.textColor === "string" ? tps.textColor : undefined,
+      };
+    })(),
+    splitNarrative: (() => {
+      if (!Array.isArray(parsed.splitNarrative)) return undefined;
+      const items = (parsed.splitNarrative as unknown[])
+        .filter((it): it is Record<string, unknown> => typeof it === "object" && it !== null)
+        .map((it, i) => ({
+          // Wire each split's image to a different real product photo from
+          // the catalog so consecutive splits visually rotate. Falls back
+          // to products[0] when not enough catalog entries.
+          imageUrl: products[i % Math.max(1, products.length)]?.imageUrl ?? products[0]?.imageUrl ?? "",
+          tagline: typeof it.tagline === "string" ? it.tagline.slice(0, 80) : "",
+          body:    typeof it.body    === "string" ? it.body.slice(0, 220)   : "",
+          ctaLabel: typeof it.ctaLabel === "string" ? String(it.ctaLabel).toUpperCase().slice(0, 30) : "DESCUBRIR",
+          ctaUrl: products[i % Math.max(1, products.length)]?.productUrl ?? storefrontUrl ?? "#",
+        }))
+        .filter((it) => it.tagline && it.body && it.imageUrl)
+        .slice(0, 3);
+      return items.length > 0 ? items : undefined;
+    })(),
+    collectionCallout: (() => {
+      const cc = parsed.collectionCallout && typeof parsed.collectionCallout === "object" ? parsed.collectionCallout as Record<string, unknown> : null;
+      const bridgeText = typeof cc?.bridgeText === "string" ? cc.bridgeText.trim() : "";
+      const bodyText   = typeof cc?.bodyText   === "string" ? cc.bodyText.trim()   : "";
+      const ctaLabel   = typeof cc?.ctaLabel   === "string" ? cc.ctaLabel.trim()   : "";
+      if (!bridgeText || !bodyText || !ctaLabel) return undefined;
+      return {
+        bridgeText: bridgeText.slice(0, 220),
+        bodyText: bodyText.slice(0, 280),
+        italicCloser: typeof cc?.italicCloser === "string" ? cc.italicCloser.slice(0, 180) : undefined,
+        ctaLabel: ctaLabel.toUpperCase().slice(0, 30),
+        ctaUrl: storefrontUrl ? `${storefrontUrl}/?utm_source=sendify&utm_medium=email&utm_content=collection-callout` : "#",
+      };
+    })(),
+    // Service callout — pulled from Store.brandPalette.serviceCallout JSON.
+    // When the store hasn't configured a recurring service block (e.g. divain's
+    // Try&Buy), it doesn't render. No LLM invention — this must be real.
+    serviceCallout: serviceCalloutFromStore ?? undefined,
+    // Brand accent colour — used as the service callout bg + product-narrative
+    // CTAs. Reads Store.brandPalette.accent (when set), else falls back to
+    // primary so the design degrades gracefully on stores without a config.
+    accentColor: accentColorFromStore,
   };
 
   const mjml = renderSkeleton(layoutPattern, slots);

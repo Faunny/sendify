@@ -116,6 +116,45 @@ export type SkeletonSlots = {
   urgencyReasons?: Array<{ title: string; copy: string }>;
   // Promo code — used by big-number-hero / countdown-urgency. Optional.
   promoCode?: { code: string; label?: string };
+  // ── PRODUCT-NARRATIVE blocks (matches divain Klaviyo flagship style) ────
+  // Top promotional strip — thin coloured band at the very top with one line
+  // of offer text. Style mirrors divain's "Todos los perfumes al 50%" header.
+  topPromoStrip?: { text: string; bgColor?: string; textColor?: string };
+  // Alternating image+text split sections. Each one is the bottle photo on
+  // one side + a 2-line CAPS tagline + 1-2 sentence body + CTA on the other.
+  // Direction alternates per index in the renderer so consecutive sections
+  // visually balance.
+  splitNarrative?: Array<{
+    imageUrl: string;
+    tagline: string;     // "NO HUELE A POSTRE. TIENE CARÁCTER." — 2 lines max
+    body: string;        // 1-2 sentences expanding the tagline
+    ctaLabel: string;
+    ctaUrl?: string;
+  }>;
+  // Collection callout — wide image + bridge text + italic closer + CTA.
+  // Used to tie a single product back to the broader collection it belongs to.
+  collectionCallout?: {
+    bridgeText: string;       // "divain.1087 no está sola..."
+    imageUrl?: string;        // optional GIF/photo, full-width 600px
+    bodyText: string;         // "Junto a divain.786..."
+    italicCloser?: string;    // "Porque hay perfumes que te acompañan..."
+    ctaLabel: string;         // "EXPLORA LA COLECCIÓN"
+    ctaUrl?: string;
+    bgColor?: string;
+  };
+  // Service callout — recurring "Try & Buy"-style block. Uses brand accent
+  // colour. Configured at the Store level (Store.brandPalette.serviceCallout)
+  // so every email of that store can include it without the LLM inventing it.
+  serviceCallout?: {
+    eyebrow?: string;     // "PRUEBA SIN RIESGO"
+    title: string;        // "¿Qué es Try&Buy?"
+    body: string;         // "Es nuestro servicio para probar..."
+    ctaLabel: string;     // "IR A LA WEB"
+    ctaUrl?: string;
+  };
+  // Brand accent colour — when set, used for service callout background
+  // and CTA pills inside product-narrative. Falls back to primaryColor.
+  accentColor?: string;
 };
 
 // Brand-pillar bar. Four columns, black background, links to the four pillar
@@ -515,6 +554,124 @@ const PROMO_BAND = (primaryColor: string, bgColor: string, promo: SkeletonSlots[
 `;
 };
 
+// ── PRODUCT-NARRATIVE HELPERS (matches divain Klaviyo flagship style) ─────
+
+// Top promo strip — thin coloured band at the very top of the email with
+// one line of offer text. Hidden when no LLM/store value provided.
+const TOP_PROMO_STRIP = (strip: SkeletonSlots["topPromoStrip"]) => {
+  if (!strip || !strip.text) return "";
+  const bg = strip.bgColor ?? "#000000";
+  const fg = strip.textColor ?? "#FFFFFF";
+  return `
+  <mj-section background-color="${bg}" padding="10px 16px" css-class="sf-mobile-pad">
+    <mj-column>
+      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="12px" letter-spacing="2px" color="${fg}" font-weight="500">${escapeHtml(strip.text)}</mj-text>
+    </mj-column>
+  </mj-section>
+`;
+};
+
+// Split narrative section — alternating image/text. Direction is passed by
+// the caller (renderer loops over the array and alternates left/right).
+// The tagline is shown in CAPS with letter-spacing; body is normal weight.
+const SPLIT_NARRATIVE = (
+  section: NonNullable<SkeletonSlots["splitNarrative"]>[number],
+  direction: "imageLeft" | "imageRight",
+  textColor: string,
+  bgColor: string,
+  accentColor: string,
+  align: "left" | "right",
+) => {
+  const tagline = escapeHtml(section.tagline).replace(/\n/g, "<br/>");
+  const textColumn = `
+    <mj-column width="50%" vertical-align="middle">
+      <mj-text align="${align}" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="18px" font-weight="700" line-height="1.25" color="${textColor}" padding="0 18px 12px">${tagline}</mj-text>
+      <mj-text align="${align}" font-size="14px" line-height="1.55" color="${textColor}" padding="0 18px"><span style="opacity:0.88;">${escapeHtml(section.body)}</span></mj-text>
+      <mj-spacer height="20px" />
+      <mj-button background-color="${accentColor}" color="${textColor}" border-radius="21px" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="2px" font-weight="600" inner-padding="13px 32px" align="${align}" text-transform="uppercase" href="${section.ctaUrl ?? "#"}" padding="0 18px 0">${escapeHtml(section.ctaLabel)}</mj-button>
+    </mj-column>
+  `;
+  const imageColumn = `
+    <mj-column width="50%" vertical-align="middle" background-color="#F5F5F5" padding="0">
+      <mj-image src="${section.imageUrl}" alt="" padding="0" border-radius="0" />
+    </mj-column>
+  `;
+  const cols = direction === "imageLeft" ? `${imageColumn}${textColumn}` : `${textColumn}${imageColumn}`;
+  return `
+  <mj-section background-color="${bgColor}" padding="20px 0 0">
+    ${cols}
+  </mj-section>
+`;
+};
+
+// Collection callout — wide image (or none) + bridge text + body + italic
+// closer + CTA. Mirrors the divain Klaviyo "no está sola" section that ties
+// a product to its broader collection.
+const COLLECTION_CALLOUT = (cc: SkeletonSlots["collectionCallout"], textColor: string, accentColor: string) => {
+  if (!cc) return "";
+  const bg = cc.bgColor ?? "#FFFAEF";
+  return `
+  <mj-section background-color="${bg}" padding="32px 16px 6px" css-class="sf-mobile-pad">
+    <mj-column>
+      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="16px" font-weight="600" line-height="1.4" letter-spacing="1px" color="${textColor}" padding="0 10px">${escapeHtml(cc.bridgeText).replace(/\n/g, "<br/>")}</mj-text>
+    </mj-column>
+  </mj-section>
+  ${cc.imageUrl ? `
+    <mj-section background-color="${bg}" padding="14px 0 0">
+      <mj-column padding="0">
+        <mj-image src="${cc.imageUrl}" alt="" padding="0" border-radius="0" />
+      </mj-column>
+    </mj-section>
+  ` : ""}
+  <mj-section background-color="${bg}" padding="14px 16px 0" css-class="sf-mobile-pad">
+    <mj-column>
+      <mj-text align="center" font-size="15px" line-height="1.55" color="${textColor}" padding="0 10px"><span style="opacity:0.9;">${escapeHtml(cc.bodyText)}</span></mj-text>
+    </mj-column>
+  </mj-section>
+  ${cc.italicCloser ? `
+    <mj-section background-color="${bg}" padding="14px 16px 8px" css-class="sf-mobile-pad">
+      <mj-column>
+        <mj-text align="center" font-style="italic" font-size="15px" line-height="1.55" color="${textColor}" letter-spacing="1px"><span style="opacity:0.8;">${escapeHtml(cc.italicCloser).replace(/\n/g, "<br/>")}</span></mj-text>
+      </mj-column>
+    </mj-section>
+  ` : ""}
+  <mj-section background-color="${bg}" padding="14px 18px 36px" css-class="sf-mobile-pad">
+    <mj-column>
+      <mj-button background-color="${accentColor}" color="${textColor}" border-radius="21px" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="2px" font-weight="600" inner-padding="13px 35px" align="center" text-transform="uppercase" href="${cc.ctaUrl ?? "#"}">${escapeHtml(cc.ctaLabel)}</mj-button>
+    </mj-column>
+  </mj-section>
+`;
+};
+
+// Service callout — recurring "Try & Buy"-style box. Uses brand accent
+// colour as the section background (yellow for divain). Configured at the
+// store level so every email can include it without invention.
+const SERVICE_CALLOUT = (sc: SkeletonSlots["serviceCallout"], accentColor: string, textColor: string) => {
+  if (!sc || !sc.title || !sc.body) return "";
+  return `
+  <mj-section background-color="${accentColor}" padding="25px 0 0">
+    <mj-column>
+      ${sc.eyebrow ? `<mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="16px" font-weight="600" letter-spacing="3px" color="${textColor}">${escapeHtml(sc.eyebrow)}</mj-text>` : ""}
+    </mj-column>
+  </mj-section>
+  <mj-section background-color="${accentColor}" padding="8px 15px 0" css-class="sf-mobile-pad">
+    <mj-column>
+      <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="18px" font-weight="400" color="${textColor}">${escapeHtml(sc.title)}</mj-text>
+    </mj-column>
+  </mj-section>
+  <mj-section background-color="${accentColor}" padding="6px 10px 0" css-class="sf-mobile-pad">
+    <mj-column>
+      <mj-text align="center" font-size="15px" line-height="1.55" color="${textColor}"><span style="opacity:0.9;">${escapeHtml(sc.body)}</span></mj-text>
+    </mj-column>
+  </mj-section>
+  <mj-section background-color="${accentColor}" padding="20px 18px 35px" css-class="sf-mobile-pad">
+    <mj-column>
+      <mj-button background-color="${accentColor}" color="${textColor}" border="1px solid ${textColor}" border-radius="21px" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="2px" font-weight="600" inner-padding="13px 32px" align="center" text-transform="uppercase" href="${sc.ctaUrl ?? "#"}">${escapeHtml(sc.ctaLabel)}</mj-button>
+    </mj-column>
+  </mj-section>
+`;
+};
+
 const HEAD = `
   <mj-head>
     <mj-attributes>
@@ -679,6 +836,7 @@ function lifestyleHero(s: SkeletonSlots): string {
 
   return `<mjml>${HEAD}<mj-body background-color="${s.bgColor}">
 ${PREHEADER(s.preheader, s.bgColor)}
+${TOP_PROMO_STRIP(s.topPromoStrip)}
 ${headerSection}
 ${heroSection}
 ${captionBlock}
@@ -686,6 +844,7 @@ ${productSection}
 ${closerSection}
 ${promise}
 ${miniGrid}
+${SERVICE_CALLOUT(s.serviceCallout, s.accentColor ?? s.primaryColor, s.textColor)}
 ${trustBar}
 ${BRAND_BAR("#FFFFFF", s.storefrontUrl)}
 </mj-body></mjml>`;
@@ -889,54 +1048,70 @@ function productGridEditorial(s: SkeletonSlots): string {
 // Single product hero · poetic copy · no price · minimal frame. RITUAL drops.
 
 function premiumLaunch(s: SkeletonSlots): string {
-  // Process block + notes pyramid are both LLM-driven now. If neither is
-  // populated the email is product image + name + CTA + similar + trust +
-  // brand bar — still complete, just tighter.
-  const processBlock = PROCESS_BLOCK(s.textColor, "#F5F1EA", s.processBlock);
-  const similar = MINI_GRID_6((s.products ?? []).slice(1, 7), s.textColor, s.bgColor, "También te puede interesar");
+  // Premium-launch follows the divain Klaviyo flagship flow:
+  //   1. Top promo strip (offer)
+  //   2. Full-bleed hero photo with logo + headline + CTA overlay
+  //   3. Short intro paragraph (cream)
+  //   4. Split narrative 1 (image-left)
+  //   5. Split narrative 2 (image-right)
+  //   6. Bridge text (cream)
+  //   7. Collection callout (light yellow + image + italic closer + CTA)
+  //   8. Service callout (brand accent — yellow Try&Buy box)
+  //   9. Trust bar + brand bar + legal footer
+  const accent = s.accentColor ?? s.primaryColor;
+  const promoStrip = TOP_PROMO_STRIP(s.topPromoStrip);
+  const splits = (s.splitNarrative ?? []).slice(0, 3);
+  // Alternate direction: first split image-left, second image-right, etc.
+  const splitSections = splits.map((sec, i) => {
+    const direction = i % 2 === 0 ? "imageLeft" : "imageRight";
+    const align = direction === "imageLeft" ? "right" : "left";
+    return SPLIT_NARRATIVE(sec, direction, s.textColor, "#F2F1EB", accent, align);
+  }).join("");
+  const collection = COLLECTION_CALLOUT(s.collectionCallout, s.textColor, accent);
+  const service    = SERVICE_CALLOUT(s.serviceCallout, accent, s.textColor);
 
-  const slots: Record<string, string> = {
-    preheader: PREHEADER(s.preheader, s.bgColor),
-    wordmark: WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl),
-    headline: escapeHtml(s.headline),
-    productImage: (s.productImageUrl ?? s.heroUrl)
-      ? `<mj-image src="${s.productImageUrl ?? s.heroUrl}" alt="${escapeHtml(s.productName ?? "")}" padding="0" href="${s.productPageUrl ?? s.ctaUrl ?? "#"}" />`
-      : "",
-    productName: escapeHtml(s.productName ?? s.headline),
-    productCopy: escapeHtml(s.productCopy ?? s.body ?? ""),
-    cta: PILL_BUTTON(s.ctaLabel, s.primaryColor, s.bgColor, s.ctaUrl ?? "#"),
-    notes: NOTES_PYRAMID(s.textColor, s.bgColor, s.fragranceNotes),
-    story: s.body ? `
-      <mj-section background-color="${s.bgColor}" padding="20px 36px 8px" css-class="sf-mobile-pad">
-        <mj-column>
-          <mj-text align="center" font-size="15px" line-height="1.7" color="${s.textColor}" css-class="sf-body"><span style="opacity:0.88;">${escapeHtml(s.body)}</span></mj-text>
-        </mj-column>
-      </mj-section>
-    ` : "",
-    processBlock,
-    similar,
-    trustBar: TRUST_BAR(s.textColor, s.bgColor, s.trustItems),
-    brandBar: BRAND_BAR("#FFFFFF", s.storefrontUrl),
-    bgColor: s.bgColor,
-    textColor: s.textColor,
-  };
+  // Hero: full-bleed photo with overlaid logo + headline + CTA. The product
+  // photo IS the photo — no separate hero image needed (we use the same).
+  const heroImageUrl = s.heroUrl || s.productImageUrl || "";
+  const heroSection = heroImageUrl ? `
+    <mj-section background-url="${heroImageUrl}" background-size="cover" background-position="center bottom" background-repeat="no-repeat" padding="80px 30px 100px" css-class="sf-hero-section">
+      <mj-column>
+        ${HERO_BRAND_OVERLAY(s.brandLogoDarkUrl, s.storefrontUrl)}
+        <mj-text align="center" color="#FFFFFF" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="26px" font-weight="400" line-height="1.2" css-class="sf-hero-text sf-h2" padding="0 0 18px 0">${escapeHtml(s.headline).replace(/\n/g, "<br/>")}</mj-text>
+        <mj-button background-color="${accent}" color="${s.textColor}" border-radius="21px" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="11px" letter-spacing="2px" font-weight="600" inner-padding="14px 38px" align="center" text-transform="uppercase" href="${s.ctaUrl ?? "#"}">${escapeHtml(s.ctaLabel)}</mj-button>
+      </mj-column>
+    </mj-section>
+  ` : `
+    <mj-section background-color="${s.bgColor}" padding="60px 30px 30px" css-class="sf-mobile-pad">
+      <mj-column>
+        <mj-text align="center" color="${s.textColor}" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="32px" font-weight="500" line-height="1.15" css-class="sf-h1">${escapeHtml(s.headline)}</mj-text>
+      </mj-column>
+    </mj-section>
+  `;
 
-  return render(`<mjml>${HEAD}<mj-body background-color="{{bgColor}}">
-{{preheader}}
-{{wordmark}}
-<mj-section padding="56px 32px 22px" css-class="sf-mobile-pad"><mj-column>{{productImage}}</mj-column></mj-section>
-<mj-section padding="8px 32px" css-class="sf-mobile-pad"><mj-column>
-  <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="26px" font-weight="500" letter-spacing="0.5px" color="{{textColor}}">{{productName}}</mj-text>
-  <mj-text align="center" font-size="13px" letter-spacing="3px" text-transform="uppercase" color="{{textColor}}" padding-top="10px"><span style="opacity:0.6;">{{productCopy}}</span></mj-text>
-</mj-column></mj-section>
-{{notes}}
-{{story}}
-<mj-section padding="28px 32px 30px" css-class="sf-mobile-pad"><mj-column>{{cta}}</mj-column></mj-section>
-{{processBlock}}
-{{similar}}
-{{trustBar}}
-{{brandBar}}
-</mj-body></mjml>`, slots);
+  // Intro paragraph below hero — short editorial framing of the product.
+  const introSection = s.body ? `
+    <mj-section background-color="#F2F1EB" padding="20px 20px" css-class="sf-mobile-pad">
+      <mj-column>
+        <mj-text align="center" font-family="Outfit, Helvetica, Arial, sans-serif" font-size="16px" line-height="1.5" letter-spacing="0" color="${s.textColor}" css-class="sf-body">${escapeHtml(s.body)}</mj-text>
+      </mj-column>
+    </mj-section>
+  ` : "";
+
+  const headerSection = heroImageUrl ? "" : WORDMARK(s.textColor, s.brandLogoUrl, s.storefrontUrl);
+
+  return `<mjml>${HEAD}<mj-body background-color="${s.bgColor}">
+${PREHEADER(s.preheader, s.bgColor)}
+${promoStrip}
+${headerSection}
+${heroSection}
+${introSection}
+${splitSections}
+${collection}
+${service}
+${TRUST_BAR(s.textColor, s.bgColor, s.trustItems)}
+${BRAND_BAR("#FFFFFF", s.storefrontUrl)}
+</mj-body></mjml>`;
 }
 
 // ── countdown-urgency ─────────────────────────────────────────────────────
